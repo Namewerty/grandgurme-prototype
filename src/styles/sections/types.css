@@ -1,0 +1,208 @@
+/* ============================================================================
+   #types — виды чёрной икры.
+   Ряд круглых кадров: 4 в ряд на десктопе, горизонтальный скролл со snap
+   на планшете (3.5 карточки) и мобильном (1.6 карточки).
+
+   Кругов стало четыре вместо шести: в реальном ассортименте четыре вида
+   осетровых, см. src/data/caviar-types.js. Карточка считается от этого
+   числа, поэтому круги просто стали крупнее, а композиция ряда не изменилась.
+   ============================================================================ */
+
+.types {
+  --types-count: 4;        /* видов в ряду — отсюда считается ширина карточки */
+  /* Зазор больше базового ритма: кольцо выходит за границы карточки на 10px
+     с каждой стороны и на ховере ещё на 4px, так что видимое расстояние
+     между кольцами меньше зазора на 20–28px. */
+  --types-gap: clamp(1.5rem, 3vw, 3rem);
+  --types-ring: 10px;      /* отступ золотого кольца от фото            */
+  --types-ring-hover: 14px;/* «расширяется на 4px» из ТЗ                */
+}
+
+/* ---- Шапка секции -------------------------------------------------------- */
+
+.types__head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+  text-align: center;
+}
+
+.types__title { margin: 0; }
+
+.types__note {
+  max-width: 52ch;
+  font-size: .9rem;
+  line-height: 1.6;
+  color: var(--fg-mute);
+  text-wrap: pretty;
+}
+
+/* ---- Ряд ----------------------------------------------------------------- */
+
+.types__row {
+  display: flex;
+  gap: var(--types-gap);
+  margin-top: clamp(2rem, 4vh, 3.25rem);
+  /* запас под золотое кольцо, чтобы его не срезало при скролле */
+  padding-block: var(--types-ring-hover);
+}
+
+.type {
+  flex: 0 0 auto;
+  width: calc((100% - (var(--types-count) - 1) * var(--types-gap)) / var(--types-count));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+  text-align: center;
+}
+
+/* ---- Кадр и кольцо ------------------------------------------------------- */
+
+.type__frame {
+  position: relative;
+  display: block;
+  width: 100%;
+}
+
+.type__frame::after {
+  content: '';
+  position: absolute;
+  inset: calc(-1 * var(--types-ring));
+  border: 1px solid rgba(169, 135, 72, .45);
+  border-radius: 50%;
+  pointer-events: none;
+  transition: inset 600ms var(--ease-out), border-color 600ms var(--ease-out);
+}
+
+.type__photo { border-radius: 50%; }
+
+.type__photo img {
+  transition: transform 800ms var(--ease-out);
+}
+
+/* ---- Подписи ------------------------------------------------------------- */
+
+.type__caption {
+  display: flex;
+  flex-direction: column;
+  gap: .35rem;
+}
+
+.type__name {
+  position: relative;
+  display: inline-block;
+  align-self: center;
+  font-family: var(--font-display);
+  font-size: clamp(1.3rem, 1.8vw, 1.6rem);
+  line-height: 1.2;
+  color: var(--ink);
+}
+
+/* Подчёркивание раскрывается слева направо. */
+.type__name::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -.2em;
+  height: 1px;
+  background: var(--caspian);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 500ms var(--ease-out);
+}
+
+/* Приглушённый серый, а не бирюзовый: дескриптор — описательная подпись,
+   а не интерактив. Рядом с золотым кольцом кадра второй акцентный цвет
+   спорил с золотом и читался как случайный. */
+.type__flavour {
+  font-size: .8rem;
+  line-height: 1.4;
+  color: var(--fg-mute);
+  text-wrap: pretty;
+}
+
+/* ---- Наведение ----------------------------------------------------------- */
+
+@media (hover: hover) {
+  .type:hover .type__frame::after {
+    inset: calc(-1 * var(--types-ring-hover));
+    border-color: var(--gold);
+  }
+
+  .type:hover .type__photo img { transform: scale(1.06); }
+
+  .type:hover .type__name::after { transform: scaleX(1); }
+}
+
+.type:focus-visible .type__frame::after {
+  inset: calc(-1 * var(--types-ring-hover));
+  border-color: var(--gold);
+}
+
+/* ---- Ссылка под рядом ---------------------------------------------------- */
+
+.types__more {
+  margin-top: clamp(1.5rem, 3vh, 2.25rem);
+  text-align: center;
+}
+
+.types__more-link {
+  font-size: .85rem;
+  font-weight: 500;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--ink);
+  border-bottom: 1px solid var(--caspian);
+  padding-bottom: .35rem;
+  transition: color var(--dur-line) var(--ease-out);
+}
+
+.types__more-link:hover { color: var(--caspian-fg); }
+
+/* ---- Индикатор позиции --------------------------------------------------- */
+
+.types__bar {
+  position: relative;
+  display: none;
+  height: 1px;
+  margin-top: 1.5rem;
+  background: rgba(169, 135, 72, .2);
+}
+
+.types__bar-thumb {
+  position: absolute;
+  inset-block: 0;
+  left: 0;
+  display: block;
+  background: var(--gold);
+}
+
+/* ---- Скролл-режимы -------------------------------------------------------
+   Ряд уходит в край экрана: так видно, что он продолжается.                 */
+
+@media (max-width: 1023px) {
+  .types__row {
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-padding-inline: var(--gutter);
+    padding-inline: var(--gutter);
+    margin-inline: calc(-1 * var(--gutter));
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .types__row::-webkit-scrollbar { display: none; }
+
+  .type {
+    scroll-snap-align: start;
+    width: calc((100% - 2.5 * var(--types-gap)) / 3.5);
+  }
+}
+
+@media (max-width: 767px) {
+  .type { width: calc((100% - .6 * var(--types-gap)) / 1.6); }
+  .types__bar { display: block; }
+}

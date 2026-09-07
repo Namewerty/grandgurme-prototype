@@ -1,0 +1,43 @@
+/* ============================================================================
+   Модификаторы кнопок для тёмных секций.
+
+   База .btn / .btn--solid живёт в base.css и не меняется. Здесь только
+   надстройка: перламутровая заливка и светлая обводка на тёмном фоне,
+   у обеих золотой ховер. Пользуются #hero и #proof.
+   ============================================================================ */
+
+/* Размер из ТЗ первого экрана: 0.8rem, tracking .16em, padding 1rem 2.6rem. */
+.btn--wide {
+  min-height: 44px;     /* было 0 — на мобильном кнопка выходила ниже зоны касания */
+  padding: 1rem 2.6rem;
+  font-size: .8rem;
+  letter-spacing: .16em;
+}
+
+/* Основная на тёмном: перламутр → золото.
+   Берём --on-dark, а не --pearl: тёмные секции остаются тёмными в обеих темах,
+   а --pearl в альтернативной теме инвертируется и кнопка слилась бы с фоном.
+   В основной теме это то же самое значение. */
+.btn--pearl {
+  background: var(--on-dark);
+  border-color: var(--on-dark);
+  color: var(--void);
+}
+
+.btn--pearl:hover {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: var(--void);
+}
+
+/* Вторичная на тёмном: прозрачная, светлая рамка → золото. */
+.btn--outline-light {
+  background: transparent;
+  border-color: rgba(237, 238, 234, .4);
+  color: var(--on-dark);
+}
+
+.btn--outline-light:hover {
+  border-color: var(--gold);
+  color: var(--gold);
+}

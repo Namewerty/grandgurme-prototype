@@ -1,0 +1,110 @@
+/* ============================================================================
+   Индикатор прокрутки. Кольцо 44px, тонкий золотой stroke, номер остановки
+   внутри, её название — мелкой строкой справа.
+
+   Левый нижний угол: правый занят виджетом эксперта, и перекрывать его
+   кольцо не должно. Появляется после hero.
+   ============================================================================ */
+
+.progress-ring {
+  position: fixed;
+  left: clamp(1rem, 3vw, 2.5rem);
+  bottom: clamp(1rem, 3vw, 2.5rem);
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  opacity: 0;
+  transform: translateY(12px);
+  pointer-events: none;
+  transition: opacity var(--dur-theme) var(--ease-out),
+              transform var(--dur-theme) var(--ease-out);
+}
+
+.progress-ring.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ---- Кольцо -------------------------------------------------------------- */
+
+.progress-ring__dial {
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: var(--ring-size);
+  height: var(--ring-size);
+  border-radius: 50%;
+}
+
+.progress-ring__svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+  overflow: visible;
+}
+
+.progress-ring__track,
+.progress-ring__bar {
+  fill: none;
+  stroke-width: 1;
+}
+
+.progress-ring__track { stroke: var(--hairline-on-light); }
+
+.progress-ring__bar {
+  stroke: var(--gold);
+  stroke-linecap: butt;
+  stroke-dasharray: var(--ring-circumference);
+  stroke-dashoffset: var(--ring-circumference);
+}
+
+.progress-ring__num {
+  position: relative;
+  font-family: var(--font-body);
+  font-size: .625rem;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: .06em;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-mute);
+  transition: opacity 200ms var(--ease-out),
+              color var(--dur-theme) var(--ease-out);
+}
+
+/* ---- Подпись ------------------------------------------------------------- */
+
+/* Название меняется с fade: scroll.js гасит подпись, подменяет текст в
+   темноте и проявляет обратно — иначе на границе секций одно название
+   перебивает другое рывком. */
+.progress-ring__label {
+  font-size: .6875rem;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--fg-mute);
+  transition: opacity 200ms var(--ease-out), color var(--dur-theme) var(--ease-out);
+}
+
+.progress-ring.is-swapping .progress-ring__num,
+.progress-ring.is-swapping .progress-ring__label { opacity: 0; }
+
+/* Над тёмной секцией кольцо читается светлым. */
+.progress-ring.is-over-dark .progress-ring__track { stroke: var(--hairline-on-dark); }
+.progress-ring.is-over-dark .progress-ring__num,
+.progress-ring.is-over-dark .progress-ring__label { color: var(--on-dark-mute); }
+
+@media (max-width: 767px) {
+  .progress-ring {
+    left: 1rem;
+    bottom: 1rem;
+    gap: .55rem;
+  }
+
+  .progress-ring__label { font-size: .625rem; letter-spacing: .08em; }
+}

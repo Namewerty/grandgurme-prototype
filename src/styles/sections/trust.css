@@ -1,0 +1,85 @@
+/* ============================================================================
+   #trust — полоса доверия.
+   Низкая светлая секция: четыре пункта в ряд через золотые волосяные линии.
+   Планшет — 2×2, узкий мобильный — одна колонка.
+   ============================================================================ */
+
+.trust {
+  --section-pad-top: clamp(1.75rem, 3.5vh, 2.5rem);
+  --section-pad-bottom: clamp(1.75rem, 3.5vh, 2.5rem);
+}
+
+.trust__list {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: clamp(1.25rem, 2.5vw, 2.5rem);
+}
+
+.trust__item {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: .875rem;
+}
+
+/* Разделитель — волосяная линия в половине зазора слева от пункта. */
+.trust__item + .trust__item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(-1 * clamp(1.25rem, 2.5vw, 2.5rem) / 2);
+  width: 1px;
+  background: var(--hairline);
+}
+
+.trust__icon {
+  flex: none;
+  margin-top: .1rem;
+}
+
+.trust__icon svg {
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: var(--gold);
+  stroke-width: 1.25;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.trust__body {
+  display: flex;
+  flex-direction: column;
+  gap: .25rem;
+}
+
+.trust__title {
+  font-size: .95rem;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--ink);
+}
+
+.trust__note {
+  font-size: .82rem;
+  line-height: 1.45;
+  color: var(--ink-mute);
+  text-wrap: pretty;
+}
+
+/* ---- Планшет: 2×2 -------------------------------------------------------- */
+
+@media (max-width: 1023px) {
+  .trust__list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+  /* Линия только между колонками: у первого в строке её нет. */
+  .trust__item:nth-child(odd)::before { display: none; }
+}
+
+/* ---- Узкий мобильный: одна колонка --------------------------------------- */
+
+@media (max-width: 400px) {
+  .trust__list { grid-template-columns: minmax(0, 1fr); }
+  .trust__item::before { display: none; }
+}

@@ -1,0 +1,217 @@
+/* ============================================================================
+   #hero — первый экран.
+
+   Высота 88svh, а не 100svh: снизу намеренно выглядывает край #trust — так
+   видно, что страница продолжается. Контент прижат к низу, справа чистое видео.
+   Секция уходит под прозрачную шапку отрицательным margin.
+   ============================================================================ */
+
+.hero {
+  --hero-h: 88svh;
+  /* Контент прижат к низу, поэтому сверху нужен только зазор под шапку.
+     Полный --section-pad здесь раздувал бы секцию выше 88svh на узких
+     экранах — и край #trust уходил бы за сгиб. */
+  --section-pad-top: calc(var(--header-h) + clamp(1.5rem, 4vh, 5rem));
+  --section-pad-bottom: clamp(4rem, 12vh, 8rem);
+  margin-top: calc(-1 * var(--header-h));
+}
+
+/* Перебивает min-height: 100svh из layout.css — специфичность та же,
+   hero.css подключается позже. */
+.hero > .section__layer {
+  align-items: flex-end;
+  min-height: var(--hero-h);
+}
+
+/* ---- Видео --------------------------------------------------------------- */
+
+.hero__media {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+}
+
+/* Запас по вертикали под параллакс: сам кадр выше секции, при сдвиге на 12%
+   верхний край не обнажается. Двигаем видео, а не обёртку .media, — иначе
+   уезжает и подпись заглушки, пока файла ещё нет.
+
+   height: 140%, а не auto. С auto высота кадра считалась от его собственной
+   пропорции, и пока файла не было — заглушка растягивалась как надо, а первое
+   же настоящее видео 3:2 давало снизу полосу фона --void: при ширине 1440
+   кадр получался 960px высотой и не доставал до низа секции (88svh ≈ 790).
+   Фиксированные 140% — это ровно inset -20%/-20%, то есть тот самый запас
+   под параллакс, а обрезку берёт на себя object-fit: cover из media.css.
+   Так работает любой исходник, хоть горизонтальный, хоть вертикальный. */
+.hero__media .media > video,
+.hero__media .media > img {
+  position: absolute;
+  inset: -20% 0;
+  width: 100%;
+  height: 140%;
+  object-fit: cover;
+}
+
+/* Градиент сверху вниз плюс еле заметная виньетка по краям. */
+.hero__scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    radial-gradient(120% 90% at 50% 45%, rgba(10, 13, 17, 0) 55%, rgba(10, 13, 17, .34) 100%),
+    linear-gradient(to bottom, rgba(10, 13, 17, .35) 0%, rgba(10, 13, 17, .72) 100%);
+}
+
+/* ---- Композиция ---------------------------------------------------------- */
+
+.hero .container {
+  position: relative;
+  z-index: 2;
+}
+
+.hero__content {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1.5rem;
+}
+
+/* Десктоп — сплит: контент в левых 6 колонках из 12, правая половина чистая. */
+@media (min-width: 1024px) {
+  .hero__inner {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: var(--gap);
+  }
+
+  .hero__content {
+    grid-column: 1 / span 6;
+    gap: 1.75rem;
+  }
+
+  .hero__title { font-size: clamp(2.4rem, 3.3vw, 3rem); }
+}
+
+/* ---- Заголовок ----------------------------------------------------------- */
+
+/* Размер меньше --fs-h1: заголовок живёт в 6 колонках из 12, а не во всю
+   ширину. Верхняя граница подобрана так, чтобы длинная строка держалась
+   в одну строку до самых широких экранов. */
+.hero__title {
+  margin: 0;
+  font-size: clamp(2.05rem, 5.2vw, 2.6rem);
+  color: #fff;
+  text-wrap: pretty; /* разрывы заданы вручную через <br>, балансировать нечего */
+}
+
+/* inline-block, чтобы <br> держал жёсткий разрыв, а clip-path работал построчно.
+
+   ПРО ЗАПАС ПО ВЕРТИКАЛИ. clip-path режет строго по боксу элемента, а бокс
+   inline-block равен строке: при --lh-h1 = 1.05 он на пару пикселей УЖЕ, чем
+   реальные глифы Prata (выносные элементы у неё выходят примерно на 1.13em).
+   Из-за этого у второй строки срезался хвост «р» и верх цифр «300» — это была
+   обрезка маской, а не особенность шрифта: там, где clip-path нет, тот же
+   шрифт рисуется целиком.
+
+   Лечим padding’ом, который компенсируем отрицательным margin: бокс для маски
+   становится выше, а межстрочный ритм остаётся прежним — у inline-block высоту
+   строки задаёт margin-бокс, и он не изменился. */
+.hero__line {
+  display: inline-block;
+  max-width: 100%;
+  padding-block: .18em;
+  margin-block: -.18em;
+  will-change: clip-path;
+}
+
+.hero__eyebrow { will-change: clip-path; }
+
+.hero__lead {
+  max-width: 46ch;
+  font-size: 1.05rem;
+  line-height: 1.6;
+  color: rgba(237, 238, 234, .78);
+  text-wrap: pretty;
+}
+
+/* ---- Кнопки -------------------------------------------------------------- */
+
+.hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: .5rem;
+}
+
+/* ---- Маркер прокрутки ---------------------------------------------------- */
+
+.hero__scroll {
+  position: absolute;
+  left: 50%;
+  bottom: clamp(1.25rem, 3vh, 2rem);
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .75rem;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.hero__scroll-line {
+  position: relative;
+  display: block;
+  width: 1px;
+  height: 48px;
+  overflow: hidden;
+  background: rgba(169, 135, 72, .55);
+}
+
+/* Светлый сегмент бежит сверху вниз, цикл 2.2s. */
+.hero__scroll-line::after {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  height: 14px;
+  background: var(--on-dark);
+  animation: hero-scroll-run 2.2s var(--ease-io) infinite;
+}
+
+@keyframes hero-scroll-run {
+  0%   { transform: translateY(-14px); opacity: 0; }
+  15%  { opacity: 1; }
+  85%  { opacity: 1; }
+  100% { transform: translateY(48px); opacity: 0; }
+}
+
+/* Контент прижат к низу, поэтому подпись заглушки уводим наверх — иначе она
+   садится на кнопки и на маркер прокрутки. */
+.hero__media .media.is-missing { align-items: start; }
+
+.hero__media .media.is-missing .media__note {
+  padding-top: calc(var(--header-h) + 1.5rem);
+  padding-bottom: 0;
+}
+
+.hero__scroll-label {
+  font-size: .65rem;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: rgba(237, 238, 234, .6);
+}
+
+/* Маркер садится под контент — на узком экране контенту нужен запас снизу. */
+@media (max-width: 1023px) {
+  .hero { --section-pad-bottom: clamp(5.5rem, 14vh, 8rem); }
+}
+
+/* ---- prefers-reduced-motion ---------------------------------------------
+   JS не поднимает ни интро, ни параллакс (см. hero.js). Здесь гасим бегунок. */
+
+@media (prefers-reduced-motion: reduce) {
+  .hero__scroll-line::after { animation: none; opacity: .8; }
+}

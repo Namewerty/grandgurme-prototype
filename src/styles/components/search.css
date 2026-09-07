@@ -1,0 +1,436 @@
+/* ============================================================================
+   Поиск в шапке. Поведение — src/js/nav/search.js.
+
+   Три части, и они существуют независимо друг от друга:
+     .hsearch     — строка, лежащая ПОВЕРХ содержимого шапки (десктоп);
+     .searchpanel — панель подсказок под шапкой (десктоп);
+     .searchfull  — полноэкранный слой (мобильный).
+
+   ГЛАВНОЕ ОГРАНИЧЕНИЕ: раскрытие поиска не должно менять высоту шапки и
+   двигать логотип. Поэтому строка — абсолют внутри .header > .container,
+   а .header__inner остаётся на месте и только гаснет. Ни одна из двух частей
+   не участвует в потоке, и шапке нечем дёрнуться.
+
+   Появление мягкое, «без щелчка»: строка проявляется и подходит снизу
+   (240/320 мс), панель раскрывается шторой через clip-path — тем же приёмом,
+   что выпадающие панели и входы секций на главной.
+   ============================================================================ */
+
+/* ---- Строка в шапке ------------------------------------------------------ */
+
+.hsearch {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  /* inset: 0 отсчитывается от padding-бокса контейнера, то есть строка легла
+     бы на его поля и упёрлась бы в край экрана. Возвращаем поля вручную —
+     тогда лупа слева и «закрыть» справа стоят ровно по той же вертикали,
+     что логотип и меню под ними. */
+  padding-inline: var(--gutter);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(8px);
+  pointer-events: none;
+  transition: opacity 240ms var(--ease-out), transform 320ms var(--ease-out),
+              visibility 0s linear 320ms;
+}
+
+.header.is-searching .hsearch {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  pointer-events: auto;
+  transition: opacity 280ms var(--ease-out) 60ms, transform 360ms var(--ease-out) 60ms,
+              visibility 0s;
+}
+
+/* ---- Само поле ----------------------------------------------------------- */
+
+.sfield {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  width: 100%;
+}
+
+.sfield__icon {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  flex: none;
+  color: var(--gold-fg);
+}
+
+.sfield__icon svg,
+.sfield__clear svg,
+.sfield__close-icon svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.35;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Поле без рамки: рамка в шапке читалась бы как форма внутри формы.
+   Границу зоны ввода показывает волосяная линия под строкой у панели. */
+.sfield__input {
+  flex: 1;
+  min-width: 0;
+  height: 40px;
+  border: 0;
+  background: none;
+  font-family: var(--font-display);
+  font-size: clamp(1rem, 1.5vw, 1.35rem);
+  line-height: 1.2;
+  color: var(--header-fg, var(--fg));
+}
+
+.sfield__input::placeholder {
+  color: var(--header-fg-mute, var(--fg-mute));
+  opacity: .75;
+}
+
+.sfield__input:focus { outline: none; }
+
+/* Системный крестик у type="search" отключаем: он рисуется шрифтом ОС
+   и в такой типографике выглядит чужим. Свой — рядом, той же линией. */
+.sfield__input::-webkit-search-cancel-button { display: none; }
+
+.sfield__clear,
+.sfield__close {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  flex: none;
+  min-height: 36px;
+  color: var(--header-fg-mute, var(--fg-mute));
+  transition: color var(--dur-line) var(--ease-out);
+}
+
+.sfield__clear:hover,
+.sfield__close:hover { color: var(--header-fg, var(--fg)); }
+
+/* Атрибут hidden проигрывает display: inline-flex из правила выше — при пустом
+   поле крестик очистки оставался на экране рядом с крестиком закрытия, и два
+   одинаковых знака стояли впритык. Возвращаем ему силу явно. */
+.sfield__clear[hidden] { display: none; }
+
+.sfield__close-label {
+  font-size: var(--fs-nav);
+  font-weight: 500;
+  letter-spacing: var(--ls-nav);
+  text-transform: uppercase;
+}
+
+/* На десктопе у кнопки закрытия есть подпись, иконка не нужна. */
+.hsearch .sfield__close-icon { display: none; }
+
+/* ---- Панель подсказок (десктоп) ------------------------------------------ */
+
+.searchpanel {
+  position: absolute;
+  inset-inline: 0;
+  top: 100%;
+  z-index: 1;
+  background: var(--bg);
+  color: var(--fg);
+  border-bottom: 1px solid var(--hairline);
+
+  visibility: hidden;
+  clip-path: inset(0 0 100% 0);
+  transition: clip-path 320ms var(--ease-out), visibility 0s linear 320ms;
+}
+
+.searchpanel.is-open {
+  visibility: visible;
+  clip-path: inset(0 0 0 0);
+  transition: clip-path 380ms var(--ease-out), visibility 0s;
+}
+
+.searchpanel__scroll {
+  max-height: min(70vh, calc(100vh - var(--header-h) - 2rem));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-block: clamp(1.25rem, 2.4vh, 2rem);
+}
+
+/* ---- Полноэкранный слой (мобильный) --------------------------------------
+   Ниже 1024px строка внутри шапки не живёт: рядом с логотипом и корзиной
+   ей остаётся полторы сотни пикселей, а подсказкам всё равно нужен весь
+   экран. Слой приходит снизу вверх — тем же движением, что мобильное меню,
+   чтобы два полноэкранных слоя сайта вели себя одинаково.                   */
+
+.searchfull {
+  position: fixed;
+  inset: 0;
+  z-index: 96;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  color: var(--fg);
+  transform: translateY(100%);
+  visibility: hidden;
+  transition: transform 420ms var(--ease-io), visibility 0s linear 420ms;
+}
+
+.searchfull.is-open {
+  transform: translateY(0);
+  visibility: visible;
+  transition: transform 420ms var(--ease-io), visibility 0s;
+}
+
+.searchfull__head {
+  flex: none;
+  border-bottom: 1px solid var(--hairline);
+  padding-block: .5rem;
+  padding-top: max(.5rem, env(safe-area-inset-top));
+}
+
+.searchfull__body {
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-block: 1.25rem 2rem;
+}
+
+/* В слое цвета берём из страницы, а не из шапки: --header-fg там свой
+   и на мобильном слое дал бы светлый текст на светлом фоне. */
+.searchfull .sfield__input { color: var(--fg); }
+.searchfull .sfield__input::placeholder { color: var(--fg-mute); }
+.searchfull .sfield__clear,
+.searchfull .sfield__close { color: var(--fg-mute); }
+
+/* У мобильной кнопки закрытия только иконка: подпись «закрыть поиск»
+   отнимает у поля треть ширины. */
+.searchfull .sfield__close-label { display: none; }
+
+@media (min-width: 1024px) {
+  .searchfull { display: none; }
+}
+
+@media (max-width: 1023px) {
+  .hsearch,
+  .searchpanel { display: none; }
+}
+
+/* Виджет эксперта живёт над затемнением — гасим его так же, как под
+   выпадающими панелями (см. megamenu.css, .has-megapanel .expert). */
+.has-searchpanel .expert {
+  filter: opacity(.2);
+  pointer-events: none;
+  transition: filter 320ms var(--ease-out);
+}
+
+/* ---- Содержимое выдачи --------------------------------------------------- */
+
+.sresults {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(1rem, 2.2vh, 1.75rem);
+}
+
+.sgroup {
+  display: flex;
+  flex-direction: column;
+  gap: .75rem;
+}
+
+.sgroup__title { margin: 0; }
+
+/* Запросы — капсулы: их читают глазами по диагонали, а не построчно. */
+.schips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+}
+
+.schip {
+  min-height: 34px;
+  padding-inline: .9rem;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+  font-size: .8125rem;
+  color: var(--fg);
+  transition: color var(--dur-line) var(--ease-out),
+              border-color var(--dur-line) var(--ease-out),
+              background-color var(--dur-line) var(--ease-out);
+}
+
+.schip:hover,
+.schip.is-active {
+  color: var(--caspian-fg);
+  border-color: var(--caspian);
+}
+
+/* ---- Строка товара ------------------------------------------------------- */
+
+.srows {
+  display: flex;
+  flex-direction: column;
+}
+
+.srow {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: .9rem;
+  padding: .5rem;
+  margin-inline: -.5rem;
+  border-radius: var(--radius-card-sm);
+  color: var(--fg);
+  transition: background-color var(--dur-line) var(--ease-out);
+}
+
+.srow:hover,
+.srow.is-active { background: var(--surface); }
+
+.srow__frame {
+  border-radius: var(--radius-card-sm);
+  background: var(--surface);
+}
+
+.srow__body {
+  display: flex;
+  flex-direction: column;
+  gap: .15rem;
+  min-width: 0;
+}
+
+.srow__name {
+  font-size: .9375rem;
+  line-height: 1.3;
+  /* Название длиннее строки обрезаем: перенос на вторую строку делает
+     список неровным, а сканировать его надо взглядом сверху вниз. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.srow__note {
+  font-size: .75rem;
+  color: var(--fg-mute);
+}
+
+.srow__price {
+  font-size: .875rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* Подсветка совпадения. Не жёлтый маркер: на перламутровом фоне он выглядит
+   как выделение в поисковике, а не как часть страницы. Золотая подложка
+   в 12% и обычный цвет текста. */
+.sresults mark {
+  background: rgba(169, 135, 72, .18);
+  color: inherit;
+  border-radius: 2px;
+}
+
+/* ---- Строка раздела ------------------------------------------------------ */
+
+.scats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+}
+
+.scat {
+  display: inline-flex;
+  align-items: center;
+  gap: .55rem;
+  min-height: 38px;
+  padding-inline: .9rem;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+  font-size: .8125rem;
+  color: var(--fg);
+  transition: color var(--dur-line) var(--ease-out),
+              border-color var(--dur-line) var(--ease-out);
+}
+
+.scat:hover,
+.scat.is-active {
+  color: var(--caspian-fg);
+  border-color: var(--caspian);
+}
+
+.scat__icon {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+}
+
+.scat__icon svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: var(--gold);
+  stroke-width: 1.25;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ---- Все результаты ------------------------------------------------------ */
+
+.sall {
+  display: inline-flex;
+  align-items: center;
+  gap: .6rem;
+  align-self: flex-start;
+  padding-block: .35rem;
+  font-size: .78rem;
+  font-weight: 500;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--fg);
+  border-bottom: 1px solid var(--caspian);
+  transition: color var(--dur-line) var(--ease-out);
+}
+
+.sall:hover,
+.sall.is-active { color: var(--caspian-fg); }
+
+.sall__count {
+  font-family: var(--font-mono);
+  font-size: .7rem;
+  letter-spacing: 0;
+  color: var(--fg-mute);
+}
+
+/* ---- Пустая выдача ------------------------------------------------------- */
+
+.sempty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: .6rem;
+  padding-block: clamp(.5rem, 2vh, 1.5rem);
+  max-width: 52ch;
+}
+
+.sempty__title {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  line-height: 1.2;
+}
+
+.sempty__text {
+  font-size: .875rem;
+  line-height: 1.55;
+  color: var(--fg-mute);
+  text-wrap: pretty;
+}
+
+.sempty .btn { margin-top: .5rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  .hsearch,
+  .header__inner,
+  .searchpanel,
+  .searchfull { transition-duration: 1ms; }
+}

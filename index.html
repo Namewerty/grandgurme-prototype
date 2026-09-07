@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="ru" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <title>№1 Гранд Гурмэ — чёрная и красная икра, рыба и морепродукты</title>
+  <meta name="description" content="Бутик премиальной гастрономии: чёрная и красная икра, рыба, крабы и морепродукты, подарочные наборы. Доставка день в день по Москве и области.">
+
+  <link rel="icon" href="/media/brand/favicon.svg" type="image/svg+xml">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600&family=Prata&display=swap">
+
+  <script>
+    /* Ставим флаги до первой отрисовки: тема — чтобы не мигала,
+       is-animated — чтобы reveal-элементы не показывались и не прятались рывком. */
+    (function () {
+      var root = document.documentElement
+      root.classList.add('js')
+      try {
+        var saved = localStorage.getItem('gg-theme')
+        if (saved === 'dark' || saved === 'light') root.setAttribute('data-theme', saved)
+      } catch (e) { /* приватный режим — остаёмся на светлой */ }
+      var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      if (!reduced) root.classList.add('is-animated')
+    })()
+  </script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Перейти к содержанию</a>
+
+  <div id="topbar"></div>
+  <header id="masthead" class="header" data-header></header>
+  <div id="nav-panel"></div>
+
+  <main id="main"></main>
+
+  <footer id="site-footer" class="footer section--dark"></footer>
+
+  <!-- Угловые элементы: кольцо слева внизу, виджет эксперта справа внизу. -->
+  <div id="progress-ring"></div>
+  <div id="expert-widget"></div>
+
+  <noscript>
+    <p style="padding:2rem;font-family:system-ui">
+      Прототип использует JavaScript для сборки секций и скролл-анимаций.
+      Включите JS, чтобы посмотреть макет.
+    </p>
+  </noscript>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

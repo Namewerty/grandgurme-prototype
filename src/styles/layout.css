@@ -1,0 +1,97 @@
+/* ============================================================================
+   Сетка, контейнеры, вертикальный ритм.
+
+   Отступы секции живут В ОДНОМ месте — на .section__layer, и настраиваются
+   переменными --section-pad-top / --section-pad-bottom. Секционные модификаторы
+   меняют переменную, а не переопределяют padding: так правила не гасят друг друга.
+
+   Высоту секции задаёт её содержимое. Привязка к экрану (.section--full)
+   осталась только у hero — заказчик просил компактную страницу: вокруг
+   контента полноэкранных секций набиралось по полтора экрана пустоты.
+   ============================================================================ */
+
+.container {
+  width: 100%;
+  max-width: var(--container);
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: var(--gap);
+}
+
+@media (max-width: 767px) {
+  .grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+/* ---- Секция -------------------------------------------------------------- */
+
+.section {
+  position: relative;
+  background: var(--bg);
+  color: var(--fg);
+  isolation: isolate;
+  /* Запас под липкую шапку для нативного перехода по якорю (Lenis делает то же
+     через offset, см. scroll.js): иначе надзаголовок уезжает под шапку. */
+  scroll-margin-top: calc(var(--header-h) + 1rem);
+}
+
+/* Слой, который «улетает» при уходе hero. Фон остаётся на .section, поэтому
+   между секциями не появляется полоса чужого фона. Уходит сейчас только hero
+   (см. js/sections/hero.js), у остальных секций слой держит отступы.
+
+   will-change здесь НЕ прописан: постоянный композиторный слой во весь экран
+   держался бы всю сессию, а выигрыш даёт только в момент движения. Его ставит
+   и снимает markMoving() на время анимации. */
+.section__layer {
+  position: relative;
+  padding-top: var(--section-pad-top, var(--section-pad));
+  padding-bottom: var(--section-pad-bottom, var(--section-pad));
+}
+
+/* Единственный носитель — #hero (флаг full в src/data/sections.js). */
+.section--full > .section__layer {
+  display: flex;
+  align-items: center;
+  min-height: 100svh;
+}
+
+.section--full > .section__layer > .container { width: 100%; }
+
+/* Секция продолжает главу предыдущей: стык между ними уже обычного, и пара
+   читается одним разворотом. Трогаем только верх — низ держит свой ритм. */
+.section--tight > .section__layer {
+  padding-top: var(--section-pad-tight);
+}
+
+/* Соседние секции одной светлости разделяем волосяной линией, не тенью. */
+.section + .section:not(.section--dark)::before {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  height: 1px;
+  background: var(--hairline);
+  opacity: .55;
+}
+
+.section--dark + .section::before,
+.section + .section--dark::before { display: none; }
+
+/* ---- Шапка секции -------------------------------------------------------- */
+
+.section__head {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  max-width: 46ch;
+}
+
+.section__title { margin: 0; }
+
+@media (min-width: 1024px) {
+  .section__head { gap: 1.75rem; }
+}

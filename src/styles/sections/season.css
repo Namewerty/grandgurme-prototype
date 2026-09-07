@@ -1,0 +1,257 @@
+/* ============================================================================
+   #season — «Сейчас в сезоне». Светлая, продолжает главу витрины.
+
+   ПОЧЕМУ ЗДЕСЬ НЕТ КАРТОЧЕК. Ряд таких же карточек, как в #shop, на одной
+   с ней странице читался бы как сбой сборки: два одинаковых ряда подряд.
+   Блок построен на другой механике — строчный список слева и одно окно
+   предпросмотра справа. Строки разделены волосяной линией, тем же приёмом,
+   что города в #offline и пункты #why.
+
+   Отступ сверху уменьшенный: секция помечена флагом tight в реестре
+   (src/data/sections.js) и читается с витриной одним разворотом.
+   ============================================================================ */
+
+.season {
+  --season-gap: clamp(2rem, 4vw, 4.5rem);
+  --section-pad-bottom: clamp(2.5rem, 5vh, 4.25rem);
+}
+
+/* ---- Шапка --------------------------------------------------------------- */
+
+.season__head {
+  display: flex;
+  flex-direction: column;
+  gap: .9rem;
+}
+
+/* Кегль ниже, чем у витрины над ней: это продолжение главы, а не новая
+   глава — заголовок должен звучать тише соседнего. */
+.season__title {
+  margin: 0;
+  max-width: 20ch;
+  font-size: clamp(1.7rem, 2.6vw, 2.4rem);
+}
+
+.season__note-lead {
+  max-width: 46ch;
+  font-size: .88rem;
+  line-height: 1.6;
+  color: var(--fg-mute);
+}
+
+.season__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--season-gap);
+  margin-top: clamp(1.5rem, 3vh, 2.25rem);
+}
+
+/* ---- Список -------------------------------------------------------------- */
+
+.season__list {
+  display: flex;
+  flex-direction: column;
+}
+
+.season__row {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1rem;
+  padding: .95rem .25rem;
+  color: inherit;
+}
+
+/* Волосяная линия сверху — отдельным элементом, а не border-top: по border
+   нельзя прочертить золото слева направо, а именно это делает активная
+   строка (.season__line ниже). */
+.season__rule {
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  height: 1px;
+  background: var(--hairline);
+}
+
+/* Золотая линия активной строки: прочерчивается слева направо поверх
+   волосяной. Толщина при scaleX не меняется — масштабируется только длина. */
+.season__line {
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  height: 1px;
+  background: var(--gold);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform var(--dur-line) var(--ease-out);
+}
+
+.season__row.is-active .season__line { transform: scaleX(1); }
+
+/* Миниатюра — только на узком экране, где окна предпросмотра нет.
+   На десктопе кадр живёт в окне справа. */
+.season__thumb { display: none; }
+
+.season__text {
+  display: flex;
+  flex-direction: column;
+  gap: .3rem;
+  min-width: 0;
+}
+
+.season__top {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: .6rem;
+}
+
+/* Метка редакционная, а не поле учёта, — отсюда и приглушённый вид:
+   заливок и золотых плашек на сайте нет. */
+.season__mark {
+  flex: none;
+  padding: .2rem .55rem;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+  font-size: .625rem;
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--fg-mute);
+  transition: border-color var(--dur-line) var(--ease-out),
+              color var(--dur-line) var(--ease-out);
+}
+
+.season__row.is-active .season__mark {
+  border-color: var(--gold);
+  color: var(--gold-fg);
+}
+
+.season__name {
+  font-family: var(--font-display);
+  font-size: clamp(1rem, 1.3vw, 1.2rem);
+  line-height: 1.3;
+  color: var(--fg-mute);
+  text-wrap: pretty;
+  transition: color var(--dur-line) var(--ease-out);
+}
+
+.season__row.is-active .season__name,
+.season__row:hover .season__name { color: var(--fg); }
+
+.season__note {
+  font-size: .78rem;
+  line-height: 1.4;
+  color: var(--fg-mute);
+}
+
+.season__price {
+  flex: none;
+  font-size: .85rem;
+  line-height: 1.3;
+  text-align: right;
+  color: var(--fg);
+  white-space: nowrap;
+}
+
+.season__more {
+  margin-top: 1.25rem;
+  font-size: .8rem;
+  letter-spacing: .04em;
+}
+
+.season__more a {
+  border-bottom: 1px solid var(--caspian);
+  padding-bottom: 2px;
+  transition: color var(--dur-line) var(--ease-out);
+}
+
+.season__more a:hover { color: var(--caspian-fg); }
+
+/* ---- Окно предпросмотра --------------------------------------------------
+   Пропорция фиксированная: кадры лежат друг на друге, и при смене высота
+   блока не двигается. Ниже 1024 окна нет вовсе.                            */
+
+/* Ширину окна задаёт колонка (см. grid ниже), а не сам кадр: 4:5 во всю
+   половину разворота даёт кадр под 650 px и перевешивает список слева —
+   блок из продолжения витрины превращается в её конкурента. */
+.season__window { display: none; }
+
+.season__frames {
+  position: relative;
+  aspect-ratio: 4 / 5;
+  border-radius: var(--radius-card-sm);
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.season__frame {
+  position: absolute;
+  inset: 0;
+  visibility: hidden;
+}
+
+.season__frame.is-active { visibility: visible; }
+
+.season__caption {
+  margin-top: .9rem;
+  font-family: var(--font-display);
+  font-size: clamp(1.05rem, 1.5vw, 1.35rem);
+  line-height: 1.3;
+  color: var(--fg);
+  text-wrap: pretty;
+}
+
+/* ---- Десктоп: две колонки ------------------------------------------------ */
+
+@media (min-width: 1024px) {
+  /* Колонка окна фиксированной ширины, а не доля: доля тянула бы кадр
+     до 650 px, а между списком и уменьшенным кадром оставалась бы дыра
+     в треть разворота. Список забирает всё остальное. */
+  .season__body {
+    grid-template-columns: minmax(0, 1fr) clamp(16rem, 24vw, 21rem);
+    align-items: start;
+  }
+
+  .season__window { display: block; }
+}
+
+/* ---- Узкий экран: миниатюры вместо окна ---------------------------------- */
+
+@media (max-width: 1023px) {
+  .season__row {
+    grid-template-columns: 56px minmax(0, 1fr) auto;
+    gap: .9rem;
+  }
+
+  .season__thumb {
+    display: block;
+    width: 56px;
+    border-radius: var(--radius-card-sm);
+    overflow: hidden;
+  }
+}
+
+@media (max-width: 419px) {
+  /* На 360–419 цена не помещается в строку с названием — уводим её под текст,
+     а миниатюру оставляем: без кадра строки превращаются в голый список. */
+  .season__row {
+    grid-template-columns: 56px minmax(0, 1fr);
+    row-gap: .35rem;
+  }
+
+  .season__price {
+    grid-column: 2;
+    text-align: left;
+  }
+}
+
+/* ---- Предсостояние линии -------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .season__line,
+  .season__mark,
+  .season__name { transition: none; }
+}

@@ -1,0 +1,31 @@
+/* ============================================================================
+   Хлебные крошки. Общий компонент: страница категории и карточка товара.
+
+   Раньше жили в styles/pages/category.css. С появлением карточки товара
+   их стало двое, а копия разошлась бы с оригиналом на первой же правке —
+   ровно как было бы с карточкой товара, если бы у каталога завелась своя.
+   ============================================================================ */
+
+.crumbs {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: .55rem;
+  font-size: .72rem;
+  letter-spacing: .04em;
+  color: var(--fg-mute);
+}
+
+.crumbs a { transition: color var(--dur-line) var(--ease-out); }
+.crumbs a:hover { color: var(--caspian-fg); }
+
+/* Точка-разделитель вместо слэша: слэш в кириллице читается как дробь. */
+.crumbs__sep {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--gold);
+  opacity: .7;
+}
+
+.crumbs__current { color: var(--fg); }

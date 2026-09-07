@@ -1,0 +1,250 @@
+/* ============================================================================
+   Горизонтальная лента: ползунок, пейджер, стрелки поверх краёв, обрезанный
+   край. Одежда витрины #shop — поведение в src/js/rail.js. Лента категорий
+   на этот механизм больше не опирается: там решётка без прокрутки.
+
+   Все органы управления включаются только тогда, когда лента действительно
+   не помещается: класс is-scrollable ставит JS. На широком мониторе, где всё
+   влезло, не остаётся ни мёртвых кнопок, ни ползунка во всю дорожку.
+
+   ПОЧЕМУ ИХ ТРИ. Заказчик не нашёл единственный пейджер, стоявший над лентой
+   сбоку от переключателя, и сказал, что руку тянет к низу ленты. Поэтому
+   главным способом стал ползунок под лентой, пейджер переехал к нему в одну
+   строку, а поверх краёв добавились всплывающие по наведению стрелки.
+   Мотивировка подробнее — в шапке src/js/rail.js.
+   ============================================================================ */
+
+/* ---- Пейджер -------------------------------------------------------------
+   Одна капсула на две кнопки с волосяной перегородкой, а не два круглых
+   кружка со стрелками: круглая стрелка — типовая деталь из библиотеки,
+   на странице, где всё управление держится на капсулах и волосяных линиях,
+   она читается как чужая. Роль круга здесь играет сама капсула.
+
+   Высота 34px — ниже зоны касания 44px, и это осознанно: на тач-устройствах
+   пейджер скрыт совсем (лента листается пальцем), он живёт только там,
+   где есть курсор.                                                          */
+
+.pager {
+  display: inline-flex;
+  flex: none;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+  overflow: hidden;      /* заливка ховера не должна вылезать за скругление */
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-line) var(--ease-out);
+}
+
+/* Лента влезла целиком — пейджера нет вовсе, а не «есть, но не нажимается». */
+.is-scrollable .pager {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.pager__btn {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 34px;
+  color: var(--fg);
+  transition: color var(--dur-line) var(--ease-out),
+              background-color var(--dur-line) var(--ease-out),
+              opacity var(--dur-line) var(--ease-out);
+}
+
+.pager__btn + .pager__btn { border-left: 1px solid var(--hairline); }
+
+.pager__btn svg,
+.rail-edge svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.35;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.pager__btn:hover:not(:disabled) {
+  color: var(--caspian-fg);
+  background: var(--surface);
+}
+
+.pager__btn:disabled {
+  opacity: .28;
+  cursor: default;
+}
+
+/* Курсора нет — листаем пальцем, кнопки не нужны. */
+@media (hover: none) {
+  .pager { display: none; }
+}
+
+/* ---- Ползунок ------------------------------------------------------------
+   Был индикатором, стал органом управления: за золотой отрезок тянут, по
+   дорожке щёлкают. Отсюда все размеры ниже.
+
+   Дорожка — 3px: тоньше уже не поймать курсором, толще — перестаёт быть
+   волосяной линией и спорит с графикой страницы. Настоящую зону захвата
+   даёт псевдоэлемент ::before, растянутый на 11px вверх и вниз: пальцем
+   и курсором попадают в 25px, а видно по-прежнему линию.
+
+   Ширину и сдвиг отрезка считает JS — тем же способом, что нативный
+   скроллбар, поэтому отрезок не выезжает за концы.                          */
+
+.rail-bar {
+  position: relative;
+  height: 3px;
+  border-radius: 3px;
+  background: var(--hairline);
+  opacity: 0;
+  cursor: pointer;
+  pointer-events: none;
+  touch-action: none;    /* протяжка ползунка не должна листать страницу */
+  transition: opacity var(--dur-line) var(--ease-out);
+}
+
+/* Пока ленте некуда ехать, дорожки нет совсем — иначе её невидимая зона
+   захвата в 25px ловила бы клики на пустом месте. */
+.is-scrollable .rail-bar {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Зона захвата. Ловит и промах мимо тонкой линии, и палец на тач-устройстве,
+   где пейджера нет и ползунок остаётся единственной кнопкой. */
+.rail-bar::before {
+  content: '';
+  position: absolute;
+  inset: -11px 0;
+}
+
+.rail-bar__thumb {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--gold);
+  cursor: grab;
+  transition: height var(--dur-line) var(--ease-out);
+}
+
+/* Отрезок утолщается под курсором и во время протяжки: единственная
+   анимация, которая честно говорит «за это можно взяться». */
+@media (hover: hover) {
+  .rail-bar:hover { height: 5px; }
+}
+
+.rail-bar.is-dragging {
+  height: 5px;
+  cursor: grabbing;
+}
+
+.rail-bar.is-dragging .rail-bar__thumb { cursor: grabbing; }
+
+/* ---- Стрелки поверх ленты ------------------------------------------------
+   Третий, самый очевидный способ листать: стрелка прямо на краю кадра.
+   Всплывают по наведению на ленту и только там, где есть курсор, — пальцем
+   лента листается сама, и кнопка поверх карточки только мешала бы попасть
+   по товару.
+
+   Форма — та же капсула, что у пейджера, а не круг: круглая стрелка на
+   фотографии выглядит деталью из чужой библиотеки. Подложка почти
+   непрозрачная: под ней пэкшот на белом, и полупрозрачная кнопка на нём
+   не читается.                                                             */
+
+.rail-edge {
+  position: absolute;
+  /* Центр карточки, а не центр кадра: кадр квадратный и его доля в высоте
+     карточки плавает от брейкпоинта к брейкпоинту, а половина карточки при
+     любой ширине попадает внутрь кадра — подписи под ним занимают меньше
+     трети. Проценты от кадра пришлось бы пересчитывать на каждом шаге сетки. */
+  top: 50%;
+  z-index: 3;
+  display: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  color: var(--fg);
+  background: var(--bg);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+  box-shadow: 0 6px 20px rgba(10, 13, 17, .12);
+  opacity: 0;
+  transform: translateY(-50%);
+  pointer-events: none;
+  transition: opacity var(--dur-line) var(--ease-out),
+              color var(--dur-line) var(--ease-out),
+              background-color var(--dur-line) var(--ease-out);
+}
+
+.rail-edge--prev { left: .5rem; }
+.rail-edge--next { right: .5rem; }
+
+@media (hover: hover) {
+  .is-scrollable .rail-edge { display: grid; }
+
+  /* Наведение на всю сцену, а не на саму кнопку: иначе её не найти,
+     пока на неё не наведёшь. */
+  .is-scrollable:hover .rail-edge:not(:disabled) {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .rail-edge:hover:not(:disabled) {
+    color: var(--caspian-fg);
+    background: var(--surface);
+  }
+}
+
+/* Ехать больше некуда — кнопка не гаснет наполовину, а исчезает совсем:
+   полупрозрачная стрелка поверх фотографии читается как брак печати. */
+.rail-edge:disabled {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ---- Обрезанный край -----------------------------------------------------
+   Маска гасит содержимое с той стороны, куда ещё есть куда ехать. Стороны
+   считаются отдельно: в начале подрезан только правый край, в середине оба.
+   Без маски край ленты обрывается ровно по контейнеру и читается как конец
+   списка, а не как «дальше ещё есть».
+
+   Маска висит на самом скроллере, а не на обёртке: обёртка держит ещё и
+   строку ползунка, и её концы гасились бы вместе с карточками.             */
+
+.rail-mask {
+  --rail-fade: clamp(1.5rem, 4vw, 3.5rem);
+  --rail-mask-start: #000 0;
+  --rail-mask-end: #000 100%;
+}
+
+.is-scrollable .rail-mask {
+  -webkit-mask-image: linear-gradient(
+    90deg, transparent 0, var(--rail-mask-start), var(--rail-mask-end), transparent 100%);
+  mask-image: linear-gradient(
+    90deg, transparent 0, var(--rail-mask-start), var(--rail-mask-end), transparent 100%);
+}
+
+.is-start .rail-mask { --rail-mask-start: #000 var(--rail-fade); }
+.is-end   .rail-mask { --rail-mask-end: #000 calc(100% - var(--rail-fade)); }
+
+/* ---- Сам скроллер --------------------------------------------------------
+   Нативная прокрутка: touch-action не трогаем, поэтому вертикальный свайп
+   по ленте по-прежнему листает страницу. Системную полосу прокрутки прячем —
+   её роль взял на себя ползунок .rail-bar.                                  */
+
+.rail-track {
+  display: flex;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;   /* лента не «протаскивает» назад страницу */
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.rail-track::-webkit-scrollbar { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .rail-track { scroll-behavior: auto; }
+}

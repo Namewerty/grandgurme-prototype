@@ -1,0 +1,434 @@
+/* ============================================================================
+   Отличия альтернативной версии. Подключается ПОСЛЕДНИМ (см. src/alt/main.js).
+   ЧЕРНОВИК НА ВЫБРОС.
+
+   ПРАВИЛО ФАЙЛА: классы в альтернативной разметке те же, что в основной
+   (.header, .megapanel, .megacat, .navcard, .infocol…) — тогда основной CSS
+   продолжает работать, а здесь лежат ТОЛЬКО отличия, написанные через
+   .is-alt на <body>. Дубликаты вида .alt-header, .alt-navcard не заводим.
+
+   Новые имена появляются только там, где появляется сущность, которой
+   в основной версии нет: .megacat-group, .megapanel--mini, .chefs__*,
+   .alt-switch.
+
+   Цвета — только семантический слой токенов. Скругления — только три ступени
+   шкалы из tokens.css. Теней, градиентов и заливок золотом нет.
+   ============================================================================ */
+
+/* ============================================================================
+   1. КАТАЛОЖНАЯ ПАНЕЛЬ: ЧЕТЫРЕ КАДРА И ДВА ПОДСТОЛБЦА
+
+   Панель занимала около 500px высоты, и держали её две вещи сразу: два ряда
+   карточек справа и десять категорий одной колонкой слева. Чинить надо было
+   обе — убрать ряд карточек и не тронуть левый столбец значило бы оставить
+   ту же высоту и получить кривую панель в придачу.
+   ============================================================================ */
+
+/* Левая зона стала вдвое шире (в ней два подстолбца), подборок справа —
+   одна вместо двух, поэтому её колонке тоже нужно меньше места. Середина
+   по-прежнему держит ряд из четырёх карточек. */
+.is-alt .megapanel--catalog .megapanel__inner {
+  grid-template-columns: minmax(300px, 34%) minmax(0, 1fr) minmax(150px, 13%);
+}
+
+/* Из flex-колонки в грид на два подстолбца. Правая граница зоны остаётся
+   от основного правила — она отделяет категории от витрины. */
+.is-alt .megapanel__cats--split {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: clamp(1rem, 1.6vw, 2rem);
+}
+
+.is-alt .megacat-group {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* Надзаголовок группы — тот же .eyebrow, что у заголовков колонок в панели
+   «Компания»: мелкие прописные с разрядкой, золотые. Отдельного оформления
+   не заводим. <p>, а не заголовок: это подпись к столбцу ссылок, уровня
+   в иерархии страницы она не создаёт. */
+.is-alt .megacat-group__title {
+  margin: 0 0 .55rem;
+}
+
+/* Черта и разрядка у надзаголовка группы поджаты: «ГАСТРОНОМИЯ И ДОМ»
+   в полном наборе (черта 24px, трекинг .22em) не помещалось в подстолбец
+   и переносилось на вторую строку — первые строки двух групп вставали
+   на разной высоте, и колонки читались как съехавшие. Прописные, разрядка
+   и золото — три свойства, по которым это надзаголовок, — на месте. */
+.is-alt .megacat-group__title {
+  gap: .5rem;
+  letter-spacing: .18em;
+}
+
+.is-alt .megacat-group__title::before { width: 16px; }
+
+/* Подстолбец вдвое уже прежней колонки, и прежний сдвиг активной строки
+   на 22px выталкивал бы длинные названия («Крабы и морепродукты») за край. */
+.is-alt .megacat.is-active .megacat__name {
+  transform: translateX(20px);
+}
+
+.is-alt .megacat {
+  font-size: clamp(.9rem, .95vw, 1.0625rem);
+}
+
+/* Ноутбук 1024–1359: места в панели меньше, но подстолбцам нужна ширина —
+   ради них всё и затевалось. Зона забирает проценты у витрины, а не наоборот:
+   карточки ужимаются равномерно, а перенос названия категории на вторую
+   строку сразу видно. Граница 1360 та же, что у схлопывания шапки. */
+@media (max-width: 1359px) {
+  .is-alt .megapanel--catalog .megapanel__inner {
+    grid-template-columns: minmax(280px, 38%) minmax(0, 1fr) minmax(140px, 14%);
+  }
+
+  .is-alt .megapanel__cats--split { gap: 1rem; }
+}
+
+/* Ниже ~1190 «ГАСТРОНОМИЯ И ДОМ» в подстолбец уже не влезает никакими
+   поджатиями. Перенос допускаем, но место под вторую строку резервируем
+   в ОБЕИХ группах: иначе первые строки колонок встают на разной высоте
+   и подстолбцы читаются как съехавшие. Одиннадцать лишних пикселей высоты
+   дешевле кривой панели. */
+@media (max-width: 1189px) {
+  .is-alt .megacat-group__title {
+    align-items: flex-start;
+    min-height: 2.7em;
+    line-height: 1.35;
+  }
+
+  .is-alt .megacat-group__title::before { margin-top: .5em; }
+}
+
+/* ============================================================================
+   2. ШАПКА: ТРИ ИНФОРМАЦИОННЫХ ПУНКТА СПРАВА
+
+   Три текстовых пункта справа плюс капсула поиска плюс иконки — ровно та
+   свалка, которой заказчик опасается. Разгружаем четырьмя приёмами сразу:
+   группы разведены по сторонам (разметка, src/alt/header.js), информационные
+   пункты на ступень мельче товарных (здесь), между ссылками и иконками
+   волосяной разделитель (здесь), иконка «Избранное» убрана (src/alt/nav.js).
+
+   ГЛАВНЫЙ ПРИЁМ — ВЕСОВАЯ КАТЕГОРИЯ. Три слова мельче и приглушённее
+   товарных читаются как одна служебная строка, а не как три конкурента
+   каталогу. Ощущение нагромождения уходит, при этом не удалён ни один пункт.
+   ============================================================================ */
+
+/* ---- Бюджет ширины ---------------------------------------------------------
+   Боковые колонки шапки строго равны (minmax(0, 1fr) в header.css) — именно
+   это держит логотип по центру. Значит, правая группа обязана поместиться
+   в половину строки за вычетом логотипа, иначе она полезет ВЛЕВО, поверх
+   логотипа: overflow у колонки с нулевым минимумом уходит наружу, и замер
+   боксов этого не показывает — видно только глазами.
+
+   При трёх пунктах вместо одного бюджет не сходился на 154px при 1440.
+   Собрали его из четырёх мест: короткая подпись поиска, зазоры правой
+   группы, зазоры между пунктами и кегль пунктов. Ни одна из четырёх правок
+   ничего не удаляет — все они про плотность.                                */
+
+.is-alt .nav--info {
+  gap: clamp(.6rem, .95vw, 1.25rem);
+}
+
+.is-alt .nav--info .nav__link {
+  font-size: .7rem;
+  letter-spacing: .1em;
+  color: var(--header-fg-mute);
+  transition: color var(--dur-line) var(--ease-out);
+}
+
+/* Правая группа плотнее левой: слева капсула и одно слово, справа три слова,
+   разделитель и три органа управления. Прежние 2vw между ними работали
+   на одну ссылку, на трёх это уже воздух за счёт логотипа. */
+.is-alt .header__side--end {
+  gap: clamp(.75rem, 1.05vw, 1.25rem);
+}
+
+.is-alt .nav--info .nav__link:hover,
+.is-alt .nav--info .nav__link:focus-visible,
+.is-alt .nav--info .nav__link.is-open {
+  color: var(--header-fg);
+}
+
+/* Шеврон у мелких пунктов — мельче вслед за словом. */
+.is-alt .nav--info .nav__chevron,
+.is-alt .nav--info .nav__chevron svg {
+  width: 9px;
+  height: 9px;
+}
+
+.is-alt .nav--info .nav__link--panel::after { right: 13px; }
+
+/* Волосяная вертикаль между группой ссылок и группой иконок — тот же приём,
+   что разделители в верхней полосе. Отделяет «навигацию» от «действий»
+   и успокаивает правый край. */
+.is-alt .header__divider {
+  flex: none;
+  width: 1px;
+  height: 18px;
+  /* currentColor, а не --hairline: над hero шапка прозрачная и золотая
+     волосяная линия на тёмном видео пропадает совсем. currentColor берёт
+     цвет содержимого шапки и работает в обоих её состояниях. */
+  background: currentColor;
+  opacity: .3;
+}
+
+/* Ниже 1024 текстовых пунктов в шапке нет вовсе — разделителю нечего
+   разделять, он остался бы висеть перед иконками. */
+@media (max-width: 1023px) {
+  .is-alt .header__divider { display: none; }
+}
+
+/* Поиск остаётся капсулой-полем, но с короткой подписью на всех ширинах:
+   полный текст «Поиск по каталогу» занимал 202px при 1440 — ровно те
+   деньги, которых не хватало трём пунктам. Подпись короче, но капсула
+   на месте, и заказчик по-прежнему видит поиск словом, а не лупой.
+   Механика раскрытия строки не тронута вовсе (см. src/js/nav/search.js). */
+@media (min-width: 1280px) {
+  .is-alt .search-btn {
+    justify-content: center;
+    width: auto;
+  }
+
+  .is-alt .search-btn__text--full { display: none; }
+  .is-alt .search-btn__text--short { display: inline; }
+}
+
+/* ============================================================================
+   3. УЗКИЕ ПАНЕЛИ ИНФОРМАЦИОННЫХ ПУНКТОВ
+
+   Полноширинная мега-панель ради трёх ссылок «Партнёрам» выглядит как
+   несобравшийся макет. Модификатор оставляет всю механику базовой .megapanel
+   (раскрытие шторой, скролл, состояния) и меняет только геометрию: ширина
+   по содержимому, привязка к своему пункту, рамка и фон поверхности.
+
+   Позицию по горизонтали (--mini-left) считает src/alt/info-panel.js:
+   она известна только в рантайме и меняется вместе с раскладкой шапки.
+
+   Каталожная панель остаётся полноширинной: там витрина, ширина ей нужна.
+   ============================================================================ */
+
+.is-alt .megapanel--mini {
+  inset-inline: auto;
+  left: var(--mini-left, 0px);
+  width: max-content;
+  min-width: 280px;
+  max-width: 340px;
+  margin-top: -1px;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-card-sm);
+  /* Штора раскрывается по высоте самой панели, а не всей шапки. */
+  overflow: hidden;
+}
+
+.is-alt .megapanel--mini .megapanel__scroll {
+  max-height: min(66vh, calc(100vh - var(--header-h) - 2rem));
+}
+
+.is-alt .infomini {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  padding: 1.25rem 1.5rem 1.4rem;
+
+  /* Тот же «налив» содержимого, что у полноширинных панелей: базовое
+     правило написано на .megapanel__scroll > .container, а контейнера
+     внутри узкой панели нет — он ей не нужен, ширину держит сама панель. */
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: opacity 260ms var(--ease-out), transform 360ms var(--ease-out);
+}
+
+.is-alt .megapanel--mini.is-open .infomini {
+  opacity: 1;
+  transform: none;
+  transition-delay: 60ms;
+}
+
+/* Кадр есть только у «Компании»: панель без единой картинки на всю шапку
+   выглядит служебным меню, и один кадр это чинит — та же мотивировка,
+   что в основной версии. */
+.is-alt .infomini__feature {
+  padding-top: 1.1rem;
+  border-top: 1px solid var(--hairline);
+}
+
+.is-alt .infomini .infofeature__link { gap: .45rem; }
+
+.is-alt .infomini .infofeature__frame { margin-bottom: .3rem; }
+
+/* ============================================================================
+   4. СЕКЦИЯ #chefs — «РЕСТОРАНАМ И ОТЕЛЯМ»
+
+   Разворот на две колонки: слева текст и две ссылки, справа кадр и три
+   факта строками с волосяными разделителями. Обычная светлая секция,
+   собственных фонов и заливок у неё нет.
+   ============================================================================ */
+
+.chefs__grid {
+  display: grid;
+  gap: clamp(2rem, 4vw, 3.5rem);
+}
+
+.chefs__text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1.25rem;
+}
+
+.chefs__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-h2);
+  line-height: var(--lh-h2);
+  text-wrap: balance;
+}
+
+.chefs__text .t-lead { margin: 0; max-width: 46ch; }
+
+/* Основная ссылка — кнопка, вторичная рядом мелкой строкой: «оптовым»
+   это другой сценарий и другая аудитория, ставить её второй кнопкой
+   значило бы уравнять два неравных входа. */
+.chefs__actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem 1.75rem;
+  margin: .5rem 0 0;
+}
+
+.chefs__secondary {
+  font-size: var(--fs-small);
+  color: var(--fg-mute);
+  border-bottom: 1px solid var(--hairline);
+  transition: color var(--dur-line) var(--ease-out),
+              border-color var(--dur-line) var(--ease-out);
+}
+
+.chefs__secondary:hover,
+.chefs__secondary:focus-visible {
+  color: var(--caspian-fg);
+  border-color: var(--caspian);
+}
+
+.chefs__aside {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.chefs__media { border-radius: var(--radius-card); }
+
+/* Линия снизу закрывает перечень: с открытым низом три строки читались
+   как оборванный список, а не как законченный блок. */
+.chefs__facts {
+  display: flex;
+  flex-direction: column;
+  border-bottom: 1px solid var(--hairline);
+}
+
+/* Линия сверху у каждого факта, включая первый: три равных строки читаются
+   как перечень, а не как заголовок с двумя продолжениями. Прочерчивается
+   слева направо каскадом — src/alt/sections/chefs.js. */
+.chefs__fact {
+  position: relative;
+  padding-block: .9rem;
+}
+
+.chefs__rule {
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  height: 1px;
+  background: var(--hairline);
+  transform-origin: left center;
+}
+
+.chefs__fact-text {
+  display: block;
+  font-size: var(--fs-small);
+  line-height: 1.45;
+  color: var(--fg-mute);
+  text-wrap: pretty;
+}
+
+/* Десктоп: слева текст, справа кадр с фактами. Пропорция 55/45 — левая
+   колонка несёт два абзаца, ей нужна строка комфортной длины. */
+@media (min-width: 900px) {
+  .chefs__grid {
+    grid-template-columns: minmax(0, 55fr) minmax(0, 45fr);
+    align-items: start;
+  }
+}
+
+/* ============================================================================
+   5. ПЕРЕКЛЮЧАТЕЛЬ ВЕРСИЙ
+
+   Неприметная капсула: волосяная линия, фон --surface, приглушённый текст.
+   Служебный элемент показа, а не элемент макета, — заявлять о себе он
+   не должен.
+
+   ⚠ ПРО УГОЛ. Оба нижних угла заняты: кольцо прогресса стоит в ЛЕВОМ
+   (progress-ring.css), виджет эксперта — в правом (expert.css). Капсула
+   стоит над кольцом, отступ снизу отсчитан от его высоты (--ring-size)
+   плюс зазор. Правый угол не годится совсем: оттуда виджет разворачивает
+   панель, а на мобильном — во всю ширину экрана.
+   ============================================================================ */
+
+.alt-switch {
+  position: fixed;
+  left: clamp(1rem, 3vw, 2.5rem);
+  bottom: calc(clamp(1rem, 3vw, 2.5rem) + var(--ring-size) + .75rem);
+  /* Ниже шапки (80) и затемнения панели (75): над раскрытой панелью капсуле
+     делать нечего. Выше кольца (70) — они стоят одно над другим. */
+  z-index: 72;
+  display: inline-flex;
+  align-items: center;
+  padding: 3px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+}
+
+.alt-switch__link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding-inline: .85rem;
+  border-radius: var(--radius-pill);
+  font-size: .6875rem;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: .08em;
+  white-space: nowrap;
+  color: var(--fg-mute);
+  transition: color var(--dur-line) var(--ease-out),
+              background-color var(--dur-line) var(--ease-out);
+}
+
+.alt-switch__link:hover { color: var(--fg); }
+
+.alt-switch__link.is-current {
+  background: var(--bg);
+  color: var(--fg);
+}
+
+/* 360–390px: кольцо прижимается к 1rem, капсула следует за ним. Ширины
+   двух подписей хватает с запасом — на 360 капсула занимает около 200px. */
+@media (max-width: 767px) {
+  .alt-switch {
+    left: 1rem;
+    bottom: calc(1rem + var(--ring-size) + .6rem);
+  }
+
+  .alt-switch__link {
+    min-height: 28px;
+    padding-inline: .7rem;
+    font-size: .625rem;
+  }
+}

@@ -1,0 +1,882 @@
+/* ============================================================================
+   Страница категории каталога.
+
+   ПРО ПЛОТНОСТЬ. Прототип фильтров был свёрстан на 14px и компактных
+   отступах — это обычный магазин. Главная, наоборот, дышит. Каталог стоит
+   между ними и решает задачу выбора, поэтому взято среднее:
+
+     · управление  0.78–0.82rem с трекингом — тот же регистр, что у
+                   переключателя витрины на главной, а не 14px без трекинга;
+     · карточка    типографика ровно как в #shop, компонент общий;
+     · сетка       4 / 3 / 2 / 2 колонки; на мобильном именно две, а не одна:
+                   колонка гигантских карточек делает страницу бесконечной,
+                   а премиальность даёт не размер карточки, а воздух вокруг;
+     · отступы     секционные --section-pad здесь не годятся: страница не
+                   рассказывает, а работает. Свои, вдвое меньше.
+
+   Теней нет нигде, включая поповер и боттом-шит: отделяет волосяная золотая
+   линия и фон. Это правило направления, а не экономия.
+   ============================================================================ */
+
+/* Верх страницы держим коротким: первая карточка должна попадать в первый
+   экран ноутбука (1280×720), иначе каталог открывается пустым полем. */
+.page-catalog {
+  padding-top: clamp(1rem, 2vh, 1.75rem);
+  padding-bottom: clamp(3rem, 6vh, 5rem);
+}
+
+/* ---- Шапка страницы ------------------------------------------------------
+   Только заголовок и описание. Поиск отсюда убран: стоя справа от H1, он не
+   был выровнен ни по чему — ни по заголовку слева, ни по капсулам под собой,
+   и весь верх читался набором положенных рядом предметов. Теперь он первая
+   строка блока управления и живёт на общей с фасетами сетке.               */
+
+.catalog__head { margin-top: clamp(.75rem, 1.5vh, 1.15rem); }
+
+.catalog__title {
+  margin: .35rem 0 0;
+  font-size: clamp(2rem, 3.8vw, 3rem);
+  line-height: var(--lh-h2);
+}
+
+/* Отступ подзаголовка от заголовка заметно больше межстрочного: у Prata
+   крупный кегль, и на .6rem описание прилипало к нижней линии букв. */
+.catalog__lead {
+  max-width: 52ch;
+  margin-top: 1rem;
+  font-size: .9rem;
+  line-height: 1.6;
+  color: var(--fg-mute);
+  text-wrap: pretty;
+}
+
+/* ---- Строки фасет --------------------------------------------------------
+   Подпись оси стоит слева отдельной колонкой, а не над строкой: две оси
+   подряд с подписями сверху дают четыре строки вместо двух.                */
+
+.facets {
+  margin-top: clamp(1rem, 2vh, 1.4rem);
+  display: flex;
+  flex-direction: column;
+  gap: .6rem;
+}
+
+/* [hidden] обязан побеждать display: grid — у раздела без главной оси строки
+   просто нет, а не «есть, но пустая». */
+.facets__row[hidden] { display: none; }
+
+.facets__row {
+  display: grid;
+  grid-template-columns: 8.5rem minmax(0, 1fr);
+  align-items: start;
+  gap: 1rem;
+}
+
+.facets__row--bar .facets__label { padding-top: .6rem; }
+
+.facets__label {
+  padding-top: .5rem;
+  font-size: var(--fs-eyebrow);
+  letter-spacing: var(--ls-eyebrow);
+  text-transform: uppercase;
+  color: var(--gold-fg);
+}
+
+.facets__rail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+}
+
+/* ---- Капсулы главной оси ------------------------------------------------- */
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  min-height: 34px;
+  padding: .35rem .85rem;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+  font-family: var(--font-body);
+  font-size: .78rem;
+  line-height: 1.2;
+  color: var(--fg);
+  white-space: nowrap;
+  transition: border-color var(--dur-line) var(--ease-out),
+              background-color var(--dur-line) var(--ease-out),
+              color var(--dur-line) var(--ease-out);
+}
+
+.chip:hover { border-color: var(--gold); }
+
+.chip.is-active {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--pearl);
+}
+
+.chip[aria-disabled='true'] {
+  color: var(--fg-mute);
+  opacity: .5;
+  pointer-events: none;
+}
+
+.chip__check { display: flex; }
+
+.chip__check svg {
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ---- Табы второй оси -----------------------------------------------------
+   Подчёркивание бирюзовым: это активное состояние, а бирюзовый на сайте
+   отвечает только за интерактив.                                           */
+
+.tabs { gap: .25rem 1.25rem; }
+
+.tab {
+  position: relative;
+  min-height: 34px;
+  padding: .35rem 0;
+  font-family: var(--font-body);
+  font-size: .8rem;
+  color: var(--fg-mute);
+  white-space: nowrap;
+  transition: color var(--dur-line) var(--ease-out);
+}
+
+.tab::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: .15rem;
+  height: 1px;
+  background: var(--caspian);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform var(--dur-line) var(--ease-out);
+}
+
+.tab:hover { color: var(--fg); }
+.tab.is-active { color: var(--fg); }
+.tab.is-active::after { transform: scaleX(1); }
+
+.tab[aria-disabled='true'] { opacity: .45; pointer-events: none; }
+
+/* ---- Панель пилюль ------------------------------------------------------- */
+
+.facets__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .4rem;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  min-height: 36px;
+  padding: .4rem .9rem;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+  font-family: var(--font-body);
+  font-size: .78rem;
+  line-height: 1.2;
+  color: var(--fg);
+  white-space: nowrap;
+  transition: border-color var(--dur-line) var(--ease-out),
+              color var(--dur-line) var(--ease-out);
+}
+
+.pill:hover { border-color: var(--gold); }
+.pill.is-active,
+.pill.is-open { border-color: var(--ink); }
+
+.pill__chevron { display: flex; transition: transform var(--dur-line) var(--ease-out); }
+.pill.is-open .pill__chevron { transform: rotate(180deg); }
+
+.pill__chevron svg {
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.pill__count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 .3rem;
+  border-radius: var(--radius-pill);
+  font-size: .62rem;
+  font-weight: 500;
+  color: var(--pearl);
+  background: var(--caspian);
+}
+
+.pill--toggle.is-active {
+  border-color: var(--gold);
+  color: var(--gold-fg);
+}
+
+.pill--sort { color: var(--fg-mute); }
+.pill--sort b { font-weight: 500; color: var(--fg); }
+
+.bar__divider {
+  width: 1px;
+  height: 20px;
+  margin: 0 .35rem;
+  background: var(--hairline);
+}
+
+/* Кнопка «Фильтры» вместо панели пилюль. На десктопе не нужна. */
+.facets__mobile { display: none; }
+
+/* ---- Линия с индикатором -------------------------------------------------
+   Доля показанного от всего раздела. Тот же приём, что кольцо прогресса
+   на главной: волосяная линия, по ней золотой отрезок.                     */
+
+.catalog__rule {
+  position: relative;
+  height: 1px;
+  margin-top: clamp(.85rem, 1.8vh, 1.15rem);
+  background: var(--hairline);
+}
+
+.catalog__rule span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  display: block;
+  background: var(--gold);
+  transition: width 400ms var(--ease-out);
+}
+
+/* ---- Статус и снятие фильтров -------------------------------------------- */
+
+.catalog__status {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: .85rem;
+}
+
+.catalog__found {
+  font-size: .82rem;
+  color: var(--fg-mute);
+}
+
+.catalog__found b { font-weight: 500; color: var(--fg); }
+
+.link-btn {
+  font-family: var(--font-body);
+  font-size: .78rem;
+  color: var(--caspian-fg);
+  border-bottom: 1px solid transparent;
+  transition: border-color var(--dur-line) var(--ease-out);
+}
+
+.link-btn:hover { border-color: currentColor; }
+
+.catalog__applied {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+  margin-top: .75rem;
+}
+
+.catalog__applied.is-empty { display: none; }
+
+.applied {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  min-height: 30px;
+  padding: .3rem .5rem .3rem .8rem;
+  border: 1px solid var(--gold);
+  border-radius: var(--radius-pill);
+  font-size: .75rem;
+  color: var(--fg);
+  transition: color var(--dur-line) var(--ease-out);
+}
+
+.applied:hover { color: var(--caspian-fg); }
+
+.applied__x { display: flex; }
+
+.applied__x svg {
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
+/* ---- Сетка --------------------------------------------------------------- */
+
+.catalog__grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  column-gap: clamp(.9rem, 1.4vw, 1.25rem);
+  row-gap: clamp(1.75rem, 3vw, 2.5rem);
+  margin-top: clamp(1rem, 2.2vh, 1.35rem);
+}
+
+.catalog__grid.is-empty { display: block; }
+
+.catalog__more {
+  display: flex;
+  justify-content: center;
+  margin-top: clamp(2rem, 4vh, 3rem);
+}
+
+/* ---- Пустая выдача ------------------------------------------------------- */
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: clamp(2rem, 5vh, 3.5rem) 0 0;
+}
+
+.empty__mark { color: var(--gold); }
+
+.empty__mark svg {
+  width: 56px;
+  height: 56px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.25;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.empty__title {
+  margin-top: 1rem;
+  font-size: clamp(1.4rem, 2.4vw, 1.9rem);
+}
+
+.empty__hint {
+  max-width: 44ch;
+  margin: .6rem 0 1.5rem;
+  font-size: .88rem;
+  line-height: 1.6;
+  color: var(--fg-mute);
+}
+
+.empty__often {
+  width: 100%;
+  margin-top: clamp(2.5rem, 5vh, 4rem);
+  padding-top: clamp(1.5rem, 3vh, 2rem);
+  border-top: 1px solid var(--hairline);
+  text-align: left;
+}
+
+/* ---- Раздел без выгрузки ------------------------------------------------- */
+
+.catalog__pending {
+  max-width: 52ch;
+  margin-top: clamp(1.5rem, 3vh, 2rem);
+  font-size: .9rem;
+  line-height: 1.65;
+  color: var(--fg-mute);
+}
+
+.catalog__subs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+  margin-top: 1.25rem;
+}
+
+/* ---- Поповер -------------------------------------------------------------
+   Отделён от страницы золотой волосяной, а не тенью: теней в направлении
+   нет вовсе, и одна на весь сайт выглядела бы чужой.                       */
+
+#catalog-popover {
+  position: fixed;
+  z-index: 60;
+  display: none;
+  flex-direction: column;
+  width: 320px;
+  max-height: 400px;
+  border: 1px solid var(--gold);
+  border-radius: var(--radius-card);
+  background: var(--bg);
+  overflow: hidden;
+}
+
+#catalog-popover.is-open { display: flex; }
+#catalog-popover.is-narrow { width: 260px; }
+
+.pop__search {
+  padding: .6rem;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.pop__search input {
+  width: 100%;
+  height: 34px;
+  padding: 0 .7rem;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+  font-family: var(--font-body);
+  font-size: .8rem;
+  color: var(--fg);
+  background: none;
+  outline: none;
+}
+
+.pop__search input:focus { border-color: var(--caspian); }
+
+.pop__list {
+  flex: 1;
+  overflow-y: auto;
+  padding: .35rem 0;
+}
+
+.pop__empty,
+.pop__footer {
+  padding: .75rem 1rem;
+  font-size: .8rem;
+  color: var(--fg-mute);
+}
+
+.pop__footer { border-top: 1px solid var(--hairline); }
+
+/* ---- Строка опции -------------------------------------------------------- */
+
+.opt {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  width: 100%;
+  min-height: 38px;
+  padding: .45rem 1rem;
+  font-family: var(--font-body);
+  font-size: .82rem;
+  text-align: left;
+  color: var(--fg);
+  transition: background-color var(--dur-line) var(--ease-out);
+}
+
+.opt:hover { background: var(--surface); }
+
+.opt[aria-disabled='true'] {
+  color: var(--fg-mute);
+  opacity: .5;
+  pointer-events: none;
+}
+
+.opt__box {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--hairline);
+  border-radius: 3px;
+  color: var(--pearl);
+}
+
+.opt.is-on .opt__box {
+  background: var(--ink);
+  border-color: var(--ink);
+}
+
+.opt__box svg {
+  width: 10px;
+  height: 10px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.opt__radio {
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--hairline);
+  border-radius: 50%;
+  transition: border-color var(--dur-line) var(--ease-out);
+}
+
+.opt--radio.is-on .opt__radio {
+  border: 4px solid var(--caspian);
+}
+
+.opt__name { flex: 1; min-width: 0; }
+.opt__name mark { background: none; color: var(--caspian-fg); }
+
+.opt__count {
+  font-size: .72rem;
+  color: var(--fg-mute);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Диапазон ------------------------------------------------------------ */
+
+.range { padding: 1rem; }
+
+.range__slider {
+  position: relative;
+  height: 24px;
+}
+
+.range__track,
+.range__fill {
+  position: absolute;
+  top: 11px;
+  height: 1px;
+}
+
+.range__track {
+  left: 0;
+  right: 0;
+  background: var(--hairline);
+}
+
+.range__fill { background: var(--gold); }
+
+/* Два нативных ползунка друг над другом: своя реализация перетаскивания
+   отобрала бы клавиатуру и тач-жесты, а нативный input их уже умеет. */
+.range__input {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 24px;
+  margin: 0;
+  appearance: none;
+  background: none;
+  pointer-events: none;
+}
+
+.range__input::-webkit-slider-thumb {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--gold);
+  border-radius: 50%;
+  background: var(--bg);
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.range__input::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--gold);
+  border-radius: 50%;
+  background: var(--bg);
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.range__fields {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  margin-top: .75rem;
+  color: var(--fg-mute);
+}
+
+.range__fields input {
+  width: 100%;
+  min-width: 0;
+  height: 34px;
+  padding: 0 .6rem;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+  font-family: var(--font-body);
+  font-size: .8rem;
+  color: var(--fg);
+  background: none;
+  outline: none;
+}
+
+.range__fields input:focus { border-color: var(--caspian); }
+
+.range__presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .35rem;
+  margin-top: .75rem;
+}
+
+.range__presets button {
+  padding: .3rem .7rem;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+  font-size: .72rem;
+  color: var(--fg);
+  transition: border-color var(--dur-line) var(--ease-out);
+}
+
+.range__presets button:hover { border-color: var(--gold); }
+
+/* ---- Липкая полоса -------------------------------------------------------
+   На десктопе встаёт под шапкой, на мобильном — снизу, под большой палец.
+   Поиска в ней нет: шапка сайта липкая, её поиск доступен всегда.          */
+
+.catalog-sticky {
+  position: fixed;
+  top: var(--header-h);
+  left: 0;
+  right: 0;
+  z-index: 30;
+  padding: .6rem 0;
+  border-bottom: 1px solid var(--hairline);
+  background: var(--bg);
+  transform: translateY(-110%);
+  transition: transform var(--dur-line) var(--ease-out);
+}
+
+.catalog-sticky.is-visible { transform: none; }
+
+.catalog-sticky__inner {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+
+.catalog-sticky__found {
+  margin-left: auto;
+  font-size: .78rem;
+  color: var(--fg-mute);
+}
+
+.pill--filters { border-color: var(--ink); }
+
+/* ---- Боттом-шит ---------------------------------------------------------- */
+
+.sheet-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: none;
+  background: rgba(10, 13, 17, .45);
+}
+
+.sheet-scrim.is-open { display: block; }
+
+.sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 80;
+  display: flex;
+  flex-direction: column;
+  max-height: 88vh;
+  border-top: 1px solid var(--gold);
+  border-radius: var(--radius-card) var(--radius-card) 0 0;
+  background: var(--bg);
+  transform: translateY(101%);
+  transition: transform 450ms var(--ease-io);
+}
+
+.sheet.is-open { transform: none; }
+
+.sheet__head {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.25rem var(--gutter) .75rem;
+}
+
+.sheet__handle {
+  position: absolute;
+  top: .5rem;
+  left: 50%;
+  width: 36px;
+  height: 3px;
+  border-radius: var(--radius-pill);
+  background: var(--hairline);
+  transform: translateX(-50%);
+}
+
+.sheet__title {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 400;
+}
+
+.sheet__body {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 1rem;
+  -webkit-overflow-scrolling: touch;
+}
+
+.sheet__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: .9rem var(--gutter) calc(.9rem + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--hairline);
+}
+
+.sheet__footer .btn { flex: 1; justify-content: center; }
+
+.sheet__stock {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 52px;
+  padding: 0 var(--gutter);
+  border-top: 1px solid var(--hairline);
+  font-family: var(--font-body);
+  font-size: .88rem;
+  color: var(--fg);
+}
+
+.sheet__switch {
+  position: relative;
+  width: 40px;
+  height: 22px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+  transition: border-color var(--dur-line) var(--ease-out),
+              background-color var(--dur-line) var(--ease-out);
+}
+
+.sheet__switch::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--fg-mute);
+  transition: transform var(--dur-line) var(--ease-out),
+              background-color var(--dur-line) var(--ease-out);
+}
+
+.sheet__stock.is-on .sheet__switch { border-color: var(--caspian); }
+.sheet__stock.is-on .sheet__switch::after {
+  background: var(--caspian);
+  transform: translateX(18px);
+}
+
+/* ---- Гармошки шита ------------------------------------------------------- */
+
+.acc { border-top: 1px solid var(--hairline); }
+
+.acc__head {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  width: 100%;
+  min-height: 52px;
+  padding: 0 var(--gutter);
+  font-family: var(--font-body);
+  font-size: .88rem;
+  text-align: left;
+  color: var(--fg);
+}
+
+.acc__count { color: var(--fg-mute); font-size: .8rem; }
+
+.acc__chevron {
+  margin-left: auto;
+  display: flex;
+  transition: transform var(--dur-line) var(--ease-out);
+}
+
+.acc__chevron svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.acc.is-open .acc__chevron { transform: rotate(180deg); }
+
+.acc__body { display: none; padding-bottom: .5rem; }
+.acc.is-open .acc__body { display: block; }
+
+.acc__body .opt { padding-inline: var(--gutter); }
+.acc__body .opt { min-height: 44px; }
+
+/* ---- Планшет ------------------------------------------------------------- */
+
+@media (max-width: 1199px) {
+  .catalog__grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+/* ---- Мобильный -----------------------------------------------------------
+   Пилюли схлопываются в одну кнопку «Фильтры» со счётчиком, строки главных
+   осей остаются: это самый частый выбор раздела, и прятать его в шит значит
+   добавлять два касания к каждому переключению. Строки становятся
+   прокручиваемыми, чтобы не отъедать три ряда высоты.                      */
+
+@media (max-width: 767px) {
+  .catalog__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+  .facets__row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: .4rem;
+  }
+
+  .facets__label { padding-top: 0; }
+
+  .facets__rail {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding-inline: var(--gutter);
+    margin-inline: calc(-1 * var(--gutter));
+  }
+
+  .facets__rail::-webkit-scrollbar { display: none; }
+
+  /* Прячется вся строка вместе с подписью: скрытая пилюльная панель под
+     оставшимся словом «Фильтры» — это пустая строка ни о чём. */
+  .facets__row--bar { display: none; }
+
+  .facets__mobile {
+    display: inline-flex;
+    align-self: flex-start;
+  }
+
+  .catalog-sticky {
+    top: auto;
+    bottom: 0;
+    border-top: 1px solid var(--hairline);
+    border-bottom: 0;
+    padding-bottom: calc(.6rem + env(safe-area-inset-bottom));
+    transform: translateY(110%);
+  }
+
+  .catalog-sticky__found { display: none; }
+}
+
+/* Поповер на мобильном не открывается вовсе — пилюли ведут в боттом-шит. */
+@media (max-width: 767px) {
+  #catalog-popover { display: none !important; }
+}

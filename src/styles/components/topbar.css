@@ -1,0 +1,149 @@
+/* ============================================================================
+   Верхняя утилитарная полоса. 40px, --void, uppercase.
+   Не sticky: при скролле уезжает вверх вместе с потоком и не возвращается.
+   ============================================================================ */
+
+.topbar {
+  position: relative;
+  z-index: 85;
+  background: var(--void);
+  color: var(--on-dark-mute);
+  border-bottom: 1px solid var(--hairline-on-dark);
+}
+
+/* Две группы, слева и справа: служебные ссылки и связь. Средней колонки
+   с обещанием доставки здесь больше нет — заказчик просил разгрузить верх,
+   а обещание живёт в полосе доверия под первым экраном. */
+.topbar__inner {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--gap);
+  height: var(--topbar-h);
+  font-size: var(--fs-topbar);
+  line-height: 1;
+  letter-spacing: var(--ls-topbar);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.topbar__item {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.topbar__item--end {
+  justify-content: flex-end;
+  gap: 1.5rem;
+}
+
+.topbar__link {
+  position: relative;
+  color: var(--on-dark);
+  transition: color var(--dur-line) var(--ease-out);
+}
+
+.topbar__link::after {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  bottom: -4px;
+  height: 1px;
+  background: var(--caspian);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform var(--dur-line) var(--ease-out);
+}
+
+.topbar__link:hover::after { transform: scaleX(1); }
+
+.topbar__sep {
+  width: 1px;
+  height: 12px;
+  background: var(--hairline-on-dark);
+}
+
+/* ---- Пункт с поповером («Мессенджеры») ------------------------------------
+   Мессенджеров два, и один в полосе выбирал бы за человека. Пункт остаётся
+   ссылкой на /contacts (без JS и на мобильном она и работает), а на десктопе
+   раскрывает список. Поповер — волосяная линия и --surface, без тени:
+   теней на сайте нет нигде. */
+
+.topbar__menu {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.topbar__link--menu {
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+}
+
+.topbar__caret {
+  display: inline-flex;
+  width: 10px;
+  height: 10px;
+}
+
+.topbar__caret svg {
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform var(--dur-line) var(--ease-out);
+}
+
+.topbar__menu.is-open .topbar__caret svg { transform: rotate(180deg); }
+
+.topbar__pop {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 10rem;
+  padding: .35rem 0;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-card-sm);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.topbar__pop[hidden] { display: none; }
+
+.topbar__pop-link {
+  padding: .55rem 1rem;
+  color: var(--fg);
+  font-size: .8125rem;
+  line-height: 1.2;
+  transition: color var(--dur-line) var(--ease-out);
+}
+
+.topbar__pop-link:hover,
+.topbar__pop-link:focus-visible { color: var(--caspian-fg); }
+
+/* 360–767: слева остаётся одна ссылка, справа — один телефон.
+   Мессенджеры и «Доставка и оплата» дублируются в мобильном меню.
+   Прячем по позиции, а не по классу ссылки: пункт с поповером — обёртка,
+   и селектор по .topbar__link его бы не поймал. */
+@media (max-width: 767px) {
+  .topbar__inner {
+    font-size: .625rem;
+    letter-spacing: .04em;
+  }
+
+  .topbar__sep { display: none; }
+  .topbar__item { gap: 0; }
+  .topbar__item > :not(:first-child) { display: none; }
+}

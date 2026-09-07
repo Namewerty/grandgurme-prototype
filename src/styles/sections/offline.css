@@ -1,0 +1,136 @@
+/* ============================================================================
+   #offline — офлайн-сеть. Светлая, не полноэкранная.
+   Сплит 5/7: слева текст и кнопка, справа список городов в две колонки.
+   Карты нет — она на отдельной странице.
+   ============================================================================ */
+
+.offline__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: clamp(2.5rem, 5vw, 5rem);
+  align-items: start;
+}
+
+/* ---- Левая колонка ------------------------------------------------------- */
+
+.offline__title {
+  margin: 1rem 0 1.5rem;
+  font-size: clamp(1.9rem, 3vw, 2.8rem);
+}
+
+.offline__p {
+  max-width: 42ch;
+  font-size: .95rem;
+  line-height: 1.7;
+  color: var(--ink-mute);
+  text-wrap: pretty;
+}
+
+.offline__action { margin-top: 2rem; }
+
+/* ---- Города --------------------------------------------------------------
+   Две колонки, между строками золотые волосяные линии.                       */
+
+/* Одна колонка, а не две. Двух колонок требовали шесть городов; подтверждённых
+   осталось четыре, и в сетке 2×2 список занимал вдвое меньше высоты, чем
+   текстовая колонка слева — под ним оставалась дыра в треть секции. В одну
+   колонку строки разбирают ту же высоту, что и текст, а волосяная линия под
+   каждым городом получает полную ширину: ради неё раскладка и затевалась.
+
+   Порядок при этом остаётся сверху вниз — тот же, что в разметке, и его же
+   читает скринридер. Число городов правится в src/data/offline.js, тут
+   ничего донастраивать не нужно. */
+.cities {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.city {
+  position: relative;
+  display: block;
+  padding: 1.15rem 0;
+  border-bottom: 1px solid var(--hairline);
+  transition: transform 400ms var(--ease-out);
+}
+
+/* Короткая золотая линия слева от строки — прочерчивается при наведении. */
+.city::before {
+  content: '';
+  position: absolute;
+  left: -1rem;
+  top: 50%;
+  width: .75rem;
+  height: 1px;
+  background: var(--gold);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 350ms var(--ease-out);
+}
+
+.city__name {
+  display: block;
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 2.4vw, 2.2rem);
+  line-height: 1.15;
+  color: var(--ink);
+}
+
+.city__country {
+  display: block;
+  margin-top: .25rem;
+  font-size: .75rem;
+  line-height: 1.4;
+  letter-spacing: .06em;
+  color: var(--ink-mute);
+}
+
+@media (hover: hover) {
+  .city:hover {
+    transform: translateX(8px);
+  }
+
+  .city:hover::before { transform: scaleX(1); }
+}
+
+.city:focus-visible::before { transform: scaleX(1); }
+
+/* ---- Миниатюра бутика ----------------------------------------------------
+   Живёт в body (см. js/sections/offline.js). Позиция — на внешнем элементе
+   без перехода, чтобы она успевала за курсором; opacity и scale — на внутреннем
+   с переходом 300 мс, иначе плавность позиции превратилась бы в задержку.     */
+
+.boutique-thumb {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 90;
+  width: 180px;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate3d(calc(var(--x, 0px) - 50%), calc(var(--y, 0px) - 50%), 0);
+  transition: opacity 300ms var(--ease-out);
+}
+
+.boutique-thumb.is-visible { opacity: 1; }
+
+.boutique-thumb__inner {
+  overflow: hidden;
+  border-radius: var(--radius-card-sm);
+  transform: scale(.94);
+  transform-origin: center;
+  transition: transform 300ms var(--ease-out);
+}
+
+.boutique-thumb.is-visible .boutique-thumb__inner { transform: scale(1); }
+
+/* Кадры всех городов лежат готовыми, показывается только текущий. */
+.boutique-thumb .media { display: none; }
+.boutique-thumb .media.is-active { display: block; }
+
+/* ---- Планшет и мобильный ------------------------------------------------- */
+
+@media (max-width: 1023px) {
+  .offline__grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+

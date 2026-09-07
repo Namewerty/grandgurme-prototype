@@ -1,0 +1,24 @@
+{
+  "name": "grandgurme-prototype",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Интерактивный прототип главной страницы «№1 Гранд Гурмэ». Направление «Перламутр и жесть».",
+  "scripts": {
+    "pages": "node scripts/build-pages.mjs",
+    "media": "node scripts/media-list.mjs",
+    "predev": "node scripts/build-pages.mjs",
+    "dev": "vite",
+    "prebuild": "node scripts/build-pages.mjs",
+    "build": "vite build",
+    "preview": "vite preview",
+    "postbuild": "node scripts/after-build.mjs"
+  },
+  "dependencies": {
+    "gsap": "^3.13.0",
+    "lenis": "^1.3.11"
+  },
+  "devDependencies": {
+    "vite": "^7.1.9"
+  }
+}

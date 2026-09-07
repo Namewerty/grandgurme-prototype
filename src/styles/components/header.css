@@ -1,0 +1,539 @@
+/* ============================================================================
+   Шапка. position: sticky.
+   Над hero — прозрачная, содержимое светлое.
+   После hero — фон --pearl, нижняя золотая волосяная линия, содержимое тёмное.
+   Переход 400 мс. Композиция как у Petrossian: поиск + меню | лого | меню + корзина.
+   ============================================================================ */
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 80;
+  background: transparent;
+  border-bottom: 1px solid transparent;
+  --header-fg: var(--on-dark);
+  --header-fg-mute: var(--on-dark-mute);
+  transition: background-color var(--dur-theme) var(--ease-out),
+              border-color var(--dur-theme) var(--ease-out),
+              color var(--dur-theme) var(--ease-out);
+  color: var(--header-fg);
+}
+
+/* Над hero шапка лежит на тёмном видео — акценты берут светлые версии.
+   После hero фон становится перламутровым и они возвращаются к затемнённым
+   значениям из :root. Одно место вместо развилок в каждом правиле. */
+.header:not(.is-solid) {
+  --gold-fg:    var(--gold);
+  --caspian-fg: #3FA9A7;
+
+  /* Цвет текста на заливке цветом --header-fg. Над hero заливка светлая,
+     значит текст тёмный; в плотной шапке наоборот. Носитель один —
+     капсула «Каталог». */
+  --header-invert: var(--void);
+}
+
+.header.is-solid {
+  background: var(--pearl);
+  border-bottom-color: var(--hairline-on-light);
+  --header-fg: var(--ink);
+  --header-fg-mute: var(--ink-mute);
+  --header-invert: var(--pearl);
+}
+
+/* Точка отсчёта для строки поиска: она ложится абсолютом поверх
+   .header__inner в тех же границах контейнера (см. components/search.css). */
+.header > .container { position: relative; }
+
+/* minmax(0, 1fr), а не 1fr: у 1fr минимум равен содержимому, и правая группа,
+   потяжелевшая на капсулу поиска, начинала бы отжимать логотип из центра.
+   С нулевым минимумом обе боковые колонки строго равны, и логотип стоит
+   оптически по центру на всех ширинах (проверено на 1280, 1440 и 1600). */
+.header__inner {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--gap);
+  height: var(--header-h);
+  opacity: 1;
+  transition: opacity 240ms var(--ease-out), transform 320ms var(--ease-out);
+}
+
+/* Поиск раскрыт: содержимое шапки гаснет и чуть уходит вверх, но ПРОДОЛЖАЕТ
+   занимать своё место — высоту шапки держит именно оно. display: none здесь
+   схлопнул бы шапку на всю её высоту. */
+.header.is-searching .header__inner {
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-6px);
+  pointer-events: none;
+}
+
+/* ---- Лого ---------------------------------------------------------------- */
+
+.header__logo {
+  display: inline-flex;
+  align-items: center;
+  justify-self: center;
+  color: var(--header-fg);
+}
+
+.header__logo img { height: clamp(20px, 2.4vw, 30px); width: auto; }
+
+/* Текстовый вордмарк — на случай, если logo.svg ещё не положен в /public. */
+.wordmark {
+  display: inline-flex;
+  align-items: baseline;
+  gap: .45em;
+  font-family: var(--font-display);
+  font-size: clamp(.95rem, 1.5vw, 1.35rem);
+  line-height: 1;
+  letter-spacing: .02em;
+  white-space: nowrap;
+}
+
+.wordmark__num {
+  font-size: .72em;
+  color: var(--gold-fg);
+}
+
+/* ---- Навигация ----------------------------------------------------------- */
+
+.header__side {
+  display: flex;
+  align-items: center;
+  gap: clamp(1rem, 2vw, 2.25rem);
+  min-width: 0;
+}
+
+.header__side--end { justify-content: flex-end; }
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: clamp(1rem, 2vw, 2.25rem);
+}
+
+/* Иконки жмутся плотнее текстовых пунктов: у них своя зона касания 44px,
+   и обычный шаг меню развалил бы группу на четыре отдельных кнопки. */
+.header__actions {
+  display: flex;
+  align-items: center;
+  gap: clamp(0rem, .5vw, .35rem);
+}
+
+/* ---- Капсула «Каталог» ---------------------------------------------------
+   Главная точка входа в ассортимент. Единственный элемент шапки с рамкой:
+   так он читается как кнопка, а не как четвёртый пункт меню в ряду. */
+
+.catalog-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: .6rem;
+  min-height: 40px;
+  padding-inline: 1.1rem;
+  border: 1px solid currentColor;
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-nav);
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: var(--ls-nav);
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--header-fg);
+  transition: color var(--dur-theme) var(--ease-out),
+              background-color var(--dur-line) var(--ease-out),
+              border-color var(--dur-line) var(--ease-out);
+}
+
+.catalog-btn__icon {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+}
+
+/* Между подписью и шевроном зазор меньше, чем между иконкой и подписью:
+   шеврон относится к слову, а три линии — к кнопке целиком. */
+.catalog-btn__chevron { margin-left: -.15rem; }
+
+.catalog-btn__icon svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.25;
+  stroke-linecap: round;
+}
+
+/* Открытая панель и наведение дают одно состояние: капсула заливается
+   текущим цветом текста. На прозрачной шапке это светлая заливка, на
+   плотной — тёмная; в обоих случаях кнопка «нажата». */
+.catalog-btn:hover,
+.catalog-btn.is-open {
+  background: var(--header-fg);
+  color: var(--header-invert);
+  border-color: var(--header-fg);
+}
+
+/* Пункт с открытой панелью подчёркнут так же, как активный. */
+.nav__link.is-open::after { transform: scaleX(1); }
+
+.nav__link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  padding-block: .45rem;
+  font-size: var(--fs-nav);
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: var(--ls-nav);
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--header-fg);
+  transition: color var(--dur-theme) var(--ease-out);
+}
+
+.nav__link::after {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: 1px;
+  background: var(--caspian);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform var(--dur-line) var(--ease-out);
+}
+
+.nav__link:hover::after,
+.nav__link:focus-visible::after,
+.nav__link.is-active::after { transform: scaleX(1); }
+
+.nav__link.is-active { color: var(--caspian-fg); }
+
+/* ---- Шеврон у пунктов с панелями -----------------------------------------
+   Заказчик просил различать пункты, которые ведут на страницу, и пункты,
+   которые раскрывают панель. Шеврон стоит у вторых и ТОЛЬКО у вторых —
+   решает наличие сборщика панели, а не поле в данных (см. nav/panels.js).
+
+   Размер намеренно мелкий: это служебный знак «здесь развернётся», а не
+   элемент композиции. Разворот на 180° при открытой панели — то же самое,
+   что делает любой раскрывающийся список, и ничего изобретать здесь нельзя:
+   знак должен читаться до того, как о нём подумали.                        */
+
+.nav__chevron,
+.catalog-btn__chevron {
+  display: grid;
+  place-items: center;
+  width: 10px;
+  height: 10px;
+  transition: transform var(--dur-line) var(--ease-out);
+}
+
+.nav__chevron svg,
+.catalog-btn__chevron svg {
+  width: 10px;
+  height: 10px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.nav__link.is-open .nav__chevron,
+.catalog-btn.is-open .catalog-btn__chevron { transform: rotate(180deg); }
+
+/* Подчёркивание пункта не должно проходить под шевроном: линия обещает
+   ссылку, шеврон — раскрытие, и вместе они читаются как одна кнопка. */
+.nav__link--panel::after { right: 14px; }
+
+/* ---- Капсула поиска ------------------------------------------------------
+   Заказчик просил выделить поиск явно. Пятым текстовым пунктом слово «Поиск»
+   стоять не может, поэтому оно оформлено не как раздел, а как инструмент:
+   компактная капсула, стилизованная под поле. Слева капсула «Каталог» —
+   вход в ассортимент, справа капсула «Поиск» — вход в поиск; между ними
+   логотип, и шапка держится симметрично.
+
+   Отличие от «Каталога» намеренное: у той рамка currentColor и заливка
+   на ховере — она кнопка. Здесь волосяная линия и приглушённый текст —
+   это поле, а поля не заливают.
+
+   Три ширины:
+     < 1024   иконка, как раньше — рядом с логотипом и корзиной места нет;
+     1024–1279 капсула с лупой и словом «Поиск»;
+     ≥ 1280   капсула с полным текстом.
+   Тексты — в src/data/nav.js (navSearch), не в разметке.                  */
+
+.search-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  color: inherit;
+  transition: color var(--dur-line) var(--ease-out),
+              border-color var(--dur-line) var(--ease-out);
+}
+
+.search-btn__icon {
+  display: grid;
+  place-items: center;
+}
+
+.search-btn__icon svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.25;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.search-btn__text { display: none; }
+
+.search-btn:hover { color: var(--caspian-fg); }
+
+@media (min-width: 1024px) {
+  .search-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: .55rem;
+    width: auto;
+    height: 40px;
+    padding-inline: .95rem;
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius-pill);
+    font-family: var(--font-body);
+    font-size: .8rem;
+    line-height: 1;
+    white-space: nowrap;
+    color: var(--header-fg-mute);
+  }
+
+  .search-btn__icon svg { width: 17px; height: 17px; }
+
+  .search-btn__text--short { display: inline; }
+
+  .search-btn:hover {
+    border-color: var(--caspian);
+    color: var(--caspian-fg);
+  }
+}
+
+@media (min-width: 1280px) {
+  /* Ширина задана явно, а не по содержимому: капсула должна читаться как
+     поле, а поле не жмётся по длине подписи. Текст прижат влево, как курсор
+     в настоящем поле.
+
+     Верх и низ вилки подобраны по единственному тесному случаю — 1280, где
+     правая группа почти упирается в логотип: при жёстких 210 px между
+     «КОМПАНИЕЙ» и логотипом оставалось 7 px. С вилкой там 33 px, на 1440
+     и 1600 — 74 и 55. Логотип при этом стоит по центру на всех трёх
+     (проверено замером, см. screenshots/desktop-nav-header-*.png). */
+  .search-btn {
+    justify-content: flex-start;
+    width: clamp(11.5rem, 14vw, 13.125rem);
+  }
+
+  .search-btn__text--short { display: none; }
+  .search-btn__text--full { display: inline; }
+}
+
+/* ---- Корзина ------------------------------------------------------------- */
+
+.cart-btn { position: relative; }
+
+.cart-btn__count {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  display: grid;
+  place-items: center;
+  min-width: 16px;
+  height: 16px;
+  padding-inline: 4px;
+  /* Капсула, а не 50%: при двузначном числе бейдж шире, чем выше,
+     и окружность превращалась в эллипс. */
+  border-radius: var(--radius-pill);
+  background: var(--caspian);
+  color: #fff;
+  font-size: .625rem;
+  font-weight: 600;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.cart-btn__count[data-count='0'] { display: none; }
+
+/* ---- Бургер -------------------------------------------------------------- */
+
+.burger { display: none; }
+
+.burger__box {
+  position: relative;
+  width: 20px;
+  height: 12px;
+}
+
+.burger__box::before,
+.burger__box::after {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  height: 1px;
+  background: currentColor;
+  transition: transform var(--dur-line) var(--ease-out);
+}
+
+.burger__box::before { top: 0; }
+.burger__box::after { bottom: 0; }
+
+.burger[aria-expanded='true'] .burger__box::before { transform: translateY(5.5px) rotate(45deg); }
+.burger[aria-expanded='true'] .burger__box::after  { transform: translateY(-5.5px) rotate(-45deg); }
+
+/* ---- Мобильная раскладка ------------------------------------------------- */
+
+/* Ниже 1024 остаются бургер, логотип, поиск и корзина. Капсула «Каталог»
+   и текстовые пункты уходят в мобильное меню: панелей на мобильном нет,
+   а капсула без панели — просто ещё одна ссылка в тесном ряду. */
+@media (max-width: 1023px) {
+  .header__inner { grid-template-columns: 1fr auto 1fr; }
+  .nav,
+  .catalog-btn { display: none; }
+  .burger { display: inline-grid; }
+  .header__actions a[href^="/account"] { display: none; }
+}
+
+/* ---- Полноэкранная панель меню (снизу вверх) ----------------------------- */
+
+.nav-panel {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  color: var(--fg);
+  transform: translateY(100%);
+  visibility: hidden;
+  transition: transform 520ms var(--ease-io), visibility 0s linear 520ms;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.nav-panel.is-open {
+  transform: translateY(0);
+  visibility: visible;
+  transition: transform 520ms var(--ease-io), visibility 0s;
+}
+
+.nav-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap);
+  height: var(--header-h);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.nav-panel__body {
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
+  padding-block: clamp(2rem, 8vh, 4rem);
+}
+
+.nav-panel__list {
+  display: flex;
+  flex-direction: column;
+  gap: .9rem;
+}
+
+/* padding-block, а не увеличенный gap: зона касания растёт до 44px, а
+   визуальный интервал между строками меню остаётся прежним. */
+.nav-panel__link {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding-block: .2rem;
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 7vw, 2.25rem);
+  line-height: 1.15;
+  color: var(--fg);
+}
+
+.nav-panel__link:hover { color: var(--caspian-fg); }
+
+/* ---- Информационные колонки в мобильном меню -----------------------------
+   Выпадающих панелей на мобильном нет, поэтому содержимое «Компании» едет
+   сюда колонками. Без них информационные страницы были бы доступны только
+   из подвала — а это ровно та беда, от которой заказчик просил уйти.
+
+   Кегль заметно мельче крупных строк меню: это не второй ряд входов,
+   а указатель. Зона касания при этом остаётся полной — 44px.             */
+
+.nav-panel__cols {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.75rem 1.5rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--hairline);
+}
+
+.nav-panel__col {
+  display: flex;
+  flex-direction: column;
+}
+
+.nav-panel__col-title {
+  margin: 0 0 .35rem;
+  color: var(--gold-fg);
+}
+
+.nav-panel__sublink {
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+  font-size: .875rem;
+  line-height: 1.3;
+  color: var(--fg-mute);
+  transition: color var(--dur-line) var(--ease-out);
+}
+
+.nav-panel__sublink:hover { color: var(--caspian-fg); }
+
+@media (max-width: 479px) {
+  .nav-panel__cols { grid-template-columns: minmax(0, 1fr); gap: 1.5rem; }
+}
+
+.nav-panel__meta {
+  display: flex;
+  flex-direction: column;
+  gap: .25rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--hairline);
+  font-size: var(--fs-small);
+  color: var(--fg-mute);
+}
+
+.nav-panel__meta a,
+.nav-panel__meta span {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+}
+
+/* Скролл страницы блокируется в двух местах: здесь — нативный,
+   в header.js — Lenis (lenis.stop()). Одного мало: инерция живёт своей
+   прокруткой и продолжила бы двигать страницу под открытой панелью. */
+body.is-locked {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+@media (min-width: 1024px) {
+  .nav-panel { display: none; }
+}

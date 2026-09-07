@@ -1,0 +1,253 @@
+/* ============================================================================
+   #why — «Наш стандарт». Светлая, не полноэкранная.
+
+   Было — сетка 3×2 из шести плиток «знак, заголовок, три строки». Заказчик
+   забраковал её справедливо: это самая узнаваемая заготовка в интернете,
+   и нажимать она не зовёт. Стало — разворот: слева список из шести строк,
+   справа панель активного пункта.
+
+   ЧТО ДЕРЖИТ БЛОК И ЧЕГО В НЁМ НЕТ. Карточек с заливкой нет ни одной,
+   как и на всей странице: строку держат волосяная линия сверху, линейный знак
+   и золотая вертикаль слева у активной. Заголовки видны все шесть и всегда —
+   прятать обязательства за интерактив нельзя.
+
+   РАЗМЕТКА ОДНА НА ОБА РЕЖИМА, строки и панели лежат вперемешку. На десктопе
+   сетка уводит панели в правую колонку и складывает их друг на друга (все
+   в grid-row 1 / -1), на мобильном тот же DOM читается сверху вниз как
+   аккордеон. Отсюда правило: строки — нечётные дети, панели — чётные,
+   и номера рядов ниже расставлены по nth-child.
+   ============================================================================ */
+
+.why {
+  --why-gap: clamp(2rem, 4vw, 4.5rem);
+
+  --section-pad-top: clamp(2.5rem, 5vh, 4.25rem);
+  --section-pad-bottom: clamp(2.5rem, 5vh, 4.25rem);
+}
+
+/* ---- Шапка секции --------------------------------------------------------
+   По центру, а не по левому краю. Хвост страницы — три светлые секции подряд
+   (#offline, #why, #journal), и если у всех трёх шапка прижата влево, они
+   читаются одним полотном. Центр посередине даёт недостающий такт:
+   слева → по центру → слева.                                                */
+
+.why__head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.15rem;
+  text-align: center;
+}
+
+/* Кегль как у #offline и #journal, а не --fs-h2: кульминация страницы —
+   витрина и цифры доверия, хвост должен звучать тише. */
+.why__title {
+  margin: 0;
+  max-width: 20ch;
+  font-size: clamp(1.9rem, 3vw, 2.8rem);
+}
+
+.why__body { margin-top: clamp(2rem, 4vh, 3rem); }
+
+/* ---- Строка списка -------------------------------------------------------- */
+
+.why__tab {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: .85rem;
+  width: 100%;
+  padding: 1.05rem 1rem 1.05rem 1.15rem;
+  font-family: var(--font-body);
+  text-align: left;
+  color: inherit;
+  transition: color var(--dur-line) var(--ease-out);
+}
+
+/* Волосяная линия сверху — тот же приём, что у строк городов в #offline.
+   Отдельным элементом, а не border-top: border нельзя прочертить слева
+   направо, а именно это делает общий reveal секции. */
+.why__rule {
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  height: 1px;
+  background: var(--hairline);
+  transform-origin: left center;
+}
+
+/* Золотая вертикаль слева у активной строки. Прочерчивается сверху вниз —
+   в паре с горизонтальной линией сверху это тот же язык, что и везде:
+   границу рисуем линией, а не рамкой и не заливкой. */
+.why__tab::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 1px;
+  bottom: 0;
+  width: 1px;
+  background: var(--gold);
+  transform: scaleY(0);
+  transform-origin: top center;
+  transition: transform var(--dur-line) var(--ease-out);
+}
+
+.why__tab.is-active::before { transform: scaleY(1); }
+
+.why__icon {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+}
+
+.why__icon svg {
+  width: 26px;
+  height: 26px;
+  fill: none;
+  stroke: var(--fg-mute);
+  stroke-width: 1.25;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  overflow: visible; /* при отрисовке круглые концы штриха выходят за viewBox */
+  transition: stroke var(--dur-line) var(--ease-out);
+}
+
+.why__tab.is-active .why__icon svg { stroke: var(--gold); }
+
+.why__name {
+  font-size: 1.02rem;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--fg-mute);
+  text-wrap: pretty;
+  transition: color var(--dur-line) var(--ease-out);
+}
+
+/* Неактивный заголовок остаётся читаемым: --fg-mute даёт 5.0:1 на светлой
+   теме и 7.1:1 на тёмной — выше порога 4.5:1. Активный просто темнее. */
+.why__tab.is-active .why__name,
+.why__tab:hover .why__name { color: var(--fg); }
+
+/* ---- Полоса прогресса автолистания ----------------------------------------
+   Тонкая золотая линия под активным заголовком: она и есть подсказка, что
+   в перелистывание можно вмешаться. Живёт только на активной строке и только
+   пока автолистание идёт — JS гасит её при первом вмешательстве. */
+
+.why__progress {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: 1px;
+  overflow: hidden;
+}
+
+.why__progress i {
+  display: block;
+  height: 100%;
+  background: var(--gold);
+  transform: scaleX(0);
+  transform-origin: left center;
+}
+
+/* ---- Панель --------------------------------------------------------------- */
+
+.why__text {
+  margin: 0;
+  font-size: clamp(1rem, 1.2vw, 1.15rem);
+  line-height: 1.65;
+  color: var(--fg);
+  text-wrap: pretty;
+}
+
+/* Кадр не во всю колонку: 4:3 на семисот пикселях перевесил бы список слева
+   и растянул бы блок на треть экрана. Ограничение по ширине держит разворот
+   в равновесии. */
+.why__media {
+  margin-top: clamp(1.25rem, 2.5vh, 1.75rem);
+  max-width: 28rem;
+  border-radius: var(--radius-card-sm);
+}
+
+/* ---- Десктоп: разворот в две колонки -------------------------------------- */
+
+@media (min-width: 900px) {
+  /* Ряды объявлены явно, и это не украшение: `grid-row: 1 / -1` у панели
+     считает -1 по ПОСЛЕДНЕЙ ЛИНИИ ЯВНОЙ сетки. Без grid-template-rows явных
+     линий нет вовсе, -1 схлопывается в первую, и все панели садятся в первый
+     ряд, раздувая его на всю свою высоту. */
+  .why__body {
+    display: grid;
+    grid-template-columns: minmax(0, 40fr) minmax(0, 60fr);
+    grid-template-rows: repeat(6, auto);
+    column-gap: var(--why-gap);
+    align-items: start;
+  }
+
+  /* Строки — нечётные дети, по одной на ряд. Панели лежат друг на друге
+     в правой колонке и занимают всю её высоту. */
+  .why__tab:nth-child(1)  { grid-row: 1; }
+  .why__tab:nth-child(3)  { grid-row: 2; }
+  .why__tab:nth-child(5)  { grid-row: 3; }
+  .why__tab:nth-child(7)  { grid-row: 4; }
+  .why__tab:nth-child(9)  { grid-row: 5; }
+  .why__tab:nth-child(11) { grid-row: 6; }
+
+  .why__panel {
+    grid-column: 2;
+    grid-row: 1 / -1;
+    /* visibility, а не display: скрытая панель выпадает из табуляции, но
+       продолжает держать высоту правой колонки — иначе она прыгала бы
+       на каждом переключении. */
+    visibility: hidden;
+    opacity: 0;
+  }
+
+  .why__panel.is-active {
+    visibility: visible;
+    opacity: 1;
+  }
+
+  .why__tab { padding-right: 0; }
+}
+
+/* ---- Мобильный: аккордеон ------------------------------------------------
+   Двух колонок нет: панель раскрывается прямо под своим заголовком. Все шесть
+   заголовков по-прежнему видны, первый раскрыт. Высоту анимирует JS, поэтому
+   закрытое состояние задаётся здесь, а не инлайном.                          */
+
+@media (max-width: 899px) {
+  .why__panel {
+    height: 0;
+    overflow: hidden;
+  }
+
+  .why__panel.is-active { height: auto; }
+
+  .why__panel-inner { padding: 0 1rem 1.35rem 1.15rem; }
+
+  .why__media { max-width: 24rem; }
+
+  /* Полосы прогресса на мобильном нет: автолистания там нет тоже. */
+  .why__progress { display: none; }
+}
+
+@media (max-width: 599px) {
+  .why__title { max-width: 16ch; }
+  .why__tab { padding-inline: .75rem .5rem; }
+  .why__panel-inner { padding: 0 .5rem 1.25rem .75rem; }
+}
+
+/* ---- Предсостояния анимации ----------------------------------------------
+   Ставятся только под .is-animated — без JS и при prefers-reduced-motion
+   класса нет, и всё видно целиком. Так же устроены [data-reveal] в base.css. */
+
+.is-animated .why__rule { transform: scaleX(0); }
+.is-animated .is-revealed .why__rule { transform: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .why__tab::before,
+  .why__name,
+  .why__icon svg { transition: none; }
+}

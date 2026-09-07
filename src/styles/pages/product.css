@@ -1,0 +1,369 @@
+/* ============================================================================
+   Карточка товара /product/<слаг>.
+
+   ЧЕГО ЗДЕСЬ НЕТ. Карточек с заливкой, теней, рамок вокруг блоков и вкладок.
+   Страница — одна колонка блоков через волосяную линию: та же грамматика,
+   что у #offline, #why и #trust на главной. Вкладки прятали бы половину
+   того, что и так помещается на экран, а «Отзывы (0)» на банке премиальной
+   икры читались бы как поломка (см. src/data/product-copy.js).
+
+   Плотность взята со страницы категории: управление 0.78–0.82rem с трекингом,
+   отступы вдвое меньше секционных. Страница не рассказывает, а работает.
+
+   Скругления только из шкалы: кадр --radius-card-sm, капсулы фасовок
+   --radius-pill, разделители — волосяная линия без радиуса.
+   ============================================================================ */
+
+.page-product {
+  padding-top: clamp(1rem, 2vh, 1.75rem);
+  padding-bottom: clamp(3rem, 6vh, 5rem);
+}
+
+/* ---- Верхний разворот ---------------------------------------------------- */
+
+.ptop {
+  display: grid;
+  grid-template-columns: minmax(0, 46fr) minmax(0, 54fr);
+  gap: clamp(1.75rem, 4vw, 4rem);
+  align-items: start;
+  margin-top: clamp(1.25rem, 2.5vh, 2rem);
+}
+
+/* ---- Галерея -------------------------------------------------------------
+   Переключение мгновенное, без слайдера: это выбор ракурса, а не показ.
+   Лента миниатюр появляется только когда кадров больше одного — иначе JS
+   её не рисует вовсе (см. product-page.js).                                */
+
+.pgallery {
+  display: flex;
+  flex-direction: column;
+  gap: .6rem;
+}
+
+.pgallery__main,
+.pgallery__shot {
+  border-radius: var(--radius-card-sm);
+}
+
+.pgallery__thumbs {
+  display: flex;
+  gap: .6rem;
+}
+
+.pgallery__thumb {
+  position: relative;
+  flex: 0 0 auto;
+  width: 74px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-card-sm);
+  overflow: hidden;
+  transition: border-color var(--dur-line) var(--ease-out);
+}
+
+.pgallery__thumb:hover { border-color: var(--hairline); }
+.pgallery__thumb.is-active { border-color: var(--gold); }
+
+.pgallery__thumb-shot { border-radius: 0; }
+
+/* ---- Правая колонка ------------------------------------------------------ */
+
+.pbuy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.pbuy__title {
+  margin: 0;
+  font-size: clamp(1.6rem, 2.6vw, 2.3rem);
+  line-height: var(--lh-h2);
+  text-wrap: pretty;
+}
+
+.pbuy__line {
+  margin-top: .55rem;
+  font-size: .82rem;
+  letter-spacing: .04em;
+  color: var(--fg-mute);
+}
+
+.pbuy__price {
+  margin-top: 1.1rem;
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  line-height: 1.2;
+  color: var(--fg);
+}
+
+/* ---- Ряды выбора ---------------------------------------------------------
+   Капсула ведёт на адрес ДРУГОЙ позиции, а не подсвечивается на месте:
+   фасовки одной линейки — разные товары с разными слагами.                 */
+
+.pbuy__row {
+  width: 100%;
+  margin-top: 1.25rem;
+}
+
+.pbuy__label {
+  display: block;
+  margin-bottom: .5rem;
+  font-size: var(--fs-eyebrow);
+  letter-spacing: var(--ls-eyebrow);
+  text-transform: uppercase;
+  color: var(--gold-fg);
+}
+
+.pbuy__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+}
+
+/* Капсулы те же, что в фасетах каталога, — .chip живёт в pages/category.css.
+   Здесь они ссылки, а не кнопки, поэтому базовые правила повторены коротко:
+   тащить весь файл каталога на карточку ради одного класса незачем. */
+.pbuy__chips .chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: .35rem .85rem;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+  font-family: var(--font-body);
+  font-size: .78rem;
+  line-height: 1.2;
+  color: var(--fg);
+  white-space: nowrap;
+  transition: border-color var(--dur-line) var(--ease-out),
+              background-color var(--dur-line) var(--ease-out),
+              color var(--dur-line) var(--ease-out);
+}
+
+.pbuy__chips .chip:hover { border-color: var(--gold); }
+
+.pbuy__chips .chip.is-active {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--pearl);
+}
+
+/* ---- Кнопки -------------------------------------------------------------- */
+
+.pbuy__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .6rem;
+  margin-top: 1.75rem;
+}
+
+/* ---- Три обещания -------------------------------------------------------- */
+
+.pbuy__promises {
+  width: 100%;
+  margin-top: 1.75rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--hairline);
+  display: flex;
+  flex-direction: column;
+  gap: .8rem;
+}
+
+.pbuy__promise {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  align-items: center;
+  gap: .8rem;
+  font-size: .82rem;
+  line-height: 1.5;
+  color: var(--fg-mute);
+}
+
+.pbuy__promise-icon {
+  display: grid;
+  place-items: center;
+}
+
+.pbuy__promise-icon svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: var(--gold);
+  stroke-width: 1.25;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ---- Блоки под разворотом ------------------------------------------------
+   Разделяет волосяная линия, а не рамка: карточек с заливкой на сайте нет
+   ни одной, и заводить их на карточке товара нельзя.                       */
+
+.pblocks {
+  margin-top: clamp(2.5rem, 5vh, 4rem);
+  display: flex;
+  flex-direction: column;
+}
+
+.pblock {
+  padding-block: clamp(1.75rem, 3.5vh, 2.75rem);
+  border-top: 1px solid var(--hairline);
+}
+
+.pblock__title {
+  margin: 0 0 1.25rem;
+  font-size: clamp(1.15rem, 1.8vw, 1.5rem);
+  line-height: var(--lh-h3);
+}
+
+.pblock__text {
+  display: flex;
+  flex-direction: column;
+  gap: .7rem;
+  max-width: 68ch;
+  font-size: .88rem;
+  line-height: 1.7;
+  color: var(--fg-mute);
+  text-wrap: pretty;
+}
+
+.pblock__link {
+  margin-top: 1rem;
+  font-size: .8rem;
+  letter-spacing: .04em;
+}
+
+.pblock__link a {
+  border-bottom: 1px solid var(--caspian);
+  padding-bottom: 2px;
+  transition: color var(--dur-line) var(--ease-out);
+}
+
+.pblock__link a:hover { color: var(--caspian-fg); }
+
+/* ---- Характеристики ------------------------------------------------------ */
+
+.pspecs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: clamp(1.5rem, 4vw, 4rem);
+  margin: 0;
+  max-width: 60rem;
+}
+
+.pspecs__row {
+  display: flex;
+  align-items: baseline;
+  gap: .75rem;
+  padding-block: .65rem;
+  border-bottom: 1px solid var(--hairline);
+  font-size: .85rem;
+  line-height: 1.4;
+}
+
+/* Точечный поводок между свойством и значением: без него в две колонки
+   значения висят на случайных позициях и таблица читается как список. */
+.pspecs__row dt {
+  flex: 0 0 auto;
+  color: var(--fg-mute);
+}
+
+.pspecs__row dd {
+  flex: 1 1 auto;
+  margin: 0;
+  text-align: right;
+  color: var(--fg);
+}
+
+/* ---- Ленты --------------------------------------------------------------- */
+
+.prail__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.prail__head .pblock__title { margin: 0; }
+
+.prail__stage { position: relative; }
+
+/* Прокрутку, маску края и скрытие системного скроллбара даёт .rail-track
+   из components/rail.css — здесь только шаг ленты и ширина карточки. */
+.prail__track {
+  gap: clamp(.75rem, 1.5vw, 1.25rem);
+  padding-bottom: .25rem;
+}
+
+.prail__track > .product {
+  flex: 0 0 clamp(150px, 17vw, 200px);
+  scroll-snap-align: start;
+}
+
+.prail__slider { margin-top: 1rem; }
+
+/* ---- Карточка журнала ----------------------------------------------------
+   Тот же компонент, что в ленте #journal: кадр сверху, текст снизу.
+   На карточке товара материал один, поэтому он ложится в строку —
+   вертикальная карточка в одиночестве выглядела бы обрубком ленты.        */
+
+.post--wide {
+  display: grid;
+  grid-template-columns: minmax(0, 34fr) minmax(0, 66fr);
+  gap: clamp(1rem, 2.5vw, 2rem);
+  align-items: center;
+  max-width: 46rem;
+}
+
+/* ---- Строка отзывов ------------------------------------------------------
+   Вкладки «Отзывы» на карточке нет намеренно: отзывов по товарам нет ни
+   в каком виде. Социальное доказательство собрано на /reviews и в #proof.  */
+
+.previews {
+  padding-top: clamp(1.5rem, 3vh, 2.25rem);
+  border-top: 1px solid var(--hairline);
+  font-size: .85rem;
+  color: var(--fg-mute);
+}
+
+.previews a {
+  margin-left: .4rem;
+  color: var(--fg);
+  border-bottom: 1px solid var(--caspian);
+  padding-bottom: 2px;
+  transition: color var(--dur-line) var(--ease-out);
+}
+
+.previews a:hover { color: var(--caspian-fg); }
+
+/* ---- Планшет ------------------------------------------------------------- */
+
+@media (max-width: 1023px) {
+  .ptop {
+    grid-template-columns: minmax(0, 1fr);
+    gap: clamp(1.5rem, 4vh, 2.25rem);
+  }
+
+  /* Галерея не должна занимать весь экран на планшете: правая колонка
+     уехала вниз, и кадр во всю ширину отодвинул бы цену за сгиб. */
+  .pgallery { max-width: 30rem; }
+}
+
+/* ---- Мобильный ----------------------------------------------------------- */
+
+@media (max-width: 767px) {
+  .pgallery { max-width: none; }
+
+  .pspecs { grid-template-columns: minmax(0, 1fr); }
+
+  .pbuy__actions { width: 100%; }
+  .pbuy__actions .btn { flex: 1 1 12rem; }
+
+  .post--wide {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+  }
+
+  /* Пейджер над лентой пальцем не нужен: лента листается сама. */
+  .prail__head [data-rail-pager] { display: none; }
+}

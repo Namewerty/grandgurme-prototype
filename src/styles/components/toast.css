@@ -1,0 +1,44 @@
+/* ============================================================================
+   Тост фиктивной корзины.
+   Один элемент на всё приложение (см. js/cart.js): повторный клик перезапускает
+   таймер, а не добавляет второй тост — стопки не образуется.
+   ============================================================================ */
+
+/* Правый нижний угол занят виджетом эксперта — тост встаёт над ним,
+   отсчитывая высоту от тех же токенов. */
+.toast {
+  position: fixed;
+  right: var(--fab-offset);
+  bottom: calc(var(--fab-offset) + var(--fab-size) + .75rem);
+  z-index: 120;
+  max-width: min(22rem, calc(100vw - 2 * var(--fab-offset)));
+  padding: 1rem 1.5rem;
+  border: 1px solid var(--hairline-on-dark);
+  border-radius: var(--radius-card);
+  background: var(--void);
+  color: var(--on-dark);
+  font-size: .8rem;
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  pointer-events: none;
+
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 350ms var(--ease-out), transform 350ms var(--ease-out);
+}
+
+.toast.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Кольцо прогресса — в левом нижнем углу, виджет эксперта — в правом,
+   тост встаёт над виджетом. Все трое не пересекаются. */
+@media (max-width: 767px) {
+  .toast {
+    font-size: .75rem;
+    padding: .85rem 1.15rem;
+  }
+}

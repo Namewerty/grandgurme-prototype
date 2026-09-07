@@ -1,0 +1,507 @@
+/* ============================================================================
+   Выпадающие панели шапки.
+
+   Панель приклеена к шапке и раскрывается вниз: она лежит внутри <header>
+   абсолютом от его нижнего края, поэтому едет вместе с липкой шапкой и не
+   отрывается от неё при прокрутке.
+
+   Раскрытие — clip-path сверху вниз плюс лёгкий подъём содержимого. Не
+   «щелчок» с opacity: панель должна разворачиваться, как штора, — это тот же
+   приём, что у входа секций на главной (clip-path: inset сверху).
+   360/420 мс: медленнее начинает раздражать при быстром переборе пунктов,
+   быстрее — читается как мигание.
+
+   Высота ограничена двумя третями экрана. Внутри — свой скролл на случай
+   очень длинного списка категорий; в текущем составе он не появляется.
+
+   Все панели подкатегорий лежат В ОДНОЙ ячейке грида друг на друге, поэтому
+   высота панели равна самой высокой из них и не прыгает при переборе
+   категорий. Скрытые — visibility: hidden, а не display: none: так они
+   выпадают из табуляции, но продолжают держать высоту.
+   ============================================================================ */
+
+.megapanel {
+  position: absolute;
+  inset-inline: 0;
+  top: 100%;
+  background: var(--bg);
+  color: var(--fg);
+  border-bottom: 1px solid var(--hairline);
+
+  visibility: hidden;
+  clip-path: inset(0 0 100% 0);
+  transition: clip-path 360ms var(--ease-out), visibility 0s linear 360ms;
+}
+
+.megapanel.is-open {
+  visibility: visible;
+  clip-path: inset(0 0 0 0);
+  transition: clip-path 420ms var(--ease-out), visibility 0s;
+}
+
+/* Содержимое подходит чуть снизу вверх — панель «наливается», а не появляется
+   готовой. Сдвиг маленький: большой на такой ширине читается как рывок. */
+.megapanel__scroll > .container {
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: opacity 260ms var(--ease-out), transform 360ms var(--ease-out);
+}
+
+.megapanel.is-open .megapanel__scroll > .container {
+  opacity: 1;
+  transform: none;
+  transition-delay: 60ms;
+}
+
+.megapanel__scroll {
+  max-height: min(66vh, calc(100vh - var(--header-h) - 2rem));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* ---- Две зоны ------------------------------------------------------------
+   Слева список категорий примерно на четверть ширины, справа сетка карточек,
+   у правого края — подборки.                                                */
+
+.megapanel__inner {
+  display: grid;
+  grid-template-columns: minmax(190px, 22%) minmax(0, 1fr) minmax(180px, 18%);
+  gap: clamp(1.5rem, 2.4vw, 2.5rem);
+  padding-block: clamp(1.5rem, 2.6vh, 2.25rem);
+}
+
+/* ---- Левая зона: категории ---------------------------------------------- */
+
+.megapanel__cats {
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--hairline);
+  padding-right: clamp(1rem, 1.6vw, 1.75rem);
+}
+
+/* Высота строки считается от высоты экрана: на ноутбуке 768px одиннадцать
+   строк по 38px вместе с нижней строкой панели не помещались в отведённые
+   две трети, и панель уходила во внутренний скролл. */
+.megacat {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: clamp(32px, 4.2vh, 40px);
+  padding-block: .3rem;
+  font-family: var(--font-display);
+  font-size: clamp(.95rem, 1.05vw, 1.125rem);
+  line-height: 1.2;
+  color: var(--fg);
+  transition: color var(--dur-line) var(--ease-out);
+}
+
+/* Активную строку помечаем волосяной золотой засечкой и сдвигом названия —
+   тот же приём, что у списков документов и городов на страницах. */
+.megacat::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 0;
+  height: 1px;
+  background: var(--gold);
+  transition: width var(--dur-line) var(--ease-out);
+}
+
+.megacat__name {
+  transition: transform var(--dur-line) var(--ease-out);
+}
+
+.megacat:hover,
+.megacat.is-active { color: var(--gold-fg); }
+
+.megacat.is-active::before { width: 14px; }
+.megacat.is-active .megacat__name { transform: translateX(22px); }
+
+/* ---- Правая зона: подкатегории ------------------------------------------ */
+
+.megapanel__panes { display: grid; }
+
+.megapane {
+  grid-area: 1 / 1;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(.75rem, 1.4vh, 1.25rem);
+
+  visibility: hidden;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out),
+              visibility 0s linear 200ms;
+}
+
+.megapane.is-active {
+  visibility: visible;
+  opacity: 1;
+  transform: none;
+  transition: opacity 240ms var(--ease-out), transform 240ms var(--ease-out),
+              visibility 0s;
+}
+
+.megagrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: clamp(.75rem, 1.2vw, 1.25rem);
+}
+
+.navcard {
+  display: grid;
+  gap: .5rem;
+  color: var(--fg);
+}
+
+.navcard__frame {
+  border-radius: var(--radius-card-sm);
+}
+
+.navcard__frame img {
+  transition: transform 600ms var(--ease-out);
+}
+
+.navcard:hover .navcard__frame img,
+.navcard:focus-visible .navcard__frame img { transform: scale(1.05); }
+
+.navcard__name {
+  font-size: .8125rem;
+  line-height: 1.35;
+  text-wrap: pretty;
+  transition: color var(--dur-line) var(--ease-out);
+}
+
+.navcard:hover .navcard__name,
+.navcard:focus-visible .navcard__name { color: var(--caspian-fg); }
+
+/* Описание раздела вместо сетки — только у категорий без подкатегорий
+   (крабы, подарочные наборы). Ширина ограничена, чтобы строка не растянулась
+   на всю правую зону и не спорила с рядом карточек соседних категорий. */
+.megapane__lead {
+  max-width: 46ch;
+  margin: 0;
+  font-size: var(--fs-small);
+  line-height: 1.6;
+  color: var(--fg-mute);
+  text-wrap: pretty;
+}
+
+/* Ссылка на всю категорию прижата к низу зоны: сетка из шести карточек ниже
+   сетки из восьми, и без этого ссылка гуляла бы по вертикали при переборе.
+   Заодно закрывается пустота под сеткой — высоту панели держит список
+   категорий слева, он длиннее любой из сеток. */
+.megapane__all {
+  align-self: start;
+  margin-top: auto;
+  font-size: var(--fs-small);
+  color: var(--fg-mute);
+  border-bottom: 1px solid var(--hairline);
+  transition: color var(--dur-line) var(--ease-out),
+              border-color var(--dur-line) var(--ease-out);
+}
+
+.megapane__all:hover {
+  color: var(--caspian-fg);
+  border-color: var(--caspian);
+}
+
+/* ---- Подборки ------------------------------------------------------------ */
+
+.megapanel__promo {
+  display: grid;
+  grid-auto-rows: max-content;
+  gap: clamp(.9rem, 1.8vh, 1.4rem);
+  padding-left: clamp(1rem, 1.6vw, 1.75rem);
+  border-left: 1px solid var(--hairline);
+}
+
+.promocard {
+  display: grid;
+  gap: .35rem;
+  color: var(--fg);
+}
+
+.promocard__frame { border-radius: var(--radius-card-sm); }
+
+.promocard__frame img { transition: transform 600ms var(--ease-out); }
+
+.promocard:hover .promocard__frame img,
+.promocard:focus-visible .promocard__frame img { transform: scale(1.05); }
+
+.promocard__title {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  line-height: 1.2;
+  transition: color var(--dur-line) var(--ease-out);
+}
+
+.promocard:hover .promocard__title { color: var(--caspian-fg); }
+
+.promocard__text {
+  font-size: .75rem;
+  line-height: 1.4;
+  color: var(--fg-mute);
+  text-wrap: pretty;
+}
+
+/* ---- Нижняя строка ------------------------------------------------------- */
+
+.megapanel__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap);
+  padding-block: .9rem clamp(1rem, 2vh, 1.4rem);
+  border-top: 1px solid var(--hairline);
+}
+
+.megapanel__all {
+  display: inline-flex;
+  align-items: center;
+  gap: .6rem;
+  min-height: 40px;
+  padding-inline: 1.5rem;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+  font-size: .72rem;
+  font-weight: 500;
+  letter-spacing: var(--ls-button);
+  text-transform: uppercase;
+  color: var(--fg);
+  transition: color var(--dur-line) var(--ease-out),
+              border-color var(--dur-line) var(--ease-out);
+}
+
+.megapanel__all svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.25;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform var(--dur-line) var(--ease-out);
+}
+
+.megapanel__all:hover {
+  color: var(--caspian-fg);
+  border-color: var(--caspian);
+}
+
+.megapanel__all:hover svg { transform: translateX(4px); }
+
+.megapanel__quick {
+  display: flex;
+  align-items: center;
+  gap: clamp(1rem, 2vw, 2rem);
+  font-size: var(--fs-nav);
+  font-weight: 500;
+  letter-spacing: var(--ls-nav);
+  text-transform: uppercase;
+  color: var(--fg-mute);
+}
+
+.megapanel__quick a {
+  padding-block: .35rem;
+  border-bottom: 1px solid transparent;
+  transition: color var(--dur-line) var(--ease-out),
+              border-color var(--dur-line) var(--ease-out);
+}
+
+.megapanel__quick a:hover {
+  color: var(--caspian-fg);
+  border-color: var(--caspian);
+}
+
+/* ---- Затемнение страницы под панелью ------------------------------------- */
+
+.nav-scrim {
+  position: fixed;
+  inset: 0;
+  /* Ниже шапки (80) и полосы (85), но выше кольца прогресса (70). */
+  z-index: 75;
+  background: rgba(10, 13, 17, .42);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 320ms var(--ease-out), visibility 0s linear 320ms;
+}
+
+.nav-scrim.is-visible {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 320ms var(--ease-out), visibility 0s;
+}
+
+/* Виджет эксперта живёт над затемнением (z-index 110) — гасим его отдельно,
+   иначе золотая кнопка светится поверх притушенной страницы.
+   Через filter, а не opacity: собственную opacity виджета анимирует GSAP
+   инлайном, и правило из класса до неё не дотянулось бы. */
+.has-megapanel .expert {
+  filter: opacity(.2);
+  pointer-events: none;
+  transition: filter 320ms var(--ease-out);
+}
+
+/* ---- Мобильный ----------------------------------------------------------- */
+
+/* Наведений на мобильном нет, там своё меню — панели просто не существуют. */
+@media (max-width: 1023px) {
+  .megapanel,
+  .nav-scrim { display: none; }
+}
+
+/* ============================================================================
+   Панель «Компания» — информационный хаб.
+
+   Устройство проще каталожной: три колонки текстовых ссылок и один кадр
+   справа. Переключаемых зон нет, значит нет и приёмов, которые держат
+   высоту при переборе, — панель статична.
+
+   ПОЧЕМУ НЕ КАРТОЧКИ С ФОТОГРАФИЯМИ. В каталоге карточки уместны: там
+   выбирают глазами. Здесь ищут конкретный ответ («как вернуть», «где
+   документы»), и кадр рядом с каждой ссылкой только замедляет чтение.
+   Один кадр на панель оставлен, чтобы она не выглядела служебным меню.
+   ============================================================================ */
+
+.infopanel {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(200px, 22%);
+  gap: clamp(1.5rem, 2.4vw, 3rem);
+  padding-block: clamp(1.5rem, 2.6vh, 2.25rem);
+}
+
+.infocol {
+  display: flex;
+  flex-direction: column;
+  gap: .85rem;
+}
+
+/* Заголовок колонки — надзаголовок, принятый на сайте: мелкий, прописной,
+   с разрядкой, золотой. Класс .eyebrow даёт оформление, тег h3 — иерархию:
+   по ней скринридер прыгает внутри панели. */
+.infocol__title { margin: 0; }
+
+.infocol__list {
+  display: flex;
+  flex-direction: column;
+  gap: .55rem;
+}
+
+.infocol__link {
+  position: relative;
+  display: inline-block;
+  font-size: .9375rem;
+  line-height: 1.35;
+  color: var(--fg);
+  transition: color var(--dur-line) var(--ease-out);
+}
+
+/* Подчёркивание прочерчивается слева направо — тот же приём, что у ссылок
+   подвала и у пунктов шапки. Отдельная линия, а не text-decoration:
+   её можно анимировать и она не режет выносные элементы. */
+.infocol__link::after {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  bottom: -3px;
+  height: 1px;
+  background: var(--caspian);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform var(--dur-line) var(--ease-out);
+}
+
+.infocol__link:hover,
+.infocol__link:focus-visible { color: var(--caspian-fg); }
+.infocol__link:hover::after,
+.infocol__link:focus-visible::after { transform: scaleX(1); }
+
+/* ---- Кадр справа --------------------------------------------------------- */
+
+.infofeature {
+  padding-left: clamp(1rem, 1.6vw, 1.75rem);
+  border-left: 1px solid var(--hairline);
+}
+
+.infofeature__link {
+  display: grid;
+  gap: .5rem;
+  color: var(--fg);
+}
+
+.infofeature__frame {
+  border-radius: var(--radius-card-sm);
+  margin-bottom: .35rem;
+}
+
+.infofeature__frame img { transition: transform 600ms var(--ease-out); }
+
+.infofeature__link:hover .infofeature__frame img,
+.infofeature__link:focus-visible .infofeature__frame img { transform: scale(1.05); }
+
+.infofeature__title {
+  font-family: var(--font-display);
+  font-size: 1.0625rem;
+  line-height: 1.2;
+  transition: color var(--dur-line) var(--ease-out);
+}
+
+.infofeature__link:hover .infofeature__title { color: var(--caspian-fg); }
+
+.infofeature__text {
+  font-size: .78rem;
+  line-height: 1.45;
+  color: var(--fg-mute);
+  text-wrap: pretty;
+}
+
+.infofeature__action {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  margin-top: .35rem;
+  font-size: .7rem;
+  font-weight: 500;
+  letter-spacing: var(--ls-button);
+  text-transform: uppercase;
+  color: var(--gold-fg);
+}
+
+.infofeature__action svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.25;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform var(--dur-line) var(--ease-out);
+}
+
+.infofeature__link:hover .infofeature__action svg { transform: translateX(4px); }
+
+/* Ноутбук 1024–1279: кадр съедает у колонок ширину, и длинные названия
+   вроде «Корпоративные заказы и подарки» ломаются на три строки. Колонок
+   по-прежнему три, но кадр уходит под них строкой во всю ширину. */
+@media (max-width: 1279px) {
+  .infopanel { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+  .infofeature {
+    grid-column: 1 / -1;
+    padding-left: 0;
+    padding-top: 1.25rem;
+    border-left: 0;
+    border-top: 1px solid var(--hairline);
+  }
+
+  .infofeature__link {
+    grid-template-columns: 140px minmax(0, 1fr);
+    gap: .25rem 1.25rem;
+    align-items: center;
+  }
+
+  .infofeature__media,
+  .infofeature__frame { grid-row: 1 / span 3; }
+}

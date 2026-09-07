@@ -1,0 +1,215 @@
+/* ============================================================================
+   Подвал. Всегда тёмный (класс .section--dark переопределяет семантику).
+   ============================================================================ */
+
+.footer {
+  position: relative;
+  background: var(--bg);
+  color: var(--fg);
+  border-top: 1px solid var(--hairline);
+}
+
+.footer__inner {
+  padding-block: clamp(2.75rem, 6vh, 4.5rem) 2rem;
+}
+
+/* ---- Брендовая строка ----------------------------------------------------
+   Раньше блок бренда стоял первой колонкой в одном ряду со ссылками. Колонок
+   стало пять, и на него оставалось около 150 пикселей — тэглайн ломался
+   в столбик по два слова. Теперь это отдельная строка над указателем:
+   слева марка и описание, справа соцсети и платёжные плашки.              */
+
+.footer__lead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: clamp(1.5rem, 4vw, 3.5rem);
+  padding-bottom: clamp(2rem, 4vh, 2.75rem);
+}
+
+.footer__aside {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: .9rem;
+  flex: none;
+}
+
+/* Пять колонок указателя. Ниже 1280 их четыре, ниже 1024 — две, на узком
+   экране одна: колонка со списком из тринадцати разделов каталога должна
+   оставаться читаемой, а не превращаться в ленту по два символа. */
+.footer__top {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: clamp(1.75rem, 3vw, 3rem);
+  padding-bottom: clamp(2.5rem, 6vh, 4rem);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.footer__brand {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-width: 42ch;
+}
+
+.footer__brand .wordmark { font-size: 1.25rem; }
+
+.footer__tagline {
+  font-size: var(--fs-small);
+  line-height: var(--lh-small);
+  color: var(--fg-mute);
+}
+
+.footer__col {
+  display: flex;
+  flex-direction: column;
+  gap: .9rem;
+}
+
+.footer__col-title {
+  font-family: var(--font-body);
+  font-size: var(--fs-eyebrow);
+  font-weight: 500;
+  letter-spacing: var(--ls-eyebrow);
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: .35rem;
+}
+
+.footer__link {
+  position: relative;
+  align-self: flex-start;
+  font-size: var(--fs-small);
+  line-height: 1.45;
+  color: var(--fg-mute);
+  transition: color var(--dur-line) var(--ease-out);
+}
+
+.footer__link::after {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  bottom: -3px;
+  height: 1px;
+  background: var(--caspian);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform var(--dur-line) var(--ease-out);
+}
+
+.footer__link:hover { color: var(--fg); }
+.footer__link:hover::after { transform: scaleX(1); }
+
+/* ---- Соцсети и оплата ---------------------------------------------------- */
+
+.footer__social {
+  display: flex;
+  gap: .5rem;
+}
+
+.footer__social .icon-btn {
+  border: 1px solid var(--hairline);
+  color: var(--fg-mute);
+}
+
+.footer__social .icon-btn:hover {
+  color: var(--caspian-fg);
+  border-color: var(--caspian);
+}
+
+.pay {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+}
+
+.pay__badge {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding-inline: .7rem;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+  font-size: .6875rem;
+  font-weight: 500;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--fg-mute);
+}
+
+/* ---- Низ ----------------------------------------------------------------- */
+
+.footer__bottom {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem 2rem;
+  padding-top: 2rem;
+  font-size: .75rem;
+  color: var(--fg-mute);
+}
+
+.footer__legal {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+/* Незаметный переключатель темы */
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .35rem 0;
+  font-size: .6875rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--fg-mute);
+  /* .55 давало 3.0:1 — переключатель должен быть неброским, но читаемым.
+     .8 держит 5.2:1 и всё ещё уходит на второй план. */
+  opacity: .8;
+  transition: opacity var(--dur-line) var(--ease-out), color var(--dur-line) var(--ease-out);
+}
+
+.theme-toggle:hover,
+.theme-toggle:focus-visible {
+  opacity: 1;
+  color: var(--fg);
+}
+
+.theme-toggle__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1px solid currentColor;
+  background: linear-gradient(90deg, currentColor 0 50%, transparent 50% 100%);
+}
+
+/* ---- Адаптив ------------------------------------------------------------- */
+
+@media (max-width: 1279px) {
+  .footer__top { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+@media (max-width: 1023px) {
+  .footer__top { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+  .footer__lead {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .footer__aside { align-items: flex-start; }
+}
+
+@media (max-width: 479px) {
+  .footer__top { grid-template-columns: minmax(0, 1fr); }
+  .footer__bottom { flex-direction: column; align-items: flex-start; }
+}
+
+/* Правовая строка длиннее прежней: четыре документа вместо трёх плюс
+   переключатель темы. Перенос по словам, а не в одну строку с прокруткой. */
+.footer__legal { row-gap: .5rem; }

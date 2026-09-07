@@ -1,0 +1,86 @@
+/* ============================================================================
+   #journal — журнал. Светлая, не полноэкранная. Предпоследний блок.
+   Три карточки в ряд, кадр 16:10 сверху. Мобильный — одна колонка.
+   ============================================================================ */
+
+.journal {
+  /* Единственный свой отступ — нижний: перед тёмным подвалом нужен чуть
+     больший вдох, чем на стыке двух светлых секций. */
+  --section-pad-bottom: clamp(3.5rem, 7vh, 6.5rem);
+  --journal-gap: clamp(1.5rem, 2.5vw, 2.5rem);
+}
+
+/* ---- Шапка секции -------------------------------------------------------- */
+
+.journal__head {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.journal__head-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1.5rem 2.5rem;
+  flex-wrap: wrap;
+}
+
+/* Тот же кегль, что у #offline и #why: хвост страницы звучит одним
+   регистром, а такт задаёт выключка, а не размер. При --fs-h2 (3.6rem)
+   мелкая ссылка «Все материалы» рядом с заголовком терялась. */
+.journal__title {
+  margin: 0;
+  max-width: 20ch;
+  font-size: clamp(1.9rem, 3vw, 2.8rem);
+}
+
+/* Ссылка «Все материалы →» — по базовой линии h2, отсюда и flex-строка выше. */
+.journal__all {
+  display: inline-flex;
+  align-items: baseline;
+  gap: .6rem;
+  flex: none;
+  min-height: 44px;          /* зона касания на мобильном */
+  padding-block: .6rem;
+  font-size: .8rem;
+  font-weight: 500;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--ink);
+  border-bottom: 1px solid var(--caspian);
+  transition: color var(--dur-line) var(--ease-out);
+}
+
+.journal__all:hover { color: var(--caspian-fg); }
+
+.journal__all-arrow {
+  transition: transform var(--dur-line) var(--ease-out);
+}
+
+@media (hover: hover) {
+  .journal__all:hover .journal__all-arrow { transform: translateX(4px); }
+}
+
+/* ---- Ряд карточек -------------------------------------------------------- */
+
+.journal__row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--journal-gap);
+  margin-top: clamp(2rem, 4vh, 2.75rem);
+}
+
+/* ---- Планшет и мобильный ------------------------------------------------- */
+
+@media (max-width: 1023px) {
+  .journal__row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 767px) {
+  .journal__row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: clamp(2rem, 6vw, 2.5rem);
+  }
+}

@@ -1,0 +1,284 @@
+/* ============================================================================
+   Reset, типографика, утилиты.
+
+   Правило геометрии — шкала из tokens.css, применяется последовательно:
+     --radius-pill  элементы управления (кнопки, переключатель, чипы, теги);
+     --radius-card  контент в сетках (карточки, миниатюры, обложки);
+     0              фоновые кадры секций, волосяные линии, разделители.
+   Контраст между капсульным управлением и спокойной геометрией контента —
+   это приём, а не недосмотр: скруглять всё подряд нельзя.
+
+   Теней нет нигде. Разделение — линиями и фоном.
+   ============================================================================ */
+
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+* { margin: 0; padding: 0; }
+
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: auto; /* скроллом управляет Lenis */
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-body);
+  font-size: var(--fs-body);
+  font-weight: 400;
+  line-height: var(--lh-body);
+  overflow-x: clip;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+img,
+video,
+svg,
+picture { display: block; max-width: 100%; }
+
+img,
+video { height: auto; }
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  border-radius: 0;
+}
+
+button { cursor: pointer; }
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+ul,
+ol { list-style: none; }
+
+/* ---- Заголовки ----------------------------------------------------------
+   Prata только 400, никогда bold и никогда uppercase.                       */
+
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  text-transform: none;
+  text-wrap: balance;
+}
+
+h1 {
+  font-size: var(--fs-h1);
+  line-height: var(--lh-h1);
+  letter-spacing: var(--ls-h1);
+}
+
+h2 {
+  font-size: var(--fs-h2);
+  line-height: var(--lh-h2);
+}
+
+h3 {
+  font-size: var(--fs-h3);
+  line-height: var(--lh-h3);
+}
+
+small,
+.t-small {
+  font-size: var(--fs-small);
+  line-height: var(--lh-small);
+}
+
+.t-mute { color: var(--fg-mute); }
+
+.t-lead {
+  font-size: clamp(1rem, 1.4vw, 1.125rem);
+  line-height: 1.6;
+  color: var(--fg-mute);
+  text-wrap: pretty;
+}
+
+/* ---- Надзаголовок -------------------------------------------------------
+   Слева золотая линия 24px. Единственные заглавные, кроме кнопок.
+
+   Линия и текст разного золота, и это не небрежность: чистый --gold на
+   перламутре даёт 2.9:1 — для линии этого достаточно, для 0.7rem текста нет.
+   Текст берёт --gold-fg (5.0:1), линия остаётся --gold. На тёмном фоне
+   --gold-fg возвращается к --gold, и оба снова совпадают.                    */
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: .75rem;
+  font-family: var(--font-body);
+  font-size: var(--fs-eyebrow);
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: var(--ls-eyebrow);
+  text-transform: uppercase;
+  color: var(--gold-fg);
+}
+
+.eyebrow::before {
+  content: '';
+  flex: none;
+  width: 24px;
+  height: 1px;
+  background: var(--gold);
+}
+
+/* ---- Кнопки -------------------------------------------------------------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .6rem;
+  min-height: 48px;
+  padding: 0 2rem;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+  font-family: var(--font-body);
+  font-size: .75rem;
+  font-weight: 500;
+  letter-spacing: var(--ls-button);
+  text-transform: uppercase;
+  color: var(--fg);
+  background: transparent;
+  transition: color var(--dur-theme) var(--ease-out),
+              background-color var(--dur-theme) var(--ease-out),
+              border-color var(--dur-theme) var(--ease-out);
+}
+
+.btn:hover {
+  border-color: var(--caspian);
+  color: var(--caspian-fg);
+}
+
+.btn--solid {
+  background: var(--fg);
+  border-color: var(--fg);
+  color: var(--bg);
+}
+
+.btn--solid:hover {
+  background: var(--caspian);
+  border-color: var(--caspian);
+  color: var(--on-dark);
+}
+
+/* 44×44 — минимальная зона касания. Иконка внутри осталась 20px, выросла
+   только площадь: на мобильном по кнопкам шапки попадали не с первого раза. */
+.icon-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;          /* круг — часть мотива */
+  color: inherit;
+  transition: color var(--dur-line) var(--ease-out),
+              border-color var(--dur-line) var(--ease-out);
+}
+
+.icon-btn svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.25;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.icon-btn:hover { color: var(--caspian-fg); }
+
+/* ---- Фокус --------------------------------------------------------------- */
+
+:focus-visible {
+  outline: 2px solid var(--caspian);
+  outline-offset: 3px;
+}
+
+.skip-link {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 200;
+  margin: .5rem;
+  padding: .75rem 1.25rem;
+  border-radius: var(--radius-pill);
+  background: var(--caspian);
+  color: #fff;
+  font-size: var(--fs-small);
+  /* -200%, а не -120%: у ссылки появился внешний отступ, и прежнего сдвига
+     ровно на высоту уже не хватало, чтобы увести её за верхний край. */
+  transform: translateY(-200%);
+  transition: transform var(--dur-line) var(--ease-out);
+}
+
+.skip-link:focus-visible { transform: translateY(0); }
+
+/* ---- Утилиты ------------------------------------------------------------- */
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.hairline {
+  border: 0;
+  border-top: 1px solid var(--hairline);
+}
+
+/* ---- Предсостояния скролл-анимации --------------------------------------
+   Класс is-animated ставится инлайн-скриптом в <head>, поэтому элементы
+   не успевают мелькнуть в открытом виде до инициализации GSAP.              */
+
+.is-animated [data-reveal] {
+  opacity: 0;
+  transform: translateY(28px);
+}
+
+.is-animated [data-reveal-section] {
+  clip-path: inset(12% 0% 0% 0%);
+}
+
+.is-animated [data-reveal-media] {
+  transform: scale(1.045);
+}
+
+/* После проигрывания GSAP снимает inline-стили, а класс снимает предсостояние. */
+.is-animated [data-reveal-section].is-revealed { clip-path: none; }
+.is-animated .is-revealed [data-reveal] { opacity: 1; transform: none; }
+.is-animated .is-revealed [data-reveal-media] { transform: none; }
+
+/* ---- prefers-reduced-motion ---------------------------------------------
+   Lenis не инициализируется, reveal сразу в конечном состоянии,
+   доводчик выключен, видео не автоплеится (см. media.js / scroll.js).       */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+  }
+
+  [data-reveal] { opacity: 1 !important; transform: none !important; }
+  [data-reveal-section] { clip-path: none !important; }
+  [data-reveal-media] { transform: none !important; }
+}

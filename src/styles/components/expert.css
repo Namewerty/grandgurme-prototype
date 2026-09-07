@@ -1,0 +1,443 @@
+/* ============================================================================
+   Плавающий виджет «Подобрать с экспертом». Правый нижний угол.
+
+   Не секция и не блок в потоке — только угловой элемент (оговорено заказчиком).
+   Левый нижний угол занят кольцом прогресса, они не пересекаются.
+
+   Кнопка берёт --void / --on-dark, а не --ink / --pearl: виджет должен
+   оставаться тёмным с золотой иконкой в обеих темах — как тёмные секции.
+   Панель, наоборот, следует теме и берёт семантические --bg / --fg.
+   ============================================================================ */
+
+.expert {
+  position: fixed;
+  right: var(--fab-offset);
+  bottom: var(--fab-offset);
+  z-index: 110;
+
+  opacity: 0;
+  transform: scale(.85);
+  transform-origin: 100% 100%;
+  pointer-events: none;
+  transition: opacity var(--dur-theme) var(--ease-out),
+              transform var(--dur-theme) var(--ease-out);
+}
+
+.expert.is-visible {
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
+}
+
+/* ---- Свёрнутое состояние ------------------------------------------------- */
+
+.expert__toggle {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: var(--fab-size);
+  height: var(--fab-size);
+  border-radius: 50%;               /* окружность — мотив макета */
+  /* Золотой ободок: на светлой теме читается как деталь мотива, на тёмной —
+     единственное, что отделяет тёмную кнопку от тёмного фона. */
+  border: 1px solid var(--hairline-on-dark);
+  background: var(--void);
+  color: var(--gold);
+  transition: background-color var(--dur-line) var(--ease-out),
+              border-color var(--dur-line) var(--ease-out);
+}
+
+.expert__toggle:hover {
+  background: #12171F;
+  border-color: var(--gold);
+}
+
+.expert__icon { display: grid; place-items: center; }
+
+.expert__icon svg {
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.25;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Плашка выезжает слева, из-под кнопки. */
+.expert__tip {
+  position: absolute;
+  top: 50%;
+  right: calc(100% + .5rem);
+  padding: .6rem .9rem;
+  border-radius: var(--radius-pill);
+  background: var(--void);
+  color: var(--on-dark);
+  font-size: .8rem;
+  line-height: 1;
+  white-space: nowrap;
+  pointer-events: none;
+
+  opacity: 0;
+  transform: translateY(-50%) translateX(10px);
+  transition: opacity var(--dur-line) var(--ease-out),
+              transform var(--dur-line) var(--ease-out);
+}
+
+@media (hover: hover) {
+  .expert__toggle:hover .expert__tip {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
+  }
+}
+
+.expert__toggle:focus-visible .expert__tip {
+  opacity: 1;
+  transform: translateY(-50%) translateX(0);
+}
+
+/* Пока панель открыта, плашка не нужна — её текст уже стоит в заголовке. */
+.expert.is-open .expert__tip { opacity: 0; transform: translateY(-50%) translateX(10px); }
+
+/* ---- Развёрнутая панель --------------------------------------------------
+   Раскрывается снизу вверх над кнопкой. visibility: hidden в закрытом
+   состоянии не декоративная: она убирает ссылки внутри из порядка табуляции,
+   иначе фокус уходил бы в невидимую панель.                                  */
+
+.expert__panel {
+  position: absolute;
+  right: 0;
+  bottom: calc(var(--fab-size) + .75rem);
+  /* Было 280px — под кнопки в столбик. Теперь в панели форма с полями
+     и чекбоксом согласия, и на 280px подпись «Телефон или ник в мессенджере»
+     ломалась в три строки. 380px — минимум, при котором форма читается
+     как форма, а не как анкета в щели. Кольцо прогресса стоит в левом
+     нижнем углу, они не пересекаются даже на 1280. */
+  width: 380px;
+  max-width: calc(100vw - 2 * var(--fab-offset));
+  max-height: calc(100svh - var(--fab-size) - 4rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 1.5rem 1.35rem 1.25rem;
+  border: 1px solid var(--gold);
+  border-radius: var(--radius-card);
+  background: var(--bg);
+  color: var(--fg);
+
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(12px) scaleY(.96);
+  transform-origin: 100% 100%;
+  transition: opacity 320ms var(--ease-out),
+              transform 320ms var(--ease-out),
+              visibility 0s linear 320ms;
+}
+
+.expert.is-open .expert__panel {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0) scaleY(1);
+  transition: opacity 320ms var(--ease-out),
+              transform 320ms var(--ease-out),
+              visibility 0s;
+}
+
+.expert__close {
+  position: absolute;
+  top: .25rem;
+  right: .25rem;
+  color: var(--fg-mute);
+}
+
+.expert__close svg { width: 16px; height: 16px; }
+
+.expert__title {
+  max-width: 15ch;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  line-height: 1.25;
+  color: var(--fg);
+  text-wrap: pretty;
+}
+
+.expert__text {
+  margin-top: .6rem;
+  font-size: .82rem;
+  line-height: 1.6;
+  color: var(--fg-mute);
+  text-wrap: pretty;
+}
+
+/* ---- Форма ---------------------------------------------------------------
+   Главное действие виджета: писать можно прямо с сайта, не уходя в мессенджер.
+
+   ⚠ БЭКЕНДА НЕТ — отправка перехватывается, форма подменяется состоянием
+   успеха внутри той же панели (см. src/js/expert.js).
+
+   Поля — те же волосяные линии, что везде на сайте: рамка, без заливки
+   и без тени. Скругление у поля капсульное, как у управления, у textarea —
+   мягкое: капсула на трёх строках выглядит пузырём.                          */
+
+.expert__form {
+  display: flex;
+  flex-direction: column;
+  gap: .75rem;
+  margin-top: 1.25rem;
+}
+
+.expert__form[hidden],
+.expert__done[hidden] { display: none; }
+
+.expert__field {
+  display: flex;
+  flex-direction: column;
+  gap: .3rem;
+}
+
+.expert__label {
+  font-size: .7rem;
+  letter-spacing: .06em;
+  color: var(--fg-mute);
+}
+
+.expert__optional { opacity: .75; }
+
+.expert__input {
+  width: 100%;
+  min-height: 44px;
+  padding: .6rem .9rem;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  font-family: var(--font-body);
+  font-size: .85rem;
+  line-height: 1.4;
+  color: var(--fg);
+  transition: border-color var(--dur-line) var(--ease-out);
+}
+
+textarea.expert__input {
+  border-radius: var(--radius-card-sm);
+  resize: vertical;
+}
+
+.expert__input::placeholder { color: var(--fg-mute); opacity: .8; }
+.expert__input:focus { outline: none; border-color: var(--caspian); }
+
+.expert__field.has-error .expert__input { border-color: var(--gold); }
+
+/* Сообщение об ошибке под полем, а не всплывающее: всплывающее нельзя
+   перечитать, и скринридер объявляет его один раз. */
+.expert__error {
+  font-size: .72rem;
+  line-height: 1.4;
+  color: var(--gold-fg);
+}
+
+.expert__error[hidden] { display: none; }
+
+/* ---- Согласие на обработку ПД --------------------------------------------
+   Не украшение: без него форму, собирающую телефон, публиковать нельзя.
+   Пока не отмечено — кнопка отправки заблокирована.                         */
+
+.expert__consent {
+  position: relative;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: start;
+  gap: .6rem;
+  min-height: 44px;
+  padding-top: .35rem;
+  font-size: .75rem;
+  line-height: 1.45;
+  color: var(--fg-mute);
+  cursor: pointer;
+}
+
+/* Родной чекбокс не прячем совсем: он остаётся кликабельным и фокусируемым,
+   просто лежит под нарисованной коробкой. */
+.expert__consent input {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  opacity: 0;
+}
+
+.expert__check {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--hairline);
+  /* Радиуса нет: 18 px — не капсула и не карточка, а произвольных ступеней
+     шкала не знает. Квадрат с волосяной рамкой честнее скругления «на глаз»
+     и не путается с радиокнопкой. */
+  color: transparent;
+  transition: border-color var(--dur-line) var(--ease-out),
+              color var(--dur-line) var(--ease-out);
+}
+
+.expert__check svg {
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.expert__consent input:checked ~ .expert__check {
+  border-color: var(--caspian);
+  color: var(--caspian-fg);
+}
+
+.expert__consent input:focus-visible ~ .expert__check {
+  outline: 2px solid var(--caspian);
+  outline-offset: 3px;
+}
+
+.expert__consent a {
+  color: var(--fg);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-color: var(--hairline);
+}
+
+.expert__consent a:hover { color: var(--caspian-fg); }
+
+/* ---- Состояние успеха -----------------------------------------------------
+   Заявка никуда не ушла, и врать об этом нельзя: ни номера заявки,
+   ни «отправляем…» здесь нет. Только обещание из шапки виджета.             */
+
+.expert__done {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 1.25rem;
+  padding-top: 1.1rem;
+  border-top: 1px solid var(--hairline);
+}
+
+.expert__done-title {
+  font-size: .9rem;
+  line-height: 1.5;
+  color: var(--fg);
+  text-wrap: pretty;
+}
+
+/* ---- Мессенджеры: вторичная строка --------------------------------------- */
+
+.expert__messengers {
+  margin-top: .9rem;
+  font-size: .72rem;
+  line-height: 1.5;
+  color: var(--fg-mute);
+  text-align: center;
+}
+
+.expert__messengers a {
+  color: var(--fg);
+  transition: color var(--dur-line) var(--ease-out);
+}
+
+.expert__messengers a:hover { color: var(--caspian-fg); }
+
+.expert__dot { margin-inline: .35rem; }
+
+/* ---- Кнопки --------------------------------------------------------------
+   Своя кнопка, а не .btn: базовый трекинг .18em с padding 2rem растягивает
+   подпись шире, чем позволяет ширина панели.                                */
+
+.expert__btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: .75rem 1rem;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+  font-size: .72rem;
+  font-weight: 500;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  text-align: center;
+  color: var(--fg);
+  transition: color var(--dur-line) var(--ease-out),
+              background-color var(--dur-line) var(--ease-out),
+              border-color var(--dur-line) var(--ease-out);
+}
+
+.expert__btn:hover {
+  border-color: var(--caspian);
+  color: var(--caspian-fg);
+}
+
+.expert__btn--solid {
+  background: var(--fg);
+  border-color: var(--fg);
+  color: var(--bg);
+}
+
+.expert__btn--solid:hover {
+  background: var(--caspian);
+  border-color: var(--caspian);
+  color: var(--on-dark);
+}
+
+/* Заблокированная кнопка отправки — не «сломанная», а ждущая согласия:
+   она видна, читается и объясняет себя соседним чекбоксом. */
+.expert__btn:disabled {
+  background: transparent;
+  border-color: var(--hairline);
+  color: var(--fg-mute);
+  cursor: not-allowed;
+}
+
+.expert__btn:disabled:hover {
+  background: transparent;
+  border-color: var(--hairline);
+  color: var(--fg-mute);
+}
+
+.expert__phone {
+  margin-top: .9rem;
+  text-align: center;
+  font-size: .72rem;
+  letter-spacing: .06em;
+  color: var(--fg-mute);
+}
+
+.expert__phone a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  transition: color var(--dur-line) var(--ease-out);
+}
+
+.expert__phone a:hover { color: var(--fg); }
+
+/* ---- Мобильный ----------------------------------------------------------- */
+
+@media (max-width: 767px) {
+  /* Наводить нечем — плашка не выезжает никогда, её текст живёт
+     в visually-hidden подписи кнопки для скринридера. */
+  .expert__tip { display: none; }
+
+  /* Панель во всю ширину минус поля. Потолок 420px — чтобы на планшете
+     в портрете она не растягивалась в простыню. Позиция считается от края
+     экрана, а не от кнопки: иначе панель шире кнопки уезжала бы за край. */
+  .expert__panel {
+    position: fixed;
+    right: var(--fab-offset);
+    left: var(--fab-offset);
+    bottom: calc(var(--fab-offset) + var(--fab-size) + .75rem);
+    width: auto;
+    max-width: 420px;
+    margin-left: auto;
+    /* Клавиатура на телефоне съедает нижнюю половину экрана. svh считает
+       её как есть, а прокрутка внутри панели даёт добраться до кнопки. */
+    max-height: calc(100svh - var(--fab-size) - 5rem);
+  }
+}

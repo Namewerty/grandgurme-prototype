@@ -1,0 +1,72 @@
+/* ============================================================================
+   Медиа-обёртка и заглушки.
+   Пропорция держится через aspect-ratio, поэтому вёрстка не прыгает,
+   когда файла ещё нет.
+   ============================================================================ */
+
+.media {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  aspect-ratio: var(--media-ratio, 1 / 1);
+  background: var(--surface);
+}
+
+.media--round { border-radius: 50%; }
+
+.media--fill {
+  position: absolute;
+  inset: 0;
+  aspect-ratio: auto;
+}
+
+.media > img,
+.media > video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: var(--media-position, center);
+}
+
+/* ---- Заглушка ------------------------------------------------------------ */
+
+.media.is-missing {
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--hairline);
+  background: var(--surface);
+}
+
+.media.is-missing > img,
+.media.is-missing > video { display: none; }
+
+/* Видео без ролика и без постера — статичное затемнение, без анимации. */
+.media--video.is-missing::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(10, 13, 17, .38);
+}
+
+.media__note {
+  position: relative;
+  z-index: 1;
+  max-width: 100%;
+  padding: .5rem 1rem;
+  font-family: var(--font-mono);
+  font-size: .6875rem;
+  line-height: 1.5;
+  letter-spacing: .02em;
+  text-align: center;
+  color: var(--fg-mute);
+  word-break: break-word;
+}
+
+.media--video.is-missing .media__note { color: var(--on-dark-mute); }
+
+/* Фоновая заглушка: подпись уводим вниз, чтобы не садиться на заголовок. */
+.media--fill.is-missing { align-items: end; }
+.media--fill.is-missing .media__note { padding-bottom: clamp(2rem, 8vh, 5rem); }
+
+/* Совсем мелкие кадры: прячем текст, оставляем рамку. */
+.media--compact .media__note { display: none; }

@@ -1,0 +1,284 @@
+/* ============================================================================
+   #categories — «Не только икра». Разделы каталога решёткой 4×2.
+
+   Три версии блока и почему пришли сюда:
+     1. три фотоплитки 3:4 — три раздела из дюжины и целый экран под блок,
+        который по смыслу служебный;
+     2. лента на двенадцать мелких плиток с прокруткой — высота решилась,
+        но плитки выглядели дёшево, а ленту в таком блоке никто не листает;
+     3. эта — восемь разделов решёткой, целиком на одном экране, без прокрутки.
+
+   Откуда взялось ощущение «дорого» вместо «дёшево» — четыре приёма:
+
+     1. Решётка собрана волосяными линиями, а не рамками. gap: 1px показывает
+        фон-подложку, ячейки кладутся на него своим --bg, и получается сетка
+        каталога, а не восемь отдельных карточек с радиусами. Радиус остался
+        один — на всей решётке, и то за счёт overflow: hidden.
+     2. Название набрано заголовочной антиквой в 1.2rem вместо гротеска в .82.
+        Это главное отличие от ленты: там название было подписью к иконке,
+        здесь — заголовком ячейки.
+     3. Воздуха в ячейке больше, чем контента. Пустое место — единственное,
+        что отличает премиальную плитку от плитки интернет-магазина.
+     4. Счётчик пишется словами («24 позиции»), а не голой цифрой: цифра
+        без единицы измерения выглядит как служебная отладка.
+
+   Про высоту. Блок стал выше прежней ленты примерно вдвое (≈450 px против
+   225 на 1440×900) — этого просил заказчик. Дальше расти нельзя: соседние
+   главы (#types, #shop) идут по 650–700 px, и блок-оглавление не должен
+   с ними равняться. Держится высота на --cat-cell-min и на вертикальных
+   отступах секции; менять их надо вместе.
+
+   Прокрутки нет — значит, нет ни пейджера, ни полосы позиции, ни маски края.
+   styles/components/rail.css этой секции больше не нужен, он остался только
+   у витрины.
+   ============================================================================ */
+
+.categories {
+  /* Теснее базового ритма, но заметно свободнее прежней ленты: у решётки
+     есть собственная графика, и прижимать её к соседям вплотную нельзя. */
+  --section-pad-top: clamp(2.25rem, 4.5vh, 3.5rem);
+  --section-pad-bottom: clamp(2.25rem, 4.5vh, 3.5rem);
+
+  /* Минимальная высота ячейки. Ниже 8rem подпись со счётчиком встаёт вплотную
+     к названию, и воздух, ради которого всё затевалось, пропадает. */
+  --cat-cell-min: 8.5rem;
+  --cat-cols: 4;
+}
+
+/* ---- Шапка секции --------------------------------------------------------
+   Надзаголовок отдельной строкой, ниже — заголовок и ссылка в каталог
+   в одной строке-флексе. align-items: baseline ловит базовую линию h2
+   только в такой строке, поэтому надзаголовок вынесен над ней
+   (тот же приём, что в шапке #journal).                                     */
+
+.categories__head {
+  display: flex;
+  flex-direction: column;
+  gap: .7rem;
+}
+
+.categories__head-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: .75rem 2rem;
+  flex-wrap: wrap;
+}
+
+/* Меньше, чем у секций основного корпуса, но крупнее, чем было у ленты:
+   блок перестал быть узкой полосой, и заголовок-«шёпот» ему уже не идёт. */
+.categories__title {
+  margin: 0;
+  font-size: clamp(1.6rem, 2.6vw, 2.25rem);
+}
+
+.categories__all {
+  display: inline-flex;
+  align-items: center;
+  gap: .55rem;
+  flex: none;
+  padding-block: .35rem;
+  padding-bottom: .2rem;
+  font-size: .78rem;
+  font-weight: 500;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--fg);
+  border-bottom: 1px solid var(--caspian);
+  transition: color var(--dur-line) var(--ease-out);
+}
+
+/* Зона касания нужна там, где тыкают пальцем; на десктопе те же 44px
+   задирали бы всю строку шапки на десяток пикселей впустую. */
+@media (hover: none) {
+  .categories__all { min-height: 44px; }
+}
+
+.categories__all:hover { color: var(--caspian-fg); }
+
+.categories__all-arrow { transition: transform var(--dur-line) var(--ease-out); }
+.categories__all:hover .categories__all-arrow { transform: translateX(4px); }
+
+/* ---- Решётка -------------------------------------------------------------
+   Классический приём «сетка на однопиксельных зазорах»: подложка красится
+   в цвет волосяной линии, ячейки — в цвет фона, и линии между ними рисует
+   сам gap. Одна линия на границу вместо двух смежных рамок — ровно тот же
+   контур, что у таблицы в печатном каталоге.
+
+   overflow: hidden обязателен: без него квадратные углы ячеек вылезали бы
+   за скругление подложки.                                                   */
+
+.categories__grid {
+  display: grid;
+  grid-template-columns: repeat(var(--cat-cols), minmax(0, 1fr));
+  gap: 1px;
+  margin: clamp(1.25rem, 2.5vh, 2rem) 0 0;
+  padding: 0;
+  background: var(--hairline);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+}
+
+/* li — сама ячейка решётки, ссылка внутри растягивается на неё целиком:
+   кликается вся площадь, а не строчка текста (см. sections/categories.js
+   о том, почему список настоящий, а не div с role="list"). */
+.categories__cell { display: flex; }
+
+.cat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: .85rem;
+  min-height: var(--cat-cell-min);
+  padding: clamp(1.1rem, 1.6vw, 1.5rem);
+  background: var(--bg);
+  transition: background-color var(--dur-line) var(--ease-out);
+}
+
+.cat__icon {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+}
+
+/* Та же волосяная линия 1.25, что и в полосе доверия: наборы знаков должны
+   выглядеть одним семейством, иначе страница распадается на две графики.
+   Знак подрос с 24 до 30 пикселей — в ячейке решётки прежний размер
+   выглядел иконкой из интерфейса, а не рисунком. */
+.cat__icon svg {
+  width: 30px;
+  height: 30px;
+  fill: none;
+  stroke: var(--gold);
+  stroke-width: 1.25;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: stroke var(--dur-line) var(--ease-out);
+}
+
+/* Антиква, а не гротеск: в ленте название было подписью к иконке, в решётке
+   оно заголовок ячейки и набирается тем же шрифтом, что заголовки секций. */
+.cat__name {
+  font-family: var(--font-display);
+  font-size: clamp(1.02rem, 1.25vw, 1.2rem);
+  line-height: 1.25;
+  color: var(--fg);
+  text-wrap: balance;
+  transition: color var(--dur-line) var(--ease-out);
+}
+
+/* Счётчик и стрелка прижаты к низу ячейки: у всех восьми они стоят на одной
+   линии независимо от того, в одну название строку или в две. */
+.cat__foot {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: .75rem;
+  width: 100%;
+  margin-top: auto;
+}
+
+.cat__count {
+  font-size: .74rem;
+  letter-spacing: .02em;
+  color: var(--fg-mute);
+  transition: color var(--dur-line) var(--ease-out);
+}
+
+/* Стрелка появляется по наведению: постоянная стрелка в каждой из восьми
+   ячеек превращает решётку в частокол указателей. */
+.cat__arrow {
+  font-size: .9rem;
+  line-height: 1;
+  color: var(--caspian-fg);
+  opacity: 0;
+  transform: translateX(-6px);
+  transition: opacity var(--dur-line) var(--ease-out),
+              transform var(--dur-line) var(--ease-out);
+}
+
+@media (hover: hover) {
+  .cat:hover { background: var(--surface); }
+
+  .cat:hover .cat__name { color: var(--caspian-fg); }
+  .cat:hover .cat__icon svg { stroke: var(--caspian); }
+
+  .cat:hover .cat__arrow {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Клавиатура должна получать ровно то же состояние, что и мышь: фокус видно
+   по заливке ячейки, а не по системному контуру поверх решётки. */
+.cat:focus-visible {
+  outline: none;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--caspian);
+}
+
+.cat:focus-visible .cat__arrow {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* ---- Планшет и мобильный -------------------------------------------------
+   Число колонок меняем только с 4 на 2 и с 2 на 1. Тройка выпадает намеренно:
+   восемь ячеек в три колонки дают неполный последний ряд, а дырка в решётке,
+   собранной из сплошных линий, читается как поломка вёрстки, а не как приём.
+
+   Четыре колонки держатся до 767px: на планшете ячейка в 170–200px ещё
+   спокойно берёт «Крабы и морепродукты» в две строки, а две колонки по 400px
+   в этой же ширине выглядят пустыми — контента в ячейке на такую площадь
+   просто нет.                                                               */
+
+@media (max-width: 1023px) {
+  .categories { --cat-cell-min: 8rem; }
+}
+
+@media (max-width: 767px) {
+  .categories {
+    --cat-cols: 2;
+    --cat-cell-min: 7.25rem;
+  }
+
+  .categories__head-row { gap: .5rem 1.5rem; }
+
+  .categories__all {
+    font-size: .72rem;
+    letter-spacing: .12em;
+  }
+
+  .cat { gap: .7rem; }
+}
+
+/* Совсем узкий экран: в двух колонках по 150px названию вроде «Крабы и
+   морепродукты» нужно три строки — только здесь уходим в одну колонку
+   и раскладываем ячейку в строку.                                          */
+
+@media (max-width: 419px) {
+  .categories {
+    --cat-cols: 1;
+    --cat-cell-min: 0;
+  }
+
+  .cat {
+    flex-direction: row;
+    align-items: center;
+    gap: 1rem;
+    padding-block: 1rem;
+  }
+
+  .cat__name { flex: 1; }
+
+  .cat__foot {
+    width: auto;
+    margin: 0;
+  }
+
+  .cat__arrow { display: none; }
+}
