@@ -48,8 +48,9 @@ npm run media    # пересобрать перечень кадров пане
 ## Публикация
 
 Прототип живёт на Vercel: **https://grandgurme-prototype.vercel.app**
-(проект `namewertys-projects/grandgurme-prototype`). Репозитория у папки нет,
-деплой идёт из CLI:
+(проект `namewertys-projects/grandgurme-prototype`). Исходники —
+**https://github.com/Namewerty/grandgurme-prototype**; Vercel с репозиторием
+не связан, деплой идёт из CLI:
 
 ```bash
 vercel deploy --prod
