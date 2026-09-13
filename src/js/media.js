@@ -7,6 +7,9 @@
    с ожидаемым именем файла и пропорцией: «caviar-beluga.jpg · 1:1».
 
    Когда заказчик положит файлы в /public/media/, ничего править не нужно.
+
+   Исключение — битриксовая сборка: там отсутствующий файл не запрашивается
+   вовсе, заглушка рисуется сразу по медиа-манифесту (см. mediaExists).
    ============================================================================ */
 
 const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -63,6 +66,29 @@ export function placeholderLabel(path, ratio) {
   return `${fileNameOf(path)} · ${toLabelRatio(ratio)}`
 }
 
+/**
+ * Медиа-манифест: файлы, которые реально лежат на сервере.
+ *
+ * Есть только в битриксовой сборке — vite.bitrix.config.js подставляет список
+ * константой, составляет его scripts/media-manifest.mjs. На Битриксе
+ * несуществующий файл уходит в urlrewrite.php и поднимает ядро CMS, поэтому
+ * промах рисуется заглушкой без запроса.
+ *
+ * В прототипе (dev, npm run build, Vercel) константы нет, и запрос уходит
+ * всегда: заглушка появляется по ошибке загрузки, зато заказчик может просто
+ * положить файл в public/media без пересборки.
+ */
+const MANIFEST =
+  typeof __GG_MEDIA_MANIFEST__ !== 'undefined' ? new Set(__GG_MEDIA_MANIFEST__) : null
+
+/** Стоит ли запрашивать файл. Адреса вне /media/ манифест не описывает. */
+export function mediaExists(src) {
+  if (!MANIFEST) return true
+  if (!src) return false
+  const path = String(src).split(/[?#]/)[0]
+  return !path.startsWith('/media/') || MANIFEST.has(path)
+}
+
 function markMissing(wrap, label) {
   if (wrap.classList.contains('is-missing')) return
   wrap.classList.add('is-missing')
@@ -84,7 +110,7 @@ function createWrap({ ratio, className, round, fill }) {
 /** Есть ли файл по адресу. Нужна, чтобы проверить постер отдельно от ролика. */
 function probeImage(src) {
   return new Promise((resolve) => {
-    if (!src) return resolve(false)
+    if (!src || !mediaExists(src)) return resolve(false)
     const probe = new Image()
     probe.onload = () => resolve(true)
     probe.onerror = () => resolve(false)
@@ -117,6 +143,12 @@ export function createImage({
 }) {
   const wrap = createWrap({ ratio, className, round, fill })
   if (position) wrap.style.setProperty('--media-position', position)
+
+  // Файла на сервере нет — заглушка сразу, без <img> и без запроса.
+  if (!mediaExists(src)) {
+    markMissing(wrap, placeholderLabel(src, ratio))
+    return wrap
+  }
 
   const { width, height } = intrinsicSize(ratio)
 
@@ -173,8 +205,10 @@ export function createVideo({
   video.setAttribute('playsinline', '')
   video.setAttribute('aria-label', alt)
   video.setAttribute('role', 'img')
-  if (poster) video.poster = poster
+  if (poster && mediaExists(poster)) video.poster = poster
 
+  // Источники, которых нет на сервере, к <video> не подключаем.
+  const available = sources.filter(({ src }) => mediaExists(src))
   const primary = sources[0]?.src || 'video'
   let failed = 0
 
@@ -188,10 +222,10 @@ export function createVideo({
   const allowSources = canLoadVideo()
   if (!allowSources) video.preload = 'none'
 
-  if (sources.length === 0 || !allowSources) {
+  if (available.length === 0 || !allowSources) {
     onAllSourcesFailed()
   } else {
-    sources.forEach(({ src, type }) => {
+    available.forEach(({ src, type }) => {
       const source = document.createElement('source')
       source.src = src
       if (type) source.type = type
@@ -199,7 +233,7 @@ export function createVideo({
         'error',
         () => {
           failed += 1
-          if (failed >= sources.length) onAllSourcesFailed()
+          if (failed >= available.length) onAllSourcesFailed()
         },
         { once: true },
       )
@@ -210,7 +244,7 @@ export function createVideo({
   wrap.appendChild(video)
 
   // При prefers-reduced-motion видео не автоплеится — остаётся постер.
-  if (autoplay && !REDUCED && allowSources) {
+  if (autoplay && !REDUCED && allowSources && available.length > 0) {
     video.autoplay = true
     observePlayback(video)
   }
@@ -282,6 +316,11 @@ export function createLogo({ src, name, num, className = '', href = '/' }) {
   const wordmark = document.createElement('span')
   wordmark.className = 'wordmark'
   wordmark.innerHTML = `<span class="wordmark__num">${num}</span><span>${name}</span>`
+
+  if (!mediaExists(src)) {
+    link.appendChild(wordmark)
+    return link
+  }
 
   const img = document.createElement('img')
   img.src = src

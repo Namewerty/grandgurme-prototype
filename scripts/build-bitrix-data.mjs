@@ -17,6 +17,8 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { mediaManifest } from './media-manifest.mjs'
+
 const ROOT = fileURLToPath(new URL('..', import.meta.url))
 const OUT = path.join(ROOT, 'bitrix/templates/grandgurme/include/generated.php')
 
@@ -55,6 +57,9 @@ const data = {
   legal: { ...footer.legal, copyright: '© №1 Гранд Гурмэ' },
   brand: media.brand,
   icons: icons.icons,
+  /* Медиафайлы, которые есть на сервере: адрес => true, чтобы fn.php
+     проверял isset(). Тот же список лежит в JS-бандле. */
+  mediaFiles: Object.fromEntries(mediaManifest().map((src) => [src, true])),
 }
 
 /** JS-значение → литерал PHP. Ключи и строки экранируются одинарными кавычками. */

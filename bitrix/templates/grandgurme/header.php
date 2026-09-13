@@ -23,7 +23,13 @@ $ggHero = defined('GG_HERO') && GG_HERO === true;
   <meta charset="<?= LANG_CHARSET ?>">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="color-scheme" content="light dark">
+<?php /* Иконки нет на сервере — пустая data:-ссылка. Без <link> браузер сам
+         пойдёт за /favicon.ico, и промах снова поднимет ядро CMS. */ ?>
+<?php if (gg_media_exists('/media/brand/favicon.svg')): ?>
   <link rel="icon" href="/media/brand/favicon.svg" type="image/svg+xml">
+<?php else: ?>
+  <link rel="icon" href="data:,">
+<?php endif; ?>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

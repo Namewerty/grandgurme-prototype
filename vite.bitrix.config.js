@@ -11,15 +11,23 @@
  */
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite'
+import { mediaManifest } from './scripts/media-manifest.mjs'
 
 const ROOT = fileURLToPath(new URL('.', import.meta.url))
 
 export default defineConfig({
   root: ROOT,
   // public/ на Битриксе не копируем: медиа лежит в корне сайта (/media),
-  // а не внутри шаблона — так его удобнее возить партиями и заменять
-  // настоящими кадрами, не пересобирая шаблон.
+  // а не внутри шаблона — так его удобнее возить партиями.
   publicDir: false,
+
+  // Список медиафайлов, которые есть на сервере. media.js по нему не
+  // запрашивает отсутствующие файлы: на Битриксе каждый такой промах
+  // поднимает ядро CMS. Подробности — в scripts/media-manifest.mjs.
+  // Цена: новый кадр в /media виден только после пересборки и заливки app.js.
+  define: {
+    __GG_MEDIA_MANIFEST__: JSON.stringify(mediaManifest()),
+  },
   // Ассеты шаблона лежат по абсолютному пути — шаблон общий для всех страниц.
   base: '/bitrix/templates/grandgurme/assets/',
 

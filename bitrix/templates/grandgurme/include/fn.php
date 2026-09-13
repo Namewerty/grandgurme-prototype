@@ -40,6 +40,48 @@ function gg_e($s): string
     return htmlspecialcharsbx((string)$s);
 }
 
+/**
+ * Есть ли медиафайл на сервере — по манифесту mediaFiles из generated.php.
+ *
+ * На Битриксе отсутствующий файл уходит в urlrewrite.php и поднимает ядро CMS,
+ * поэтому промах рисуется заглушкой без src. Список составляет
+ * scripts/media-manifest.mjs, тот же список лежит в JS-бандле (media.js).
+ * Адреса вне /media/ манифест не описывает — они считаются существующими.
+ */
+function gg_media_exists(string $src): bool
+{
+    if ($src === '') {
+        return false;
+    }
+    $path = preg_split('/[?#]/', $src)[0];
+    if (strncmp($path, '/media/', 7) !== 0) {
+        return true;
+    }
+    return isset(gg()['mediaFiles'][$path]);
+}
+
+/**
+ * Кадр для media.js: <span data-media>, если файл есть, и готовая заглушка,
+ * если нет. Заглушка повторяет разметку markMissing из src/js/media.js —
+ * без <img> и без src, так что запроса за файлом не будет вовсе.
+ */
+function gg_media_slot(string $slotClass, string $src, string $ratio, string $frameClass, string $alt): string
+{
+    if (gg_media_exists($src)) {
+        return '<span class="' . gg_e($slotClass) . '" data-media="image"'
+            . ' data-src="' . gg_e($src) . '" data-ratio="' . gg_e($ratio) . '"'
+            . ' data-class="' . gg_e($frameClass) . '" data-alt="' . gg_e($alt) . '"></span>';
+    }
+
+    $file = basename(preg_split('/[?#]/', $src)[0]);
+    $label = str_replace(['/', ' '], [':', ''], $ratio);
+
+    return '<div class="media ' . gg_e($frameClass) . ' is-missing"'
+        . ' style="--media-ratio: ' . gg_e(str_replace([':', '/'], ' / ', $label)) . '">'
+        . '<span class="media__note">' . gg_e($file . ' · ' . $label) . '</span>'
+        . '</div>';
+}
+
 /** Иконка из набора прототипа. Отсутствующий ключ — пустая строка, не ошибка. */
 function gg_icon(string $key): string
 {
@@ -257,8 +299,13 @@ function gg_logo(bool $hero): string
     $src = $hero ? $brand['logoWhite'] : $brand['logo'];
     $href = $hero ? '#hero' : '/';
 
+    // Файла нет — вордмарк сразу, как делает createLogo в media.js при ошибке.
+    $inner = gg_media_exists($src)
+        ? '<img src="' . gg_e($src) . '" alt="' . gg_e($name['num'] . ' ' . $name['name']) . '">'
+        : '<span class="wordmark"><span class="wordmark__num">' . gg_e($name['num']) . '</span><span>' . gg_e($name['name']) . '</span></span>';
+
     return '<a class="header__logo" href="' . gg_e($href) . '" aria-label="' . gg_e($name['num'] . ' ' . $name['name'] . ' — на главную') . '">'
-        . '<img src="' . gg_e($src) . '" alt="' . gg_e($name['num'] . ' ' . $name['name']) . '">'
+        . $inner
         . '</a>';
 }
 
@@ -358,12 +405,13 @@ function gg_catalog_panel(): void
                       <?php foreach ($cat['subs'] as $sub): ?>
                         <li class="megagrid__cell">
                           <a class="navcard" href="<?= gg_e(gg_sub_url($cat['slug'], $sub['slug'])) ?>">
-                            <span class="navcard__media"
-                                  data-media="image"
-                                  data-src="<?= gg_e(gg_nav_image($cat['slug'], $sub['slug'])) ?>"
-                                  data-ratio="4:3"
-                                  data-class="navcard__frame"
-                                  data-alt="<?= gg_e($cat['name'] . ' — ' . $sub['name']) ?>"></span>
+                            <?= gg_media_slot(
+                                'navcard__media',
+                                gg_nav_image($cat['slug'], $sub['slug']),
+                                '4:3',
+                                'navcard__frame',
+                                $cat['name'] . ' — ' . $sub['name']
+                            ) ?>
                             <span class="navcard__name"><?= gg_e($sub['name']) ?></span>
                           </a>
                         </li>
@@ -382,9 +430,7 @@ function gg_catalog_panel(): void
             <aside class="megapanel__promo" aria-label="Подборки">
               <?php foreach ($map['collections'] as $c): ?>
                 <a class="promocard" href="<?= gg_e($c['href']) ?>">
-                  <span class="promocard__media" data-media="image"
-                        data-src="<?= gg_e($c['image']) ?>" data-ratio="<?= gg_e($c['ratio']) ?>"
-                        data-class="promocard__frame" data-alt="<?= gg_e($c['title']) ?>"></span>
+                  <?= gg_media_slot('promocard__media', $c['image'], $c['ratio'], 'promocard__frame', $c['title']) ?>
                   <span class="promocard__title"><?= gg_e($c['title']) ?></span>
                   <span class="promocard__text"><?= gg_e($c['text']) ?></span>
                 </a>
@@ -434,11 +480,13 @@ function gg_company_panel(): void
             <?php if ($feature): ?>
               <aside class="infofeature" aria-label="<?= gg_e($feature['title']) ?>">
                 <a class="infofeature__link" href="<?= gg_e($feature['action']['href']) ?>">
-                  <span class="infofeature__media" data-media="image"
-                        data-src="<?= gg_e($feature['image']['src']) ?>"
-                        data-ratio="<?= gg_e($feature['image']['ratio']) ?>"
-                        data-class="infofeature__frame"
-                        data-alt="<?= gg_e($feature['image']['alt']) ?>"></span>
+                  <?= gg_media_slot(
+                      'infofeature__media',
+                      $feature['image']['src'],
+                      $feature['image']['ratio'],
+                      'infofeature__frame',
+                      $feature['image']['alt']
+                  ) ?>
                   <span class="infofeature__title"><?= gg_e($feature['title']) ?></span>
                   <span class="infofeature__text"><?= gg_e($feature['text']) ?></span>
                   <span class="infofeature__action">
