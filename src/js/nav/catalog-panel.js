@@ -252,11 +252,17 @@ export function initCatalogPanel(panel) {
     })
   })
 
-  activate(defaultCategorySlug)
+  /* Категория по умолчанию приходит из разметки, а не из данных прототипа:
+     на Битриксе панель собирает сервер по карте витрины, и состав категорий
+     там свой. data-default — единственный источник правды о том, что
+     открыто первым; данные прототипа остаются запасным вариантом. */
+  const initial = panel.dataset.default || defaultCategorySlug || cats[0]?.dataset.cat
+
+  activate(initial)
 
   return {
     /** Каждое открытие начинается с флагманской категории. */
-    reset: () => activate(defaultCategorySlug),
+    reset: () => activate(initial),
     focusFirst: () => focusCat(0),
   }
 }

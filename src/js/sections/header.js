@@ -330,7 +330,7 @@ function markCurrentLinks() {
 
 /* ------------------------------------------------- выпадающие панели */
 
-function initPanels(header, onToggle) {
+function initPanels(header, onToggle, ssr = false) {
   const items = []
 
   header.querySelectorAll('[data-panel-trigger]').forEach((trigger) => {
@@ -339,8 +339,12 @@ function initPanels(header, onToggle) {
     // Панели ещё нет — пункт остаётся обычной ссылкой.
     if (!factory) return
 
-    const panel = factory.build()
-    header.appendChild(panel)
+    /* На Битриксе панель уже отрисована сервером: её содержимое должно быть
+       в исходном html, иначе меню каталога не видит поисковик. Здесь мы её
+       только находим и оживляем. В прототипе — собираем на месте. */
+    const panel = ssr ? header.querySelector(`[data-panel="${key}"]`) : factory.build()
+    if (!panel) return
+    if (!ssr) header.appendChild(panel)
     hydrateMedia(panel)
 
     items.push({ key, trigger, panel, api: factory.init?.(panel) })
@@ -462,13 +466,23 @@ function wireNavPanel(header, panel) {
 
 /* ------------------------------------------------------------- init */
 
-export function initHeader() {
+/**
+ * @param {{ ssr?: boolean }} [options] ssr — разметка шапки уже пришла
+ *   с сервера (шаблон Битрикса): рисовать заново нельзя, нужно только
+ *   поднять поведение.
+ */
+export function initHeader({ ssr = false } = {}) {
   const header = document.querySelector('[data-header]')
   const panel = document.querySelector('#nav-panel')
 
-  renderTopbar(document.querySelector('#topbar'))
-  renderHeader(header)
-  renderNavPanel(panel)
+  if (ssr) {
+    const topbarEl = document.querySelector('#topbar')
+    if (topbarEl) initTopbarMenus(topbarEl)
+  } else {
+    renderTopbar(document.querySelector('#topbar'))
+    renderHeader(header)
+    renderNavPanel(panel)
+  }
 
   if (!header) return
 
@@ -481,9 +495,13 @@ export function initHeader() {
      непонятно от чего. Ссылка на поиск объявлена заранее — панели поднимаются
      первыми, а в их onToggle он уже нужен. */
   let search = null
-  const megamenu = initPanels(header, (isOpen) => {
-    if (isOpen) search?.close()
-  })
+  const megamenu = initPanels(
+    header,
+    (isOpen) => {
+      if (isOpen) search?.close()
+    },
+    ssr,
+  )
 
   search = initSearch({
     header,

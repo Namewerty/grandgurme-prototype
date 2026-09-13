@@ -12,7 +12,9 @@
     "prebuild": "node scripts/build-pages.mjs",
     "build": "vite build",
     "preview": "vite preview",
-    "postbuild": "node scripts/after-build.mjs"
+    "postbuild": "node scripts/after-build.mjs",
+    "bitrix:data": "node scripts/build-bitrix-data.mjs",
+    "bitrix": "node scripts/build-bitrix-data.mjs && vite build --config vite.bitrix.config.js"
   },
   "dependencies": {
     "gsap": "^3.13.0",

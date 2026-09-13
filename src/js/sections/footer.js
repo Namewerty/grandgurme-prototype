@@ -36,11 +36,13 @@ const social = ({ label, href, icon }) => `
   </a>
 `
 
-export function initFooter() {
+export function initFooter({ ssr = false } = {}) {
   const mount = document.querySelector('#site-footer')
   if (!mount) return
 
-  mount.innerHTML = `
+  // На Битриксе подвал приходит с сервера: это карта сайта, и она обязана
+  // быть в исходном html. Здесь остаётся только переключатель темы.
+  if (!ssr) mount.innerHTML = `
     <div class="container">
       <div class="footer__inner">
         <div class="footer__lead">

@@ -29,3 +29,9 @@ design-code.html
 /**/index.html
 !/index.html
 !/alt/index.html
+
+# Результаты битриксовой сборки (npm run bitrix): собираются из src, на сервер
+# уезжают архивом вручную. Архивы для заливки тоже не храним.
+bitrix/templates/grandgurme/assets/
+bitrix/templates/grandgurme/include/generated.php
+grandgurme-bitrix-build*.zip
