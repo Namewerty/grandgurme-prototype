@@ -69,4 +69,7 @@ $ggHero = defined('GG_HERO') && GG_HERO === true;
 
 <?php gg_nav_panel(); ?>
 
-<main id="main"<?= defined('GG_SECTIONS') && GG_SECTIONS === true ? ' data-gg-sections' : '' ?>>
+<?php /* Класс страницы объявляет сама страница до подключения шапки:
+         define('GG_PAGE_CLASS', 'page-catalog'). Ровно эти классы ставит
+         скрипт в прототипе, и раскладка внутренних страниц держится на них. */ ?>
+<main id="main"<?= defined('GG_PAGE_CLASS') ? ' class="' . gg_e(GG_PAGE_CLASS) . '"' : '' ?><?= defined('GG_SECTIONS') && GG_SECTIONS === true ? ' data-gg-sections' : '' ?>>

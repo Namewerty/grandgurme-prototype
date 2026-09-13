@@ -1,0 +1,5 @@
+# Test stand for the "N1 Grand Gourmet" storefront migration to 1C-Bitrix.
+# The live site is grandgurme.ru — a different installation.
+# This subdomain is closed to indexing on purpose.
+User-agent: *
+Disallow: /
