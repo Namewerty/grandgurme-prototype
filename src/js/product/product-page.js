@@ -31,8 +31,11 @@ import { findProductBySlug, galleryOf, getProducts } from '../../data/catalog-pr
 import { journalPosts } from '../../data/journal.js'
 import { productCopy } from '../../data/product-copy.js'
 import { ROUTES } from '../../data/routes.js'
-import { addToCart } from '../cart.js'
+import { cartCopy } from '../../data/cart-copy.js'
+import { add as addToCart } from '../cart/store.js'
+import { showToast } from '../cart/toast.js'
 import { createProductCard } from '../components/product-card.js'
+import { createQtyStepper } from '../components/qty-stepper.js'
 import { createImage } from '../media.js'
 import { escapeHtml, formatPrice } from '../catalog/model.js'
 import { icons } from '../icons.js'
@@ -181,17 +184,28 @@ function buyColumn(product) {
      у рыбы линейки нет вовсе, и лишнего разделителя быть не должно. */
   const line = [product.attrs.species, product.attrs.grade].filter(Boolean).join(' · ')
 
+  /* Статус стоит сразу под ценой: «сколько» и «когда» — один вопрос,
+     и отвечать на него через два блока нельзя. Знак ⬦ — тот же ромб,
+     что у пунктов обязательств на главной. */
+  const status = product.inStock ? copy.status.inStock : copy.status.preorder
+
   return `
     <div class="pbuy">
       <h1 class="pbuy__title">${escapeHtml(product.name)}</h1>
       ${line ? `<p class="pbuy__line">${escapeHtml(line)}</p>` : ''}
       <p class="pbuy__price">${priceLabel(product)}</p>
+      <p class="pbuy__status${product.inStock ? '' : ' is-preorder'}">
+        <span class="pbuy__status-mark" aria-hidden="true">⬦</span>${status}
+      </p>
 
       ${buyRows(product)}
 
       <div class="pbuy__actions">
+        <span data-qty></span>
         <button type="button" class="btn btn--solid" data-add-to-cart>${copy.buy.add}</button>
-        <button type="button" class="btn" data-ask-expert>${copy.buy.expert}</button>
+        <button type="button" class="btn" data-ask-expert>
+          ${product.price == null ? copy.buy.askPrice : copy.buy.expert}
+        </button>
       </div>
 
       <ul class="pbuy__promises">
@@ -306,18 +320,27 @@ function notFound(mount) {
     </div>`
 }
 
+/** Кладёт в корзину и показывает тост со ссылкой на неё. */
+function addWithToast(product, qty = 1) {
+  addToCart(product, qty)
+  showToast(cartCopy.toast.added, cartCopy.toast.action)
+}
+
 /** Карточки для ленты. Кадр берётся из самой позиции, как в сетке каталога. */
 function cardFor(product) {
   return createProductCard({
     name: product.name,
-    note: product.weightLabel,
+    note: product.inStock
+      ? product.weightLabel
+      : `${product.weightLabel} · ${categoryCopy.card.outOfStock}`,
     href: ROUTES.product(product.slug),
     price: priceLabel(product),
     image: { src: product.photo, ratio: '1:1' },
     add: {
       label: categoryCopy.card.add,
-      onAdd: () => addToCart(categoryCopy.card.added),
+      onAdd: () => addWithToast(product),
     },
+    muted: !product.inStock,
   })
 }
 
@@ -497,12 +520,23 @@ export function initProductPage(mount) {
   )
   fillRail(mount, 'species', otherSpecies(product))
 
+  // Количество живёт в степпере до нажатия «В корзину»: карточка ничего
+  // не пишет в корзину, пока человек не решил.
+  const qty = createQtyStepper({
+    value: 1,
+    label: copy.buy.qty,
+    decrease: copy.buy.decrease,
+    increase: copy.buy.increase,
+  })
+  mount.querySelector('[data-qty]')?.replaceWith(qty.node)
+
   mount.querySelector('[data-add-to-cart]')?.addEventListener('click', () => {
-    addToCart(copy.buy.added)
+    addWithToast(product, qty.value)
   })
 
   // Кнопка не заводит вторую форму на странице, а поднимает угловой виджет:
-  // одна форма на сайте — одна точка приёма заявок.
+  // одна форма на сайте — одна точка приёма заявок. У позиции без цены
+  // она же называется «Узнать цену».
   mount.querySelector('[data-ask-expert]')?.addEventListener('click', () => {
     document.dispatchEvent(new CustomEvent('expert:open'))
   })

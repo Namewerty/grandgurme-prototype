@@ -96,6 +96,25 @@
   color: var(--fg);
 }
 
+/* ---- Статус наличия ------------------------------------------------------
+   Сразу под ценой. Ромб золотом — акцент линией, текст приглушённый:
+   бирюзовый здесь нельзя, это не интерактив.                               */
+
+.pbuy__status {
+  display: flex;
+  align-items: baseline;
+  gap: .5rem;
+  margin-top: .45rem;
+  font-size: .82rem;
+  line-height: 1.5;
+  color: var(--fg-mute);
+}
+
+.pbuy__status-mark {
+  flex: none;
+  color: var(--gold-fg);
+}
+
 /* ---- Ряды выбора ---------------------------------------------------------
    Капсула ведёт на адрес ДРУГОЙ позиции, а не подсвечивается на месте:
    фасовки одной линейки — разные товары с разными слагами.                 */
@@ -153,6 +172,7 @@
 .pbuy__actions {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: .6rem;
   margin-top: 1.75rem;
 }
@@ -357,7 +377,10 @@
   .pspecs { grid-template-columns: minmax(0, 1fr); }
 
   .pbuy__actions { width: 100%; }
-  .pbuy__actions .btn { flex: 1 1 12rem; }
+  /* Степпер своей ширины не отдаёт, кнопка «В корзину» встаёт рядом
+     и забирает остаток строки; «Спросить эксперта» уходит строкой ниже. */
+  .pbuy__actions .btn { flex: 1 1 10rem; }
+  .pbuy__actions .btn:last-child { flex-basis: 100%; }
 
   .post--wide {
     grid-template-columns: minmax(0, 1fr);

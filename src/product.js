@@ -33,6 +33,7 @@ import './styles/components/rail.css'
 import './styles/components/crumbs.css'
 import './styles/components/product-card.css'
 import './styles/components/post-card.css'
+import './styles/components/qty.css'
 import './styles/pages/page.css'
 import './styles/pages/product.css'
 

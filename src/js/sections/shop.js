@@ -38,13 +38,19 @@
       а поверх краёв ленты по наведению всплывают стрелки. Подробности
       и мотивировка — в шапке js/rail.js.
 
-   4. Корзина. Иконочная кнопка дёргает фиктивную корзину из ../cart.js.
+   4. Корзина. Иконочная кнопка кладёт позицию в настоящую корзину
+      (js/cart/store.js). Две банки икры кладутся настоящими позициями
+      каталога — с наличием из выгрузки; остальные шесть выгрузки не имеют
+      и кладутся снимком с витрины (см. cartProductOf).
    ============================================================================ */
 
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { productSets, shopCopy } from '../../data/products.js'
-import { addToCart } from '../cart.js'
+import { findProductBySlug } from '../../data/catalog-products.js'
+import { cartCopy } from '../../data/cart-copy.js'
+import { add as addToCart } from '../cart/store.js'
+import { showToast } from '../cart/toast.js'
 import { createProductCard } from '../components/product-card.js'
 import { createArrow, createPager, initRail } from '../rail.js'
 
@@ -70,7 +76,38 @@ const THUMB_DURATION = 0.45
  * (js/components/product-card.js). Плашки, сердца и старой цены на главной
  * нет: витрина — короткая подсказка, а не выдача каталога.
  */
-function buildCard({ name, note, price, href, media }) {
+/**
+ * Что класть в корзину с витрины.
+ *
+ * Позиция каталога — только если адрес ведёт на неё И название совпадает.
+ * Проверка названия не лишняя: шесть позиций без выгрузки ведут на
+ * демонстрационный адрес SAMPLE.product, то есть на банку белуги, и без неё
+ * «Пате из лосося» легло бы в корзину белугой.
+ *
+ * Остальное кладётся снимком витрины. Цена берётся из строки карточки
+ * (она уже помечена предварительной в src/data/products.js), наличие —
+ * ⚠ ПОДТВЕРДИТЬ У ЗАКАЗЧИКА: остатков по рыбе, крабам и наборам в выгрузке
+ * нет, и позиция считается имеющейся на складе.
+ */
+function cartProductOf(item, key, index) {
+  const slug = item.href.startsWith('/product/') ? item.href.slice('/product/'.length) : null
+  const catalog = slug ? findProductBySlug(slug) : null
+  if (catalog && catalog.name === item.name) return catalog
+
+  const digits = String(item.price).replace(/\D/g, '')
+  return {
+    id: `showcase-${key}-${index}`,
+    name: item.name,
+    note: item.note,
+    href: item.href,
+    image: item.media.src,
+    price: digits ? Number(digits) : null,
+    inStock: true,
+  }
+}
+
+function buildCard(item, key, index) {
+  const { name, note, price, href, media } = item
   return createProductCard({
     name,
     note,
@@ -79,7 +116,13 @@ function buildCard({ name, note, price, href, media }) {
     // alt по названию товара, а не общий из реестра: кадр скрыт от
     // скринридера, но так он осмысленно попадёт в поиск по картинкам.
     image: { src: media.src, ratio: '1:1' },
-    add: { label: shopCopy.add, onAdd: () => addToCart(shopCopy.added) },
+    add: {
+      label: shopCopy.add,
+      onAdd: () => {
+        addToCart(cartProductOf(item, key, index))
+        showToast(cartCopy.toast.added, cartCopy.toast.action)
+      },
+    },
   })
 }
 
@@ -92,7 +135,7 @@ function buildRail(key) {
   rail.tabIndex = 0
   rail.dataset.set = key
 
-  productSets[key].forEach((product) => rail.appendChild(buildCard(product)))
+  productSets[key].forEach((item, index) => rail.appendChild(buildCard(item, key, index)))
   return rail
 }
 

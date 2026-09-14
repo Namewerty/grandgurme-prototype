@@ -1,0 +1,518 @@
+/* ============================================================================
+   Оформление заказа /checkout и «Заказ принят» /order-success.
+
+   ЧТОБЫ НЕ ВЫГЛЯДЕТЬ ЧУЖОЙ ФОРМОЙ. Разделы идут друг под другом через
+   волосяную линию, с крупной цифрой в Prata слева — тем же приёмом, что
+   цифры доверия и нумерация глав на главной. Подписи разделов — надзаголовок
+   фильтров каталога: мелкие прописные с разрядкой, золотым текстом.
+   Поля — капсулы на волосяной линии, как поле виджета эксперта. Рамок
+   вокруг групп, заливок и теней нет; карточка одна — липкая сводка.
+
+   Бирюзовый — только интерактив: фокус поля и фокус капсулы. Выбранная
+   капсула залита --fg, как активная капсула в каталоге.
+   ============================================================================ */
+
+.page-checkout,
+.page-order {
+  padding-top: clamp(1rem, 2vh, 1.75rem);
+  padding-bottom: clamp(3rem, 6vh, 5rem);
+}
+
+.checkout__head { margin-top: clamp(.75rem, 1.5vh, 1.15rem); }
+
+.checkout__title {
+  margin: .35rem 0 0;
+  font-size: clamp(2rem, 3.8vw, 3rem);
+  line-height: var(--lh-h2);
+}
+
+.checkout__lead {
+  margin-top: .75rem;
+  font-size: .9rem;
+  color: var(--fg-mute);
+}
+
+.checkout__layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(18rem, 23rem);
+  gap: clamp(2rem, 4vw, 4.5rem);
+  align-items: start;
+  margin-top: clamp(1.25rem, 3vh, 2rem);
+}
+
+/* ---- Разделы ------------------------------------------------------------- */
+
+.co-step {
+  display: grid;
+  grid-template-columns: 3.25rem minmax(0, 1fr);
+  column-gap: clamp(1rem, 2vw, 1.75rem);
+  padding-block: clamp(1.5rem, 3vh, 2.25rem);
+  border-top: 1px solid var(--hairline);
+}
+
+.co-step:last-child { border-bottom: 1px solid var(--hairline); }
+
+.co-step__num {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 3.2vw, 2.6rem);
+  line-height: 1;
+  color: var(--gold-fg);
+}
+
+.co-step__body {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  min-width: 0;
+}
+
+.co-step__title,
+.co-label {
+  margin: 0;
+  padding-top: .5rem;
+  font-family: var(--font-body);
+  font-size: var(--fs-eyebrow);
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: var(--ls-eyebrow);
+  text-transform: uppercase;
+  color: var(--gold-fg);
+}
+
+.co-panel[hidden] { display: none; }
+
+/* ---- Поля ---------------------------------------------------------------- */
+
+.fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+  gap: 1rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: .35rem;
+  min-width: 0;
+}
+
+.field--wide { grid-column: 1 / -1; }
+
+.field__label {
+  padding: 0;
+  font-size: .72rem;
+  letter-spacing: .06em;
+  color: var(--fg-mute);
+}
+
+.field__optional { opacity: .8; }
+
+.field__input {
+  width: 100%;
+  min-height: 48px;
+  padding: .6rem 1.1rem;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  font-family: var(--font-body);
+  font-size: .9rem;
+  line-height: 1.4;
+  color: var(--fg);
+  transition: border-color var(--dur-line) var(--ease-out);
+}
+
+/* Мягкое скругление у многострочного поля: капсула на трёх строках —
+   это пузырь, а не поле. */
+textarea.field__input {
+  min-height: 6.5rem;
+  padding: .8rem 1.1rem;
+  border-radius: var(--radius-card-sm);
+  resize: vertical;
+}
+
+.field__input::placeholder { color: var(--fg-mute); opacity: .8; }
+.field__input:hover { border-color: var(--gold); }
+
+/* Фокус поля — бирюзовая рамка самой капсулы. Кольцо поверх неё второй
+   линией было бы уже шумом. */
+.field__input:focus,
+.field__input:focus-visible {
+  outline: none;
+  border-color: var(--caspian);
+}
+
+.field__input[aria-invalid='true'] { border-color: var(--gold); }
+
+/* Ошибка текстом под полем, а не всплывающая: всплывающую не перечитать. */
+.field__error {
+  font-size: .75rem;
+  line-height: 1.4;
+  color: var(--gold-fg);
+}
+
+.field__error[hidden] { display: none; }
+
+.field__hint {
+  font-size: .78rem;
+  line-height: 1.5;
+  color: var(--fg-mute);
+  text-wrap: pretty;
+}
+
+.field__hint a,
+.check a {
+  color: var(--fg);
+  border-bottom: 1px solid var(--caspian);
+  transition: color var(--dur-line) var(--ease-out);
+}
+
+.field__hint a:hover,
+.check a:hover { color: var(--caspian-fg); }
+
+.field__static {
+  display: flex;
+  align-items: center;
+  min-height: 48px;
+  font-size: .95rem;
+  color: var(--fg);
+}
+
+/* ---- Капсулы-радиокнопки ------------------------------------------------- */
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: .55rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.group legend { margin-bottom: .55rem; }
+
+.caps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+}
+
+.cap { position: relative; display: inline-flex; }
+
+/* Родная радиокнопка не прячется через display: none — она остаётся
+   в табуляции и отвечает на стрелки; лежит под нарисованной капсулой. */
+.cap input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.cap__face {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: .5rem 1.15rem;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+  font-family: var(--font-body);
+  font-size: .82rem;
+  line-height: 1.2;
+  color: var(--fg);
+  white-space: nowrap;
+  transition: border-color var(--dur-line) var(--ease-out),
+              background-color var(--dur-line) var(--ease-out),
+              color var(--dur-line) var(--ease-out);
+}
+
+.cap:hover .cap__face { border-color: var(--gold); }
+
+.cap input:checked + .cap__face {
+  background: var(--fg);
+  border-color: var(--fg);
+  color: var(--bg);
+}
+
+.cap input:focus-visible + .cap__face {
+  outline: 2px solid var(--caspian);
+  outline-offset: 3px;
+}
+
+.cap input[aria-invalid='true'] + .cap__face { border-color: var(--gold); }
+
+.cap input:disabled { cursor: not-allowed; }
+
+.cap input:disabled + .cap__face {
+  color: var(--fg-mute);
+  opacity: .45;
+}
+
+.cap:hover input:disabled + .cap__face { border-color: var(--hairline); }
+
+/* Лента дней. На десктопе переносится на вторую строку: четырнадцать дней
+   в колонку формы не входят, а обрезанная справа капсула читается как брак.
+   На мобильном — одна строка, листается пальцем, без полосы прокрутки. */
+.days {
+  padding: .3rem .25rem .4rem;
+  margin-inline: -.25rem;
+}
+
+@media (max-width: 767px) {
+  .days {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .days::-webkit-scrollbar { display: none; }
+}
+
+.cap--day { flex: none; }
+
+.cap--day .cap__face {
+  flex-direction: column;
+  gap: .15rem;
+  min-width: 4.6rem;
+  min-height: 56px;
+  padding: .45rem .9rem;
+}
+
+.cap__sub {
+  font-size: .68rem;
+  opacity: .75;
+}
+
+/* ---- Самовывоз ----------------------------------------------------------- */
+
+.pickup {
+  margin-top: .6rem;
+  border-top: 1px solid var(--hairline);
+}
+
+.pickup__point {
+  display: flex;
+  gap: .75rem;
+  padding-block: .9rem;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.pickup__text {
+  display: flex;
+  flex-direction: column;
+  gap: .2rem;
+}
+
+.pickup__name {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  color: var(--fg);
+}
+
+.pickup__address { font-size: .88rem; color: var(--fg); }
+.pickup__hours { font-size: .8rem; color: var(--fg-mute); }
+
+/* ---- Оплата по запросу и согласие ---------------------------------------- */
+
+.co-note {
+  max-width: 52ch;
+  font-size: .92rem;
+}
+
+.check {
+  position: relative;
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  align-items: start;
+  gap: .75rem;
+  min-height: 44px;
+  font-size: .85rem;
+  line-height: 1.5;
+  color: var(--fg-mute);
+  cursor: pointer;
+}
+
+.check input {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  opacity: 0;
+}
+
+/* Радиуса у квадрата нет: 20 px — не капсула и не карточка, а ступеней
+   вне шкалы в проекте нет. Тот же приём, что у согласия в виджете. */
+.check__box {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+  border: 1px solid var(--hairline);
+  color: transparent;
+  transition: border-color var(--dur-line) var(--ease-out), color var(--dur-line) var(--ease-out);
+}
+
+.check__box svg {
+  width: 13px;
+  height: 13px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.check input:checked ~ .check__box {
+  border-color: var(--caspian);
+  color: var(--caspian-fg);
+}
+
+.check input:focus-visible ~ .check__box {
+  outline: 2px solid var(--caspian);
+  outline-offset: 3px;
+}
+
+.check input[aria-invalid='true'] ~ .check__box { border-color: var(--gold); }
+
+/* ---- Сводка -------------------------------------------------------------- */
+
+.checkout__edit {
+  margin: -.25rem 0 .75rem;
+}
+
+.summary__action[aria-busy='true'] { cursor: progress; }
+
+/* ---- «Заказ принят» ------------------------------------------------------ */
+
+.order-done {
+  max-width: 46rem;
+  padding-top: clamp(1.5rem, 5vh, 3.5rem);
+}
+
+.order-done__title {
+  font-size: clamp(2.1rem, 4.6vw, 3.6rem);
+  line-height: 1.08;
+}
+
+.order-done__lead {
+  margin-top: 1rem;
+  font-size: clamp(.95rem, 1.3vw, 1.05rem);
+  line-height: 1.6;
+  color: var(--fg-mute);
+}
+
+.order-done__block {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: clamp(2rem, 5vh, 3rem);
+}
+
+.order-steps { border-top: 1px solid var(--hairline); }
+
+.order-steps__item {
+  display: grid;
+  grid-template-columns: 2.5rem minmax(0, 1fr);
+  gap: 1rem;
+  padding-block: 1rem;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.order-steps__num {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  line-height: 1.1;
+  color: var(--gold-fg);
+}
+
+.order-steps__body {
+  display: flex;
+  flex-direction: column;
+  gap: .2rem;
+}
+
+.order-steps__title { font-size: .95rem; color: var(--fg); }
+.order-steps__text { font-size: .82rem; line-height: 1.5; color: var(--fg-mute); }
+
+.order-lines { border-top: 1px solid var(--hairline); }
+
+.order-lines__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding-block: .75rem;
+  border-bottom: 1px solid var(--hairline);
+  font-size: .9rem;
+}
+
+.order-lines__name {
+  display: flex;
+  flex-direction: column;
+  gap: .15rem;
+  min-width: 0;
+  color: var(--fg);
+}
+
+.order-lines__note { font-size: .78rem; color: var(--fg-mute); }
+
+.order-lines__sum {
+  flex: none;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg);
+}
+
+.order-lines__total {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: .95rem;
+}
+
+.order-lines__total span:last-child {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+}
+
+.order-done__contacts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem 1.75rem;
+  font-size: .95rem;
+}
+
+.order-done__contacts a {
+  border-bottom: 1px solid var(--caspian);
+  padding-bottom: 2px;
+  transition: color var(--dur-line) var(--ease-out);
+}
+
+.order-done__contacts a:hover { color: var(--caspian-fg); }
+
+.order-done__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .6rem;
+  margin-top: clamp(2rem, 5vh, 3rem);
+}
+
+/* ---- Планшет и мобильный ------------------------------------------------- */
+
+@media (max-width: 1023px) {
+  .checkout__layout { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 767px) {
+  .co-step { grid-template-columns: 2rem minmax(0, 1fr); }
+  .co-step__num { font-size: 1.6rem; }
+  .co-step__title { padding-top: .35rem; }
+
+  .order-done__actions .btn { flex: 1 1 12rem; }
+}

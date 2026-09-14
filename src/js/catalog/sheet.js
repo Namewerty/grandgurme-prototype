@@ -110,13 +110,10 @@ export function renderSheet(ctx) {
         </button>`
       }).join('')}</div>`,
     })}
-    ${groups}
-    ${ctx.schema.stock === false ? '' : `
-    <button type="button" class="sheet__stock${draft.inStock ? ' is-on' : ''}"
-            role="switch" aria-checked="${draft.inStock}" data-action="sheet-stock">
-      <span>${categoryCopy.filters.inStock}</span>
-      <span class="sheet__switch" aria-hidden="true"></span>
-    </button>`}`
+    ${groups}`
+
+  /* Переключателя «В наличии» в шите больше нет: строка «Наличие» на мобильном
+     остаётся на странице над кнопкой «Фильтры», её не нужно искать в шите. */
 
   wireSheetRanges(ctx)
   updateFooter(ctx)
@@ -249,12 +246,6 @@ export function handleSheetAction(ctx, action, el) {
     const index = draft.benefits.indexOf(value)
     if (index === -1) draft.benefits.push(value)
     else draft.benefits.splice(index, 1)
-    renderSheet(ctx)
-    return true
-  }
-
-  if (action === 'sheet-stock') {
-    draft.inStock = !draft.inStock
     renderSheet(ctx)
     return true
   }

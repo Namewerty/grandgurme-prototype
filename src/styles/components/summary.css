@@ -1,0 +1,161 @@
+/* ============================================================================
+   Сводка заказа: корзина, оформление, «Заказ принят».
+
+   ЕДИНСТВЕННАЯ КАРТОЧКА С ЗАЛИВКОЙ на страницах покупки. Всё остальное там
+   разделено волосяными линиями, как на всём сайте; сводка — исключение,
+   потому что она липкая и едет поверх соседней колонки: без своей подложки
+   её строки сливались бы со строками списка при прокрутке. Заливка —
+   --surface, скругление — --radius-card, тени нет.
+   ============================================================================ */
+
+.summary-sticky {
+  position: sticky;
+  top: calc(var(--header-h) + 1.5rem);
+}
+
+.summary {
+  padding: clamp(1.25rem, 2.2vw, 1.75rem);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  color: var(--fg);
+}
+
+.summary__title {
+  margin: 0 0 .9rem;
+  font-size: 1.25rem;
+  line-height: var(--lh-h3);
+}
+
+.summary__rows {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.summary__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-block: .4rem;
+  font-size: .85rem;
+  line-height: 1.4;
+}
+
+.summary__row[hidden] { display: none; }
+
+.summary__row dt { color: var(--fg-mute); }
+
+.summary__row dd {
+  margin: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg);
+}
+
+.summary__total {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: .6rem;
+  padding-top: .9rem;
+  border-top: 1px solid var(--hairline);
+  font-size: .9rem;
+}
+
+.summary__total-value {
+  font-family: var(--font-display);
+  font-size: clamp(1.25rem, 2vw, 1.55rem);
+  line-height: 1.2;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Итог словами («после подтверждения») — обычным кеглем: крупная Prata
+   хороша для суммы, а фраза в ней на узком экране ломается в три строки. */
+.summary__total-value.is-text {
+  font-family: var(--font-body);
+  font-size: .88rem;
+}
+
+.summary__note {
+  margin-top: .7rem;
+  font-size: .82rem;
+  line-height: 1.55;
+  color: var(--fg-mute);
+  text-wrap: pretty;
+}
+
+.summary__note[hidden] { display: none; }
+
+.summary__action {
+  width: 100%;
+  margin-top: 1.25rem;
+  padding-inline: 1rem;
+  text-align: center;
+}
+
+/* Строка готовности заказа: над сводкой в корзине, под заголовком на
+   странице «Заказ принят». Ромб золотом — тот же знак, что в статусе
+   на карточке товара. */
+.ready-line {
+  display: flex;
+  align-items: baseline;
+  gap: .55rem;
+  font-size: .88rem;
+  line-height: 1.5;
+  color: var(--fg);
+  text-wrap: pretty;
+}
+
+.ready-line__mark {
+  flex: none;
+  color: var(--gold-fg);
+}
+
+/* ---- Свёрнутый состав: кадры с количеством ------------------------------- */
+
+.summary__items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .6rem;
+  margin-bottom: 1rem;
+}
+
+.summary__item {
+  position: relative;
+  width: 56px;
+}
+
+.summary__item-shot {
+  display: block;
+  border-radius: var(--radius-card-sm);
+  overflow: hidden;
+  background: var(--bg);
+}
+
+.summary__item.is-preorder .summary__item-shot { opacity: .55; }
+
+/* Счётчик — бирюзовый, как бейдж корзины в шапке: это тот же знак. */
+.summary__qty {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  display: grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding-inline: 5px;
+  border-radius: var(--radius-pill);
+  background: var(--caspian);
+  color: var(--on-dark);
+  font-size: .65rem;
+  font-weight: 600;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 1023px) {
+  .summary-sticky { position: static; }
+}

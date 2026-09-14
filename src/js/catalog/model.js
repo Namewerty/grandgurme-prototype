@@ -153,8 +153,8 @@ const rangeActive = (state, index, key) => {
  * @param {string|null} excludeKey фасета, которую при проверке пропускаем
  */
 export function matches(product, state, index, excludeKey = null) {
-  if (state.inStock && !product.inStock) return false
-
+  /* Наличия здесь нет намеренно: оно не фильтр, а база выдачи, и решается
+     по набору целиком, а не по одной позиции (см. stockView ниже). */
   if (excludeKey !== 'benefit' && state.benefits.length) {
     if (!state.benefits.some((key) => matchesBenefit(product, key))) return false
   }
@@ -173,15 +173,58 @@ export function matches(product, state, index, excludeKey = null) {
   return true
 }
 
-export const filterAll = (products, state, index) =>
+/* ---------------------------------------------------------------- наличие */
+
+export const countInStock = (list) => list.reduce((n, product) => n + (product.inStock ? 1 : 0), 0)
+
+/**
+ * Что показывать по наличию для набора позиций, прошедших фильтры.
+ *
+ * База — то, что есть на складе. Позиции под заказ добавляются флагом
+ * withPreorder (капсула «и под заказ», ?stock=all). Одно исключение:
+ * если в наборе НЕТ НИ ОДНОЙ позиции в наличии, под заказ показывается
+ * принудительно. Пустая сетка при фильтре, отсекающем весь набор, читается
+ * как поломка сайта, а не как «со склада нет».
+ *
+ * Считается по набору, а не по разделу, и это важно для чёрной икры:
+ * на складе там четыре банки осетра, и человек, выбравший «Белугу»,
+ * иначе получал бы пустую выдачу при восемнадцати позициях под заказ.
+ */
+export function stockView(pool, state) {
+  const inStock = countInStock(pool)
+  const preorder = pool.length - inStock
+  const forced = inStock === 0 && preorder > 0
+  return { inStock, preorder, forced, showPreorder: forced || state.withPreorder }
+}
+
+export const applyStock = (pool, state) =>
+  stockView(pool, state).showPreorder ? pool : pool.filter((product) => product.inStock)
+
+/** Позиции, прошедшие фильтры, без учёта наличия. */
+export const filterPool = (products, state, index) =>
   products.filter((product) => matches(product, state, index, null))
 
-/** Счётчики опций одной фасеты. Собственная фасета из отбора исключена. */
+/** Выдача: фильтры плюс наличие. */
+export const filterAll = (products, state, index) => applyStock(filterPool(products, state, index), state)
+
+/**
+ * Позиции под заказ — после наличия при любой сортировке. Внутри каждой
+ * группы порядок сортировки сохраняется: Array#sort стабилен.
+ */
+export const stockFirst = (list) =>
+  list.slice().sort((a, b) => Number(Boolean(b.inStock)) - Number(Boolean(a.inStock)))
+
+/**
+ * Счётчики опций одной фасеты. Собственная фасета из отбора исключена.
+ * Число у опции — сколько позиций человек увидит, выбрав её: с тем же
+ * правилом наличия, что у выдачи. Иначе у «Белуги» стоял бы ноль и опция
+ * выключалась бы, хотя под заказ её восемнадцать позиций.
+ */
 export function facetCounts(products, state, index, key) {
   const pool = products.filter((product) => matches(product, state, index, key))
   return (index.options[key] || []).map((option) => ({
     value: option,
-    count: pool.filter((product) => product.attrs?.[key] === option).length,
+    count: applyStock(pool.filter((product) => product.attrs?.[key] === option), state).length,
   }))
 }
 
@@ -191,7 +234,7 @@ export function benefitCounts(products, state, index) {
   return BENEFITS.map((benefit) => ({
     value: benefit.key,
     label: benefit.label,
-    count: pool.filter((product) => matchesBenefit(product, benefit.key)).length,
+    count: applyStock(pool.filter((product) => matchesBenefit(product, benefit.key)), state).length,
   }))
 }
 
@@ -249,7 +292,11 @@ export function activeCount(facet, state, index) {
   return state.values[facet.key]?.length || 0
 }
 
-/** Всё активное разом: строки chips и tabs, все пилюли и «В наличии». */
+/**
+ * Всё активное разом: строки chips и tabs и все пилюли. Капсула «и под заказ»
+ * сюда не входит: она меняет базу выдачи, а не сужает её, — ровно как
+ * сортировка, которая фильтром тоже не считается.
+ */
 export function totalActive(state, index, schema) {
   let total = 0
   Object.values(state.values).forEach((list) => {
@@ -261,7 +308,6 @@ export function totalActive(state, index, schema) {
     .forEach((pill) => {
       if (rangeActive(state, index, pill.key)) total += 1
     })
-  if (state.inStock) total += 1
   return total
 }
 

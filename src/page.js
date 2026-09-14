@@ -13,10 +13,12 @@
    токены и базовая типографика. Их задача — показать, что навигация ведёт
    на живые адреса, а не в 404, и что структура сайта продумана целиком.
 
-   Три страницы собираются не по общему шаблону:
+   Четыре страницы собираются не по общему шаблону:
      /sitemap     — полный список адресов, он же проверка целостности карты;
                     карточки товара свёрнуты в одну строку с примером;
      /production  — готовый текст: туда переехала секция «Происхождение»;
+     /delivery    — «Доставка и оплата»: блоки через волосяную линию
+                    (src/data/delivery.js);
      категории    — к описанию добавляется список подкатегорий ссылками.
    ============================================================================ */
 
@@ -35,6 +37,7 @@ import './styles/pages/page.css'
 import { GROUPS, ROUTES, allPages, findPage, staticPages } from './data/routes.js'
 import { categories } from './data/catalog.js'
 import { productionPage } from './data/production.js'
+import { deliveryPage } from './data/delivery.js'
 import { initHeader } from './js/sections/header.js'
 import { initFooter } from './js/sections/footer.js'
 
@@ -126,6 +129,43 @@ function productionBody() {
   `
 }
 
+/**
+ * Доставка и оплата. Одна колонка в читаемую меру, блоки через волосяную
+ * линию — ни вкладок, ни аккордеонов: страницу читают сверху вниз в поисках
+ * одного ответа, и прятать ответы за нажатиями значит заставлять искать.
+ */
+function deliveryBody() {
+  const page = deliveryPage
+
+  const rows = (list) => `
+    <dl class="page__rows">
+      ${list.map(({ term, value }) => `<div class="page__row"><dt>${term}</dt><dd>${value}</dd></div>`).join('')}
+    </dl>`
+
+  const points = (list) => `
+    <ul class="page__docs">
+      ${list.map((p) => `<li><b>${p.name}</b> · ${p.city}, ${p.address} · ${p.hours}</li>`).join('')}
+    </ul>`
+
+  return `
+    ${page.blocks
+      .map(
+        (block) => `
+      <section class="page__block" aria-labelledby="delivery-${block.id}">
+        <h2 class="page__subtitle" id="delivery-${block.id}">${block.title}</h2>
+        ${(block.text || []).map((text) => `<p class="page__p">${text}</p>`).join('')}
+        ${block.rows ? rows(block.rows) : ''}
+        ${block.points ? points(block.points) : ''}
+      </section>`,
+      )
+      .join('')}
+
+    <p class="page__block page__p">
+      ${page.returns.text} <a class="page__inline-link" href="${page.returns.link.href}">${page.returns.link.label}</a>
+    </p>
+  `
+}
+
 /** Не нашли адрес — это 404 в чистом виде, даже если файл называется иначе. */
 const notFoundPage = staticPages.find((page) => page.path === ROUTES.notFound)
 
@@ -134,7 +174,7 @@ const notFoundPage = staticPages.find((page) => page.path === ROUTES.notFound)
  * производство с настоящим текстом, карта сайта и 404 — последняя
  * и должна выглядеть именно так, как выглядит.
  */
-const READY = [ROUTES.production, ROUTES.sitemap, ROUTES.notFound]
+const READY = [ROUTES.production, ROUTES.delivery, ROUTES.sitemap, ROUTES.notFound]
 
 /** Надзаголовок: откуда пришли и что это за адрес. */
 function eyebrowFor(page) {
@@ -169,6 +209,7 @@ function bodyFor(page) {
   if (page.path === ROUTES.sitemap) return sitemapBody()
   if (page.path === ROUTES.search) return searchBody()
   if (page.path === ROUTES.production) return productionBody()
+  if (page.path === ROUTES.delivery) return deliveryBody()
   if (page.template === 'category') return categoryBody(page)
 
   if (page.path === ROUTES.notFound) {

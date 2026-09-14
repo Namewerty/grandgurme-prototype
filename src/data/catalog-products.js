@@ -601,13 +601,16 @@ export const fishProducts = [
  * выглядел бы поломкой. Придут цены — вернуть pill 'price' в caviarSchema
  * и sorts price_asc/price_desc, разметка их уже умеет.
  *
- * ⚠ ОСТАТКИ НЕ ВЫВОДИМ. В выгрузке «в наличии» помечены 4 позиции из 52
- * (осётр русский Премиум и осётр Премиум STURGEON, банка металл 50 г и банка
- * стекло 113 г) — остальные 48, включая всю белугу, числятся отсутствующими.
- * Похоже, что остатки в базе просто не ведутся: магазин, у которого нет
- * ни одной банки белуги, — не то, что показывают на витрине. Поэтому
- * inStock: true у всех, а тумблер «В наличии» у раздела выключен в схеме.
- * Появятся настоящие остатки — вернуть флаги сюда и `stock: true` в схему.
+ * НАЛИЧИЕ — ИЗ ВЫГРУЗКИ, КАК ЕСТЬ. На складе 4 позиции из 52: осётр русский
+ * Премиум и осётр Премиум STURGEON, банка металл 50 г и банка стекло 113 г
+ * (IN_STOCK_1C ниже). Остальные 48, включая всю белугу, — под заказ.
+ * Раньше здесь стояло inStock: true у всех: казалось, что остатки в базе
+ * не ведутся. Заказчик подтвердил, что ведутся, и признак считается
+ * достоверным. Что из этого следует для витрины, решено не подменой данных,
+ * а строкой «Наличие» на странице раздела: по умолчанию видно то, что есть
+ * на складе, позиции под заказ включаются одной капсулой и идут после
+ * наличия (см. stockView в src/js/catalog/model.js).
+ * Обновится выгрузка остатков — править только IN_STOCK_1C.
  *
  * ⚠ ПОЛЕ popularity — НЕ СТАТИСТИКА ПРОДАЖ, её у нас нет. Это порядок
  * позиций в выгрузке 1С, записанный числом, чтобы сортировка по умолчанию
@@ -755,11 +758,21 @@ const packagingSlug = {
   'Пакет': 'paket',
 }
 
+/** Позиции, которые выгрузка 1С от 20.08.2026 числит на складе. */
+const IN_STOCK_1C = new Set([
+  'osetr-russkiy-premium-metall-50',
+  'osetr-russkiy-premium-steklo-113',
+  'osetr-premium-sturgeon-metall-50',
+  'osetr-premium-sturgeon-steklo-113',
+])
+
+const caviarSlug = (line, packaging, weightG) => `${line.slug}-${packagingSlug[packaging]}-${weightG}`
+
 export const caviarProducts = CAVIAR_LINES.flatMap((line) =>
   line.packs.map(([format, weightG, packaging]) => ({ line, format, weightG, packaging })),
 ).map(({ line, format, weightG, packaging }, index) => ({
   id: 100 + index,
-  slug: `${line.slug}-${packagingSlug[packaging]}-${weightG}`,
+  slug: caviarSlug(line, packaging, weightG),
   name: line.name,
   /* Вторая строка карточки — упаковка И вес: без упаковки две позиции
      осетра по 50 г (металл и стекло) отличались бы только пилюлей фильтра,
@@ -768,7 +781,7 @@ export const caviarProducts = CAVIAR_LINES.flatMap((line) =>
   weightG,
   price: null,
   oldPrice: null,
-  inStock: true,
+  inStock: IN_STOCK_1C.has(caviarSlug(line, packaging, weightG)),
   isNew: false,
   isSale: false,
   isClearance: false,

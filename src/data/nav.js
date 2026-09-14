@@ -153,5 +153,10 @@ export const brandName = {
   full: '№1 Гранд Гурмэ',
 }
 
-/** Мок состояния корзины — прототип, без бэкенда. */
-export const cart = { count: 2, href: ROUTES.cart }
+/**
+ * Корзина в шапке. Настоящее число шапка берёт из src/js/cart/store.js
+ * и обновляет по событию cart:change. count здесь — только стартовое
+ * значение для серверной шапки Битрикса (generated.php), которая
+ * подставляет своё число из sale.basket.
+ */
+export const cart = { count: 0, href: ROUTES.cart }

@@ -6,6 +6,7 @@
    (src/data/facets.js): фасета в роли chips даёт строку капсул, в роли tabs —
    строку табов, всё остальное — пилюли с поповером. Поэтому у икры на том же
    коде получается «Сорт» и «Фасовка», а пилюли «Вес» не появляется вовсе.
+   Строка «Наличие» — не фасета и схемой не описывается: она одна на всех.
 
    Три вещи, которые легко потерять при переписывании:
 
@@ -24,12 +25,15 @@ import { icons } from '../icons.js'
 import {
   activeCount,
   benefitCounts,
+  countInStock,
   escapeHtml,
   facetCounts,
+  filterPool,
   formatPrice,
   highlight,
   normalize,
   rangeActive,
+  stockView,
   totalActive,
 } from './model.js'
 
@@ -109,6 +113,52 @@ export function renderTabsRow(ctx) {
     counts.map(({ value, count }) => tab(value, value, count)).join('')
 }
 
+/* -------------------------------------------------------- строка наличия */
+
+/**
+ * Строка «Наличие». Стоит над панелью фильтров на всех разделах, в одном
+ * и том же месте, с подписью слева — как «Вид рыбы» и «Фильтры».
+ *
+ *   НАЛИЧИЕ    [ В наличии · 4 ]   [ + и под заказ · 48 ]
+ *
+ * Левая капсула — не кнопка: это база выдачи, выключить её нельзя, и
+ * обещать скринридеру переключатель, который не переключается, нечестно.
+ * Правая работает как чекбокс. Числа считаются по набору, прошедшему
+ * остальные фильтры, — те же, что в счётчике над сеткой.
+ *
+ * Если со склада по выбранному нет ничего, капсул нет вовсе: вместо них
+ * строка говорит это прямо, а под заказ показывается принудительно.
+ * Выключенный переключатель, который нельзя включить, — это шум.
+ */
+export function renderStockRow(ctx) {
+  const row = ctx.els.stockRow
+  if (!row) return
+
+  row.hidden = ctx.schema.stock === false
+  if (row.hidden) return
+
+  const copyStock = categoryCopy.stock
+  const view = stockView(filterPool(ctx.products, ctx.state, ctx.index), ctx.state)
+
+  if (view.forced) {
+    const text = countInStock(ctx.products) === 0 ? copyStock.noneInSection : copyStock.noneInSelection
+    ctx.els.stock.innerHTML = `<p class="stock-note">${text}</p>`
+    return
+  }
+
+  const on = ctx.state.withPreorder
+  const off = view.preorder === 0
+
+  ctx.els.stock.innerHTML = `
+    <span class="chip is-active chip--base">
+      ${copyStock.inStock}<span class="chip__num">· ${view.inStock}</span>
+    </span>
+    <button type="button" class="chip${on ? ' is-active' : ''}" data-action="stock-preorder"
+            aria-pressed="${on}"${off ? ' aria-disabled="true" tabindex="-1"' : ''}>
+      <span class="chip__check">${icons.plus}</span>${copyStock.withPreorder}<span class="chip__num">· ${view.preorder}</span>
+    </button>`
+}
+
 /* -------------------------------------------------------- панель пилюль */
 
 export function renderBar(ctx) {
@@ -128,15 +178,10 @@ export function renderBar(ctx) {
     })
     .join('')
 
-  /* Тумблера «В наличии» нет там, где остатки не ведутся: фильтр, честно
-     отсекающий 92% раздела, читается как пустой каталог, а не как фильтр. */
-  const stock = schema.stock === false
-    ? ''
-    : `
-    <button type="button" class="pill pill--toggle${state.inStock ? ' is-active' : ''}"
-            data-action="stock" aria-pressed="${state.inStock}">${copy.inStock}</button>`
-
-  ctx.els.bar.innerHTML = `${pills}${stock}
+  /* Тумблера «В наличии» здесь больше нет: его работу забрала строка
+     «Наличие» над панелью (renderStockRow). Два органа управления одним
+     и тем же на одном экране противоречили бы друг другу. */
+  ctx.els.bar.innerHTML = `${pills}
     <span class="bar__divider" aria-hidden="true"></span>
     ${sortPill(ctx, 'pill-sort')}`
 }
@@ -488,8 +533,6 @@ export function renderAppliedChips(ctx) {
           : `${value.min}–${value.max} ${pill.unit}`
       chips.push({ label, action: 'clear-range', key: pill.key })
     })
-
-  if (state.inStock) chips.push({ label: copy.inStock, action: 'clear-stock' })
 
   ctx.els.applied.innerHTML = chips.length
     ? chips

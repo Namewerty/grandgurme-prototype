@@ -55,8 +55,11 @@ import { getLenis } from '../scroll.js'
 import { hasPanel, panelRegistry } from '../nav/panels.js'
 import { initMegamenu } from '../nav/megamenu.js'
 import { initSearch } from '../nav/search.js'
+import { getTotals, subscribe as onCartChange } from '../cart/store.js'
 
 gsap.registerPlugin(ScrollTrigger)
+
+const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
 /* Причины плотной шапки. Складываются по ИЛИ. */
 const skin = { pastHero: false, panelOpen: false }
@@ -227,6 +230,8 @@ const actionLink = ({ key, label, href, action, field, short }) =>
 function renderHeader(mount) {
   if (!mount) return
 
+  const cartCount = getTotals().count
+
   mount.innerHTML = `
     <div class="container">
       <div class="header__inner">
@@ -260,8 +265,8 @@ function renderHeader(mount) {
             ${navActions.map(actionLink).join('')}
             <a class="icon-btn cart-btn" href="${cart.href}">
               ${icons.cart}
-              <span class="cart-btn__count" data-count="${cart.count}">${cart.count}</span>
-              <span class="visually-hidden">Корзина, товаров: ${cart.count}</span>
+              <span class="cart-btn__count" data-count="${cartCount}" aria-hidden="true">${cartCount}</span>
+              <span class="visually-hidden" aria-live="polite">Корзина, товаров: ${cartCount}</span>
             </a>
           </div>
         </div>
@@ -279,6 +284,39 @@ function renderHeader(mount) {
     href: document.querySelector('#hero') ? '#hero' : ROUTES.home,
   })
   mount.querySelector('.header__logo-slot').replaceWith(logo)
+}
+
+/* ------------------------------------------------------ счётчик корзины */
+
+/**
+ * Бейдж корзины слушает cart:change сам. Раньше каждая кнопка «в корзину»
+ * дёргала его руками, и любая новая кнопка была шансом забыть.
+ *
+ * Стартовое число здесь НЕ перерисовывается: в прототипе шапку только что
+ * собрали с числом из хранилища, а на Битриксе число пришло с сервера
+ * из sale.basket и правдивее того, что лежит в браузере.
+ */
+function watchCartBadge(header) {
+  const badge = header.querySelector('.cart-btn__count')
+  if (!badge) return
+
+  const label = badge.parentElement?.querySelector('.visually-hidden')
+
+  onCartChange(({ totals }) => {
+    const count = totals.count
+    if (badge.dataset.count === String(count)) return
+
+    badge.textContent = String(count)
+    badge.dataset.count = String(count)
+    if (label) label.textContent = `Корзина, товаров: ${count}`
+
+    if (REDUCED || !count) return
+    gsap.fromTo(
+      badge,
+      { scale: 1 },
+      { scale: 1.35, duration: 0.16, ease: 'power2.out', yoyo: true, repeat: 1 },
+    )
+  })
 }
 
 /* ------------------------------------------- состояние «после hero» */
@@ -489,6 +527,7 @@ export function initHeader({ ssr = false } = {}) {
   headerEl = header
   wireNavPanel(header, panel)
   watchHeaderState(header)
+  watchCartBadge(header)
 
   /* Поиск и выпадающие панели гасят друг друга: строка поиска занимает место
      содержимого шапки, и оставшаяся под ней раскрытая панель висела бы

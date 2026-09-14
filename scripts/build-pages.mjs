@@ -112,15 +112,25 @@ findGenerated(ROOT).forEach((file) => {
 /**
  * Точка входа страницы.
  *
- * Три входа вместо одного:
- *   /src/category.js  раздел с выгрузкой товаров: фильтры, сетка, боттом-шит;
- *   /src/product.js   карточка товара: галерея, фасовки, ленты;
- *   /src/page.js      всё остальное — общий каркас заглушек.
+ * Шесть входов вместо одного:
+ *   /src/category.js       раздел с выгрузкой товаров: фильтры, сетка, боттом-шит;
+ *   /src/product.js        карточка товара: галерея, фасовки, ленты;
+ *   /src/cart.js           корзина;
+ *   /src/checkout.js       оформление заказа;
+ *   /src/order-success.js  «Заказ принят»;
+ *   /src/page.js           всё остальное — общий каркас заглушек.
  *
  * Раздел без товаров тоже остаётся на заглушке: пустой каталог с нулём
  * в счётчике выглядит на показе хуже, чем честное описание раздела.
  */
+const ENTRY_BY_PATH = {
+  '/cart': '/src/cart.js',
+  '/checkout': '/src/checkout.js',
+  '/order-success': '/src/order-success.js',
+}
+
 function entryFor(page) {
+  if (ENTRY_BY_PATH[page.path]) return ENTRY_BY_PATH[page.path]
   if (page.template === 'product') return '/src/product.js'
   if (page.template !== 'category') return '/src/page.js'
   const slug = page.path.replace('/catalog/', '')

@@ -173,6 +173,19 @@ small,
   color: var(--on-dark);
 }
 
+/* Ссылка-кнопка: «Сбросить всё» в каталоге, «Изменить состав» и «У меня есть
+   промокод» на страницах покупки. Жила в pages/category.css; носителей
+   стало трое, и страницы корзины и оформления стили каталога не грузят. */
+.link-btn {
+  font-family: var(--font-body);
+  font-size: .78rem;
+  color: var(--caspian-fg);
+  border-bottom: 1px solid transparent;
+  transition: border-color var(--dur-line) var(--ease-out);
+}
+
+.link-btn:hover { border-color: currentColor; }
+
 /* 44×44 — минимальная зона касания. Иконка внутри осталась 20px, выросла
    только площадь: на мобильном по кнопкам шапки попадали не с первого раза. */
 .icon-btn {

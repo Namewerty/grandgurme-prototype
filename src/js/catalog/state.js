@@ -40,7 +40,11 @@ export function defaultState(schema, index) {
     values,
     ranges,
     benefits: [],
-    inStock: false,
+    /* База выдачи — то, что есть на складе. Позиции под заказ добавляются
+       капсулой в строке «Наличие»; в адресе это ?stock=all, по умолчанию
+       параметра нет. Если со склада по выбранному нет ничего, они
+       показываются и без флага (stockView в model.js). */
+    withPreorder: false,
     /* Сортировка по умолчанию — первая из доступных разделу: на разделе без
        цен «Сначала дешевле» из адреса тоже не должна применяться. */
     sort: defaultSortFor(schema),
@@ -61,7 +65,7 @@ export function stateFromUrl(schema, index, categorySlug, search = location.sear
   const state = defaultState(schema, index)
   const params = new URLSearchParams(search)
 
-  if (params.has('stock')) state.inStock = params.get('stock') === '1'
+  if (params.get('stock') === 'all') state.withPreorder = true
   if (params.has('ben')) state.benefits = params.get('ben').split(',').filter(Boolean)
 
   const sort = params.get('sort')
@@ -123,7 +127,7 @@ export function stateToSearch(state, index) {
   })
 
   if (state.benefits.length) params.set('ben', state.benefits.join(','))
-  if (state.inStock) params.set('stock', '1')
+  if (state.withPreorder) params.set('stock', 'all')
   if (state.sort !== DEFAULT_SORT) params.set('sort', state.sort)
   if (state.page > 1) params.set('page', String(state.page))
 

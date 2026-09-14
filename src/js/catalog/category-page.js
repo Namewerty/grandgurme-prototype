@@ -24,9 +24,10 @@
      H1 + описание                 чистый текстовый блок
      строка капсул (главная ось)   ВИД РЫБЫ  · множественный выбор
      строка табов (вторая ось)     ОБРАБОТКА · одиночный выбор
-     панель пилюль                 остальные фасеты + В наличии │ Сортировка
+     строка наличия                НАЛИЧИЕ · в наличии + капсула «и под заказ»
+     панель пилюль                 остальные фасеты │ Сортировка
      золотая линия с индикатором   доля показанного от всего раздела
-     «Найдено 24 товара» + сброс
+     «4 в наличии, ещё 48 под заказ» + сброс
      снятие применённых фильтров
      сетка карточек, по 12
 
@@ -39,7 +40,9 @@ import { categoryCopy, fill } from '../../data/category-copy.js'
 import { PAGE_SIZE, getSchema } from '../../data/facets.js'
 import { getProducts } from '../../data/catalog-products.js'
 import { ROUTES } from '../../data/routes.js'
-import { addToCart } from '../cart.js'
+import { cartCopy } from '../../data/cart-copy.js'
+import { add as addToCart } from '../cart/store.js'
+import { showToast } from '../cart/toast.js'
 import { createProductCard } from '../components/product-card.js'
 import { icons } from '../icons.js'
 import { getLenis } from '../scroll.js'
@@ -48,10 +51,13 @@ import {
   debounce,
   escapeHtml,
   filterAll,
+  filterPool,
   formatPrice,
   foundLabel,
   hasAnyActive,
   sortProducts,
+  stockFirst,
+  stockView,
   totalActive,
 } from './model.js'
 import { cloneState, defaultState, stateFromUrl, syncUrl } from './state.js'
@@ -96,6 +102,11 @@ function skeleton(category, lead) {
             <div class="facets__rail tabs" data-tabs></div>
           </div>
 
+          <div class="facets__row" data-stock-row hidden>
+            <span class="facets__label">${copy.stock.label}</span>
+            <div class="facets__rail chips" data-stock></div>
+          </div>
+
           <div class="facets__row facets__row--bar">
             <span class="facets__label">${copy.filters.groupLabel}</span>
             <div class="facets__bar" data-bar></div>
@@ -109,7 +120,7 @@ function skeleton(category, lead) {
         <div class="catalog__rule" aria-hidden="true"><span data-indicator></span></div>
 
         <div class="catalog__status">
-          <p class="catalog__found" data-found></p>
+          <p class="catalog__found" data-found aria-live="polite"></p>
           <div data-reset></div>
         </div>
 
@@ -184,6 +195,8 @@ function createContext(category, mount) {
     chips: mount.querySelector('[data-chips]'),
     tabsRow: mount.querySelector('[data-tabs-row]'),
     tabs: mount.querySelector('[data-tabs]'),
+    stockRow: mount.querySelector('[data-stock-row]'),
+    stock: mount.querySelector('[data-stock]'),
     bar: mount.querySelector('[data-bar]'),
     mobileCount: mount.querySelector('[data-mobile-count]'),
     indicator: mount.querySelector('[data-indicator]'),
@@ -287,7 +300,13 @@ function buildCard(ctx, product) {
       label: copy.card.fav,
       onToggle: (on) => (on ? ctx.favorites.add(product.id) : ctx.favorites.delete(product.id)),
     },
-    add: { label: copy.card.add, onAdd: () => addToCart(copy.card.added) },
+    add: {
+      label: copy.card.add,
+      onAdd: () => {
+        addToCart(product)
+        showToast(cartCopy.toast.added, cartCopy.toast.action)
+      },
+    },
     muted: !product.inStock,
   })
 }
@@ -296,7 +315,9 @@ function buildCard(ctx, product) {
 
 function renderGrid(ctx) {
   const filtered = filterAll(ctx.products, ctx.state, ctx.index)
-  const sorted = sortProducts(filtered, ctx.state.sort)
+  // Под заказ — после наличия при любой сортировке: сначала то, что привезут
+  // сегодня, потом то, что через неделю.
+  const sorted = stockFirst(sortProducts(filtered, ctx.state.sort))
   const visible = sorted.slice(0, ctx.state.page * PAGE_SIZE)
 
   ctx.els.grid.innerHTML = ''
@@ -354,6 +375,23 @@ function renderEmpty(ctx) {
   often.forEach((product) => often_mount.appendChild(buildCard(ctx, product)))
 }
 
+/**
+ * Счётчик над сеткой. Пишет обе цифры, пока есть что сказать про заказ:
+ * «4 в наличии, ещё 48 под заказ» — и когда позиции под заказ скрыты, и
+ * когда показаны. Иначе человек не узнает, что за четырьмя банками стоит
+ * ещё полсотни позиций.
+ */
+function foundText(ctx, found) {
+  const stock = copy.stock
+  const view = stockView(filterPool(ctx.products, ctx.state, ctx.index), ctx.state)
+
+  if (ctx.schema.stock === false || !found || !view.preorder) {
+    return `${copy.results.found} <b>${foundLabel(found)}</b>`
+  }
+  if (!view.inStock) return `<b>${fill(stock.foundPreorderOnly, view)}</b>`
+  return `<b>${fill(stock.found, view)}</b>, ${fill(stock.foundRest, view)}`
+}
+
 /* ---------------------------------------------------------------- рендер */
 
 export function render(ctx) {
@@ -366,11 +404,12 @@ export function render(ctx) {
 
   filters.renderChipsRow(ctx)
   filters.renderTabsRow(ctx)
+  filters.renderStockRow(ctx)
   filters.renderBar(ctx)
   filters.renderAppliedChips(ctx)
   filters.renderSticky(ctx)
 
-  ctx.els.found.innerHTML = `${copy.results.found} <b>${foundLabel(found)}</b>`
+  ctx.els.found.innerHTML = foundText(ctx, found)
   ctx.els.reset.innerHTML = hasAnyActive(ctx.state, ctx.index, ctx.schema)
     ? `<button type="button" class="link-btn" data-action="reset-all">${copy.filters.resetAll}</button>`
     : ''
@@ -415,8 +454,8 @@ function handleAction(ctx, action, el) {
       if (filters.isMobile()) sheet.openSheet(ctx)
       else filters.openPopover(ctx, key, el)
       return
-    case 'stock':
-      ctx.setState({ inStock: !ctx.state.inStock })
+    case 'stock-preorder':
+      ctx.setState({ withPreorder: !ctx.state.withPreorder })
       return
     case 'toggle-facet':
       ctx.toggleValue(key, value)
@@ -465,9 +504,6 @@ function handleAction(ctx, action, el) {
       ctx.setRange(key, bound.min, bound.max)
       return
     }
-    case 'clear-stock':
-      ctx.setState({ inStock: false })
-      return
     case 'reset-all':
       ctx.resetAll()
       return
