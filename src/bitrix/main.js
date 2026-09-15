@@ -62,6 +62,8 @@ import { renderSections, initSections } from '../js/sections/index.js'
 import { initScroll } from '../js/scroll.js'
 import { initExpert } from '../js/expert.js'
 import { hydrateMedia } from '../js/media.js'
+import { maskPhone } from '../js/checkout/validate.js'
+import { hydrateQtySteppers } from './qty-hydrate.js'
 
 function boot() {
   const main = document.querySelector('#main')
@@ -74,6 +76,12 @@ function boot() {
   initFooter({ ssr: true })
 
   hydrateMedia(document)
+
+  // Карточка товара, корзина и оформление на Битриксе — серверная разметка
+  // с обычными формами. Скрипт только оживляет степпер и маску телефона;
+  // без него формы работают и так.
+  hydrateQtySteppers(document)
+  document.querySelectorAll('input[data-phone-mask]').forEach(maskPhone)
 
   initScroll()
 
