@@ -47,10 +47,10 @@ const EDGE = 2
  */
 export function createPager(label) {
   const node = document.createElement('div')
-  node.className = 'pager'
+  node.className = 'rail-pager'
 
-  const prev = createArrow('prev', `${label}: назад`, 'pager__btn')
-  const next = createArrow('next', `${label}: вперёд`, 'pager__btn')
+  const prev = createArrow('prev', `${label}: назад`, 'rail-pager__btn')
+  const next = createArrow('next', `${label}: вперёд`, 'rail-pager__btn')
 
   node.append(prev, next)
   return { node, prev, next }
@@ -62,7 +62,7 @@ export function createPager(label) {
  *
  * @param {'prev'|'next'} dir
  * @param {string} label
- * @param {string} base базовый класс: pager__btn или rail-edge
+ * @param {string} base базовый класс: rail-pager__btn или rail-edge
  */
 export function createArrow(dir, label, base = 'rail-edge') {
   const el = document.createElement('button')

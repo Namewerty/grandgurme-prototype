@@ -9,6 +9,11 @@
  * Всё, что глубже /catalog/, приводит сюда правилом обработки адресов
  * (Настройки → Обработка адресов): физического файла под /catalog/<slug>
  * нет и не будет.
+ *
+ * СТРАНИЦУ ВЫДАЧИ СОБИРАЕТ НЕ КОМПОНЕНТ. Порядок «наличие, потом под заказ
+ * при любой сортировке» — три уровня, а компонент принимает два, поэтому
+ * список ID страницы считает gg_catalog_page, а компоненту достаётся готовая
+ * дюжина по фильтру ID. Разбивка по страницам живёт в параметре ?page=.
  */
 /* Класс страницы читает шапка: у каталога плотная шапка и своя раскладка,
    первого экрана здесь нет. */
@@ -66,14 +71,19 @@ if ($slug === '') {
             . '</div></div></div>';
     } else {
         $picked = gg_catalog_selected($cat);
-        $sort = gg_catalog_sorts()[gg_catalog_sort_key()];
+        $sortKey = gg_catalog_sort_key();
+        $sort = gg_catalog_sorts()[$sortKey];
+        $page = gg_catalog_page($cat, $picked, $sortKey);
 
         $APPLICATION->SetTitle($cat['name'] . ' — купить в №1 Гранд Гурмэ');
         $APPLICATION->SetPageProperty('description', $cat['lead']);
 
         /* Фильтр уезжает компоненту глобальной переменной: так работают все
-           родные компоненты каталога, и свой велосипед здесь не нужен. */
+           родные компоненты каталога, и свой велосипед здесь не нужен.
+           Список ID — уже отобранная и упорядоченная страница; пустой список
+           даёт честную пустую выдачу, а не весь раздел. */
         $GLOBALS['ggFilter'] = gg_catalog_filter($cat, $picked);
+        $GLOBALS['ggFilter']['ID'] = $page['ids'] ?: [-1];
 
         $APPLICATION->IncludeComponent(
             'bitrix:catalog.section',
@@ -98,10 +108,13 @@ if ($slug === '') {
                 'PRICE_VAT_INCLUDE' => 'Y',
                 'CONVERT_CURRENCY' => 'N',
                 'HIDE_NOT_AVAILABLE' => 'N',
-                'PAGE_ELEMENT_COUNT' => 12,
+                /* Страница уже нарезана: компоненту отдаётся не больше дюжины
+                   ID, и своей разбивки по страницам у него быть не должно —
+                   иначе на второй странице он разбил бы по страницам её. */
+                'PAGE_ELEMENT_COUNT' => 100,
                 'LINE_ELEMENT_COUNT' => 4,
                 'DETAIL_URL' => '/product/#ELEMENT_CODE#',
-                'BASKET_URL' => '/personal/basket.php',
+                'BASKET_URL' => '/cart/',
                 'ACTION_VARIABLE' => 'action',
                 'PRODUCT_ID_VARIABLE' => 'id',
                 'SECTION_ID_VARIABLE' => 'SECTION_ID',
@@ -119,7 +132,7 @@ if ($slug === '') {
                 'ADD_SECTIONS_CHAIN' => 'N',
                 'DISPLAY_COMPARE' => 'N',
                 'DISPLAY_TOP_PAGER' => 'N',
-                'DISPLAY_BOTTOM_PAGER' => 'Y',
+                'DISPLAY_BOTTOM_PAGER' => 'N',
                 'PAGER_TITLE' => 'Товары',
                 'PAGER_SHOW_ALWAYS' => 'N',
                 'PAGER_TEMPLATE' => 'gg',

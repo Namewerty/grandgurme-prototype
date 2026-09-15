@@ -309,7 +309,14 @@ function gg_logo(bool $hero): string
         . '</a>';
 }
 
-/** Число товаров в корзине. Считается на сервере, скриптом не подменяется. */
+/**
+ * Число товаров в корзине. Считается на сервере, скриптом не подменяется.
+ *
+ * ШТУКИ, А НЕ СТРОКИ. Раньше считались строки корзины, и три банки одной
+ * позиции давали в шапке единицу, тогда как сама корзина писала «Товаров 3».
+ * Два числа про одно и то же на одном экране читаются как ошибка счёта.
+ * Отложенные позиции в счёт не идут: их в заказе нет.
+ */
 function gg_cart_count(): int
 {
     if (!CModule::IncludeModule('sale')) {
@@ -320,7 +327,14 @@ function gg_cart_count(): int
             \Bitrix\Sale\Fuser::getId(),
             \Bitrix\Main\Context::getCurrent()->getSite()
         );
-        return count($basket->getBasketItems());
+        $count = 0;
+        foreach ($basket as $item) {
+            if ($item->isDelay()) {
+                continue;
+            }
+            $count += (int)$item->getQuantity();
+        }
+        return $count;
     } catch (\Throwable $e) {
         return 0;
     }

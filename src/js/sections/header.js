@@ -351,15 +351,36 @@ function watchHeaderState(header) {
  * Раньше активный пункт вычислялся по секции под курсором прокрутки;
  * теперь пункты меню ведут на настоящие адреса, и правда о «текущем»
  * одна — location.pathname.
+ *
+ * ТОЛЬКО НАВИГАЦИЯ, А НЕ ВЕСЬ ДОКУМЕНТ. Раньше обходились все ссылки
+ * страницы, и на серверном каталоге Битрикса каждая капсула фильтра,
+ * сортировка и номер страницы (у них тот же путь, другой запрос)
+ * получали is-active и aria-current — все фильтры выглядели выбранными.
  */
+const NAV_LINKS = ['#topbar', '[data-header]', '#nav-panel', '#site-footer']
+  .map((scope) => `${scope} a[href]`)
+  .join(', ')
+
 function markCurrentLinks() {
   const here = location.pathname.replace(/\/index\.html$/, '').replace(/(.)\/$/, '$1')
   if (here === '/') return
 
-  document.querySelectorAll('a[href]').forEach((link) => {
+  const query = new URLSearchParams(location.search)
+
+  document.querySelectorAll(NAV_LINKS).forEach((link) => {
     const href = link.getAttribute('href')
     if (!href || !href.startsWith('/')) return
-    if (href.split('?')[0] !== here) return
+
+    const [path, search = ''] = href.split('?')
+    if (path !== here) return
+
+    // Ссылка с запросом — подкатегория панели (?sub=beluga): текущая, только
+    // если этот запрос и открыт. Иначе на странице раздела все восемь карточек
+    // подкатегорий в панели светились выбранными.
+    if (search) {
+      const own = new URLSearchParams(search)
+      if ([...own].some(([key, value]) => query.get(key) !== value)) return
+    }
 
     link.classList.add('is-active')
     link.setAttribute('aria-current', 'page')

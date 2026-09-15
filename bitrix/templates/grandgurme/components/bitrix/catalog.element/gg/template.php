@@ -9,7 +9,14 @@
  * Характеристики берутся из заполненных свойств — список и порядок задаёт
  * карта витрины (ключ specs). Свойств у чёрной икры четыре плюс артикул;
  * остальные сто двадцать свойств стандарта GS1 в выгрузке пустые, и строки
- * с прочерками карточке только мешают.
+ * с прочерками карточке только мешают. Строки «В наличии — N шт» здесь
+ * больше нет: статус стоит под ценой, а число банок на складе покупателю
+ * ничего не решает.
+ *
+ * СТЕППЕР И «В КОРЗИНУ» — ОДНА ФОРМА, и форма эта и есть .pbuy__actions:
+ * отдельная обёртка сломала бы ряд кнопок, а без формы количество пришлось
+ * бы дописывать в адрес скриптом. Без JS форма работает как есть, скрипт
+ * только оживляет кнопки − и + (src/bitrix/qty-hydrate.js).
  */
 if (!defined('B_PROLOG_INCLUDED') || B_PROLOG_INCLUDED !== true) die();
 /** @var array $arParams */
@@ -28,8 +35,7 @@ $val = static function (string $code) use ($ggProps): string {
 };
 
 $price = gg_item_price($arResult);
-$quantity = gg_item_quantity($arResult);
-$inStock = $quantity > 0;
+$inStock = gg_item_quantity($arResult) > 0;
 
 $species = $val('RYBA');
 $line = $val('KATEGORIYA');
@@ -70,15 +76,30 @@ if ($cat && $species !== '' && CModule::IncludeModule('iblock')) {
 
 $alt = $arResult['NAME'] . ($pack !== '' ? ', ' . $pack : '');
 
+/* Заголовок без хвоста фасовки: она стоит строкой ниже капсулами. */
+$title = gg_item_title((string)$arResult['NAME'], $pack);
+
+/* Статус под ценой. «Доставка день в день», а не «доставка сегодня»:
+   часа отсечки в данных нет, и к вечеру «сегодня» стало бы неправдой. */
+$status = $inStock
+    ? 'В наличии · доставка день в день по Москве'
+    : 'Под заказ · привезём примерно за ' . GG_PREORDER_DAYS . ' дней';
+
+/* Вторая кнопка. У позиции без цены она называется «Узнать цену» и ведёт
+   туда же: виджета эксперта на Битриксе пока нет, заявку принимают
+   контакты. */
+$secondLabel = $price === null ? 'Узнать цену' : 'Спросить эксперта';
+
+/* Адрес формы — сам текущий адрес карточки. GetCurPage под правилом
+   обработки адресов вернул бы физический /product/index.php. */
+$formAction = (string)parse_url((string)($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH);
+
 $specs = [];
 foreach (($cat['specs'] ?? []) as $spec) {
     $value = $val($spec['prop']);
     if ($value !== '') {
         $specs[] = ['term' => $spec['label'], 'value' => $value];
     }
-}
-if ($inStock) {
-    $specs[] = ['term' => 'В наличии', 'value' => $quantity . ' шт'];
 }
 ?>
 <div class="product-page">
@@ -92,20 +113,23 @@ if ($inStock) {
       <a href="<?= gg_e(gg_category_url($cat['slug'])) ?>"><?= gg_e($cat['name']) ?></a>
 <?php endif; ?>
       <span class="crumbs__sep" aria-hidden="true"></span>
-      <span class="crumbs__current" aria-current="page"><?= gg_e($arResult['NAME']) ?></span>
+      <span class="crumbs__current" aria-current="page"><?= gg_e($title) ?></span>
     </nav>
 
     <div class="ptop">
       <div class="pgallery" data-gallery>
-        <div class="pgallery__main"><?= gg_media_slot('', '/media/products/' . $arResult['CODE'] . '.jpg', '1:1', 'pgallery__photo', $alt) ?></div>
+        <div class="pgallery__main"><?= gg_product_shot($arResult, $alt, 'pgallery__photo') ?></div>
       </div>
 
       <div class="pbuy">
-        <h1 class="pbuy__title"><?= gg_e($arResult['NAME']) ?></h1>
+        <h1 class="pbuy__title"><?= gg_e($title) ?></h1>
 <?php if ($subtitle !== ''): ?>
         <p class="pbuy__line"><?= gg_e($subtitle . ($attr !== '' ? ' · ' . $attr : '')) ?></p>
 <?php endif; ?>
         <p class="pbuy__price"><?= gg_e(gg_price($price)) ?></p>
+        <p class="pbuy__status<?= $inStock ? '' : ' is-preorder' ?>">
+          <span class="pbuy__status-mark" aria-hidden="true">⬦</span><?= gg_e($status) ?>
+        </p>
 
 <?php if (count($siblings) > 1): ?>
         <div class="pbuy__row">
@@ -118,14 +142,30 @@ if ($inStock) {
         </div>
 <?php endif; ?>
 
-        <div class="pbuy__actions">
 <?php if ($inStock): ?>
-          <a class="btn btn--solid" href="<?= gg_e($APPLICATION->GetCurPageParam('action=ADD2BASKET&id=' . (int)$arResult['ID'], ['action', 'id'])) ?>">В корзину</a>
+        <form class="pbuy__actions" method="get" action="<?= gg_e($formAction) ?>">
+          <input type="hidden" name="action" value="ADD2BASKET">
+          <input type="hidden" name="id" value="<?= (int)$arResult['ID'] ?>">
+          <div class="qty" data-qty-hydrate role="group" aria-label="Количество">
+            <button type="button" class="qty__btn" data-step="-1" aria-label="Меньше"><?= gg_icon('minus') ?></button>
+            <input class="qty__value" type="text" inputmode="numeric" autocomplete="off"
+                   name="quantity" value="1" min="1" max="99" maxlength="2" aria-label="Количество">
+            <button type="button" class="qty__btn" data-step="1" aria-label="Больше"><?= gg_icon('plus') ?></button>
+          </div>
+          <button type="submit" class="btn btn--solid">В корзину</button>
+          <a class="btn" href="/contacts"><?= gg_e($secondLabel) ?></a>
+        </form>
 <?php else: ?>
+        <?php /* Позиция под заказ в корзину не кладётся: в настройках
+                 торгового каталога «Разрешить покупку при отсутствии товара»
+                 стоит «Нет», и Битрикс такую позицию в корзину не примет.
+                 Пока настройку не включили — честная кнопка к менеджеру,
+                 а не кнопка, которая молча ничего не делает. */ ?>
+        <div class="pbuy__actions">
           <a class="btn btn--solid" href="/contacts">Заказать у менеджера</a>
-<?php endif; ?>
-          <a class="btn" href="/contacts">Спросить эксперта</a>
+          <a class="btn" href="/contacts"><?= gg_e($secondLabel) ?></a>
         </div>
+<?php endif; ?>
 
         <?php /* Обещания и их иконки — те же три, что в прототипе
                  (src/data/product-copy.js). Иконка обязательна: строка

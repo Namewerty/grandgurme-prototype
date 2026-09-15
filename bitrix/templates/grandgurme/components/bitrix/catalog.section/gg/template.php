@@ -7,9 +7,19 @@
  * Отличие одно и оно осознанное — фильтры здесь ссылки, а не кнопки: страница
  * рисуется сервером, перезагрузка честнее мигающей выдачи без JS.
  *
+ * Оси раскладываются по трём видам, как в прототипе: главная ось строкой
+ * капсул, вторая — строкой табов, остальное уходит в раскрывающийся список
+ * рядом с сортировкой. Семь пилюль с кружками счётчиков, развёрнутые в строку,
+ * забирали внимание у самой выдачи.
+ *
+ * СТРОКА «НАЛИЧИЕ» стоит над строкой «Фильтры» на всех разделах, в одном и
+ * том же месте (renderStockRow прототипа). Левая капсула — не кнопка: это база
+ * выдачи, выключить её нельзя, и обещать переключатель, который не
+ * переключается, нечестно. Правая работает как чекбокс и живёт в ?stock=all.
+ * Порядок выдачи (наличие, потом под заказ) считает gg_catalog_page.
+ *
  * Кадров у товаров нет ни одного: фотографии в выгрузку 1С не попали.
- * Поэтому кадр рисуется той же заглушкой, что и на главной (gg_media_slot),
- * и запроса за несуществующим файлом не делает.
+ * Пока файла нет, на месте кадра стоит знак марки (gg_product_shot).
  */
 if (!defined('B_PROLOG_INCLUDED') || B_PROLOG_INCLUDED !== true) die();
 /** @var array $arParams */
@@ -25,9 +35,18 @@ if (!$cat) {
 
 $picked = gg_catalog_selected($cat);
 $total = gg_catalog_total($cat);
-$found = gg_catalog_count($cat, $picked);
 $sortKey = gg_catalog_sort_key();
 $sorts = gg_catalog_sorts();
+
+/* Наличие по выбранному и по разделу целиком. Разница нужна одной строке:
+   «сейчас со склада нет» — факт о разделе, «по выбранному со склада нет» —
+   о выборе. Сказать первое, когда на складе четыре банки осетра, значит
+   соврать о разделе. */
+$stock = gg_stock_view($cat, $picked);
+$sectionStock = gg_catalog_stock_counts($cat, []);
+
+$page = gg_catalog_page($cat, $picked, $sortKey);
+$found = $page['total'];
 $share = $total > 0 ? max(0, min(100, $found / $total * 100)) : 0;
 
 /** Значение оси, выбранное сейчас, как читаемое имя. */
@@ -43,6 +62,47 @@ foreach (gg_catalog_facets($cat) as $facet) {
                 'label' => $option['name'],
                 'href' => gg_catalog_url($cat, $picked, $facet['key'], ''),
             ];
+        }
+    }
+}
+
+/* Оси, которые разворачиваются в строку, и оси, которые уходят в список. */
+$railFacets = [];
+$dropFacets = [];
+foreach (gg_catalog_facets($cat) as $facet) {
+    if (($facet['style'] ?? 'chips') === 'pills') {
+        $dropFacets[] = $facet;
+    } else {
+        $railFacets[] = $facet;
+    }
+}
+$chevron = gg_icon('chevronDown');
+$resetUrl = gg_catalog_reset_url($cat);
+
+/* Счётчик над сеткой. Три случая, и каждый говорит о своём: под заказ нет
+   вовсе — обычное «Найдено N товаров»; на складе нет — только привоз;
+   есть и то и другое — сколько сейчас и сколько ещё можно привезти. */
+if ($found === 0 || $stock['preorder'] === 0) {
+    $foundText = 'Найдено <b>' . gg_e(gg_plural_goods($found)) . '</b>';
+} elseif ($stock['inStock'] === 0) {
+    $foundText = '<b>' . (int)$stock['preorder'] . ' под заказ</b>';
+} else {
+    $foundText = '<b>' . (int)$stock['inStock'] . ' в наличии</b>, ещё ' . (int)$stock['preorder'] . ' под заказ';
+}
+
+/* Порядок выдачи задаётся списком ID: компонент отдаёт двенадцать позиций
+   страницы в своём порядке, а группы «наличие / под заказ» и выбор человека
+   уже сведены в gg_catalog_page. */
+$items = $arResult['ITEMS'] ?? [];
+if ($items && $page['ids']) {
+    $byId = [];
+    foreach ($items as $item) {
+        $byId[(int)$item['ID']] = $item;
+    }
+    $items = [];
+    foreach ($page['ids'] as $id) {
+        if (isset($byId[$id])) {
+            $items[] = $byId[$id];
         }
     }
 }
@@ -63,40 +123,115 @@ foreach (gg_catalog_facets($cat) as $facet) {
     </div>
 
     <div class="facets" data-facets>
-<?php foreach (gg_catalog_facets($cat) as $facet):
+<?php foreach ($railFacets as $facet):
     $style = $facet['style'] ?? 'chips';
     $current = $picked[$facet['key']] ?? '';
-    $itemClass = $style === 'tabs' ? 'tab' : ($style === 'pills' ? 'pill' : 'chip');
-    $railClass = $style === 'tabs' ? 'tabs' : ($style === 'pills' ? 'facets__bar' : 'chips');
+    $itemClass = $style === 'tabs' ? 'tab' : 'chip';
+    $railClass = $style === 'tabs' ? 'tabs' : 'chips';
 ?>
-      <div class="facets__row<?= $style === 'pills' ? ' facets__row--bar' : '' ?>">
+      <div class="facets__row">
         <span class="facets__label"><?= gg_e($facet['label']) ?></span>
-        <div class="<?= $style === 'pills' ? 'facets__bar' : 'facets__rail ' . $railClass ?>">
+        <div class="facets__rail <?= $railClass ?>">
           <a class="<?= $itemClass ?><?= $current === '' ? ' is-active' : '' ?>"
              href="<?= gg_e(gg_catalog_url($cat, $picked, $facet['key'], '')) ?>"><?= gg_e($facet['anyLabel'] ?? 'Все') ?></a>
-<?php foreach ($facet['options'] as $option):
-        $on = $current === $option['slug'];
-        $count = gg_catalog_count($cat, array_merge($picked, [$facet['key'] => $option['slug']]));
-        /* Вариант, под который в разделе нет ни одного товара, не показываем:
-           фильтр, ведущий в пустоту, — это обещание, которого нет за чем. */
-        if ($count === 0 && !$on) {
-            continue;
-        }
+<?php   foreach ($facet['options'] as $option):
+            $on = $current === $option['slug'];
+            /* Число у опции — сколько человек увидит, выбрав её: с тем же
+               правилом наличия, что у выдачи. Иначе у «Белуги», которой нет
+               на складе, стоял бы ноль и опция пропала бы из строки. */
+            $count = gg_catalog_count_shown($cat, array_merge($picked, [$facet['key'] => $option['slug']]));
+            /* Вариант, под который в разделе нет ни одного товара — ни со
+               склада, ни под заказ, — не показываем: фильтр, ведущий
+               в пустоту, — это обещание, которого нет за чем. */
+            if ($count === 0 && !$on) {
+                continue;
+            }
 ?>
           <a class="<?= $itemClass ?><?= $on ? ' is-active' : '' ?>"
-             href="<?= gg_e(gg_catalog_url($cat, $picked, $facet['key'], $on ? '' : $option['slug'])) ?>"><?= gg_e($option['name']) ?><?php if ($style === 'pills' && $count): ?><span class="pill__count"><?= $count ?></span><?php endif; ?></a>
-<?php endforeach; ?>
+             href="<?= gg_e(gg_catalog_url($cat, $picked, $facet['key'], $on ? '' : $option['slug'])) ?>"><?= gg_e($option['name']) ?></a>
+<?php   endforeach; ?>
         </div>
       </div>
 <?php endforeach; ?>
 
+      <div class="facets__row">
+        <span class="facets__label">Наличие</span>
+        <div class="facets__rail chips">
+<?php if ($stock['forced']): ?>
+          <p class="stock-note"><?= $sectionStock['inStock'] === 0
+              ? 'Сейчас со склада нет · показываем под заказ'
+              : 'По выбранному со склада нет · показываем под заказ' ?></p>
+<?php else: ?>
+          <span class="chip is-active chip--base">В наличии<span class="chip__num">· <?= (int)$stock['inStock'] ?></span></span>
+<?php   if ($stock['preorder'] === 0): ?>
+          <span class="chip" aria-disabled="true"><span class="chip__check"><?= gg_icon('plus') ?></span>и под заказ<span class="chip__num">· 0</span></span>
+<?php   else: ?>
+          <a class="chip<?= gg_stock_on() ? ' is-active' : '' ?>"
+             href="<?= gg_e(gg_catalog_stock_url($cat, $picked, !gg_stock_on())) ?>"
+             aria-pressed="<?= gg_stock_on() ? 'true' : 'false' ?>"><span class="chip__check"><?= gg_icon('plus') ?></span>и под заказ<span class="chip__num">· <?= (int)$stock['preorder'] ?></span></a>
+<?php   endif; ?>
+<?php endif; ?>
+        </div>
+      </div>
+
       <div class="facets__row facets__row--bar">
-        <span class="facets__label">Сортировка</span>
+        <span class="facets__label">Фильтры</span>
         <div class="facets__bar">
-<?php foreach ($sorts as $key => $sort): ?>
-          <a class="pill pill--sort<?= $key === $sortKey ? ' is-active' : '' ?>"
-             href="<?= gg_e(gg_catalog_sort_url($cat, $picked, $key)) ?>"><b><?= gg_e($sort['label']) ?></b></a>
+<?php foreach ($dropFacets as $facet):
+        $key = $facet['key'];
+        $current = $picked[$key] ?? '';
+        $anyCount = gg_catalog_count_shown($cat, array_merge($picked, [$key => '']));
+?>
+          <details class="drop">
+            <summary class="pill<?= $current !== '' ? ' is-active' : '' ?>"><?= gg_e($facet['label']) ?><?php
+              if ($current !== ''): ?><span class="pill__count">1</span><?php endif; ?>
+              <span class="pill__chevron" aria-hidden="true"><?= $chevron ?></span>
+            </summary>
+            <div class="drop__pop drop__pop--wide">
+              <div class="pop__list" data-lenis-prevent>
+                <a class="opt opt--radio<?= $current === '' ? ' is-on' : '' ?>"
+                   href="<?= gg_e(gg_catalog_url($cat, $picked, $key, '')) ?>">
+                  <span class="opt__radio" aria-hidden="true"></span>
+                  <span class="opt__name"><?= gg_e($facet['anyLabel'] ?? 'Все') ?></span>
+                  <span class="opt__count"><?= $anyCount ?></span>
+                </a>
+<?php   foreach ($facet['options'] as $option):
+            $on = $current === $option['slug'];
+            $count = gg_catalog_count_shown($cat, array_merge($picked, [$key => $option['slug']]));
+            if ($count === 0 && !$on) {
+                continue;
+            }
+?>
+                <a class="opt opt--radio<?= $on ? ' is-on' : '' ?>"
+                   href="<?= gg_e(gg_catalog_url($cat, $picked, $key, $on ? '' : $option['slug'])) ?>">
+                  <span class="opt__radio" aria-hidden="true"></span>
+                  <span class="opt__name"><?= gg_e($option['name']) ?></span>
+                  <span class="opt__count"><?= $count ?></span>
+                </a>
+<?php   endforeach; ?>
+              </div>
+            </div>
+          </details>
 <?php endforeach; ?>
+<?php if ($dropFacets): ?>
+          <span class="bar__divider" aria-hidden="true"></span>
+<?php endif; ?>
+          <details class="drop">
+            <summary class="pill pill--sort">Сортировка: <b><?= gg_e($sorts[$sortKey]['label']) ?></b>
+              <span class="pill__chevron" aria-hidden="true"><?= $chevron ?></span>
+            </summary>
+            <div class="drop__pop">
+              <div class="pop__list">
+<?php foreach ($sorts as $key => $sort): ?>
+                <a class="opt opt--radio<?= $key === $sortKey ? ' is-on' : '' ?>"
+                   href="<?= gg_e(gg_catalog_sort_url($cat, $picked, $key)) ?>">
+                  <span class="opt__radio" aria-hidden="true"></span>
+                  <span class="opt__name"><?= gg_e($sort['label']) ?></span>
+                </a>
+<?php endforeach; ?>
+              </div>
+            </div>
+          </details>
         </div>
       </div>
     </div>
@@ -104,8 +239,8 @@ foreach (gg_catalog_facets($cat) as $facet) {
     <div class="catalog__rule" aria-hidden="true"><span style="width: <?= round($share, 2) ?>%"></span></div>
 
     <div class="catalog__status">
-      <p class="catalog__found">Найдено <b><?= gg_e(gg_plural_goods($found)) ?></b></p>
-      <div><?php if ($appliedChips): ?><a class="link-btn" href="<?= gg_e(gg_category_url($cat['slug'])) ?>">Сбросить всё</a><?php endif; ?></div>
+      <p class="catalog__found"><?= $foundText ?></p>
+      <div><?php if ($appliedChips): ?><a class="link-btn" href="<?= gg_e($resetUrl) ?>">Сбросить всё</a><?php endif; ?></div>
     </div>
 
     <div class="catalog__applied<?= $appliedChips ? '' : ' is-empty' ?>">
@@ -114,38 +249,40 @@ foreach (gg_catalog_facets($cat) as $facet) {
 <?php endforeach; ?>
     </div>
 
-<?php if (empty($arResult['ITEMS'])): ?>
+<?php if (!$items): ?>
     <div class="catalog__grid is-empty">
       <div class="empty">
         <h2 class="empty__title">Ничего не нашлось</h2>
         <p class="empty__hint">Попробуйте снять фильтр или сбросить всё</p>
-        <a class="btn" href="<?= gg_e(gg_category_url($cat['slug'])) ?>">Сбросить фильтры</a>
+        <a class="btn" href="<?= gg_e($resetUrl) ?>">Сбросить фильтры</a>
       </div>
     </div>
 <?php else: ?>
     <div class="catalog__grid">
 <?php
     /* Свойства для всей страницы выдачи — одним запросом, см. gg_props_for_ids. */
-    $ggPagePropsById = gg_props_for_ids(array_column($arResult['ITEMS'], 'ID'), ['UPAKOVKA', 'RYBA', 'KATEGORIYA', 'CML2_ARTICLE']);
-    foreach ($arResult['ITEMS'] as $item):
+    $ggPagePropsById = gg_props_for_ids(array_column($items, 'ID'), ['UPAKOVKA', 'RYBA', 'KATEGORIYA', 'CML2_ARTICLE']);
+    foreach ($items as $item):
         $price = gg_item_price($item);
         $inStock = gg_item_quantity($item) > 0;
         $props = gg_item_props($item) + ($ggPagePropsById[(int)$item['ID']] ?? []);
-        $note = $props['UPAKOVKA'] ?? ($props['CML2_ARTICLE'] ?? '');
+        $pack = $props['UPAKOVKA'] ?? '';
+        $title = gg_item_title((string)$item['NAME'], $pack);
+        $note = $pack !== '' ? $pack : ($props['CML2_ARTICLE'] ?? '');
+        /* Строчными и через точку: подпись идёт хвостом фасовки, а не
+           отдельной плашкой — «Банка металл 250 г · под заказ». */
         if (!$inStock) {
-            $note = $note !== '' ? $note . ' · Под заказ' : 'Под заказ';
+            $note = $note !== '' ? $note . ' · под заказ' : 'под заказ';
         }
         $href = gg_product_url($item);
-        $alt = $item['NAME'] . ($note !== '' ? ', ' . $note : '');
+        $alt = $item['NAME'] . ($pack !== '' ? ', ' . $pack : '');
 ?>
       <article class="product<?= $inStock ? '' : ' product--muted' ?>">
         <div class="product__frame">
-          <a class="product__shot" href="<?= gg_e($href) ?>" tabindex="-1" aria-hidden="true"><?=
-            gg_media_slot('', '/media/products/' . $item['CODE'] . '.jpg', '1:1', 'product__photo', $alt)
-          ?></a>
+          <a class="product__shot" href="<?= gg_e($href) ?>" tabindex="-1" aria-hidden="true"><?= gg_product_shot($item, $alt) ?></a>
         </div>
         <div class="product__body">
-          <h3 class="product__name"><a href="<?= gg_e($href) ?>"><?= gg_e($item['NAME']) ?></a></h3>
+          <h3 class="product__name"><a href="<?= gg_e($href) ?>"><?= gg_e($title) ?></a></h3>
           <p class="product__note"><?= gg_e($note) ?></p>
           <p class="product__price"><?= gg_e(gg_price($price)) ?></p>
         </div>
@@ -153,8 +290,24 @@ foreach (gg_catalog_facets($cat) as $facet) {
 <?php endforeach; ?>
     </div>
 
-<?php if (!empty($arResult['NAV_STRING'])): ?>
-    <div class="catalog__more"><?= $arResult['NAV_STRING'] ?></div>
+<?php if ($page['pages'] > 1): ?>
+    <div class="catalog__more">
+      <nav class="pager" aria-label="Страницы каталога">
+<?php   if ($page['page'] > 1): ?>
+        <a class="chip pager__link" rel="prev" href="<?= gg_e(gg_catalog_page_url($cat, $picked, $page['page'] - 1)) ?>">Назад</a>
+<?php   endif; ?>
+<?php   for ($n = 1; $n <= $page['pages']; $n++): ?>
+<?php     if ($n === $page['page']): ?>
+        <span class="chip is-active" aria-current="page"><?= $n ?></span>
+<?php     else: ?>
+        <a class="chip pager__link" href="<?= gg_e(gg_catalog_page_url($cat, $picked, $n)) ?>"><?= $n ?></a>
+<?php     endif; ?>
+<?php   endfor; ?>
+<?php   if ($page['page'] < $page['pages']): ?>
+        <a class="chip pager__link" rel="next" href="<?= gg_e(gg_catalog_page_url($cat, $picked, $page['page'] + 1)) ?>">Вперёд</a>
+<?php   endif; ?>
+      </nav>
+    </div>
 <?php endif; ?>
 <?php endif; ?>
   </div>

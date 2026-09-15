@@ -64,6 +64,7 @@ import { initExpert } from '../js/expert.js'
 import { hydrateMedia } from '../js/media.js'
 import { maskPhone } from '../js/checkout/validate.js'
 import { hydrateQtySteppers } from './qty-hydrate.js'
+import { hydrateCartBar, hydrateReceiveMethod } from './purchase-hydrate.js'
 
 function boot() {
   const main = document.querySelector('#main')
@@ -82,6 +83,8 @@ function boot() {
   // без него формы работают и так.
   hydrateQtySteppers(document)
   document.querySelectorAll('input[data-phone-mask]').forEach(maskPhone)
+  hydrateCartBar(document)
+  hydrateReceiveMethod(document)
 
   initScroll()
 

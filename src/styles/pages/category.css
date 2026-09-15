@@ -277,6 +277,48 @@
   transition: width 400ms var(--ease-out);
 }
 
+/* ---- Раскрывающийся список фасеты (серверный каталог) -------------------
+   На Битриксе фильтры — ссылки, и поповера со скриптом там нет. Пилюля
+   раскрывает <details class="drop">: список опций-ссылок под ней, тот же
+   вид, что у поповера прототипа (#catalog-popover), без единой строки JS. */
+
+.drop { position: relative; display: inline-flex; }
+.drop > summary { cursor: pointer; list-style: none; }
+.drop > summary::-webkit-details-marker { display: none; }
+.drop > summary::marker { content: ''; }
+.drop[open] > summary { border-color: var(--ink); }
+.drop[open] .pill__chevron { transform: rotate(180deg); }
+
+.drop__pop {
+  position: absolute;
+  z-index: 60;
+  top: calc(100% + .4rem);
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  width: 260px;
+  max-height: 340px;
+  border: 1px solid var(--gold);
+  border-radius: var(--radius-card);
+  background: var(--bg);
+  overflow: hidden;
+}
+
+.drop__pop--wide { width: 300px; }
+
+.drop__pop .pop__list {
+  flex: 1 1 0%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.drop .opt { min-height: 36px; }
+
+@media (max-width: 767px) {
+  .drop { position: static; }
+  .drop__pop { left: 0; right: 0; width: auto; }
+}
+
 /* ---- Статус и снятие фильтров -------------------------------------------- */
 
 .catalog__status {

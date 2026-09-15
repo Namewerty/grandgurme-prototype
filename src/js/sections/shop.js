@@ -412,8 +412,8 @@ export function initShop() {
   const bar = section.querySelector('[data-shop-bar]')
 
   // По две кнопки на направление: капсула под лентой и стрелка поверх края.
-  const prev = [...section.querySelectorAll('.pager__btn--prev, .rail-edge--prev')]
-  const next = [...section.querySelectorAll('.pager__btn--next, .rail-edge--next')]
+  const prev = [...section.querySelectorAll('.rail-pager__btn--prev, .rail-edge--prev')]
+  const next = [...section.querySelectorAll('.rail-pager__btn--next, .rail-edge--next')]
 
   // Лента живёт до первой смены набора, потом её заменяет новая — поэтому
   // при каждой смене поднимаем механизм заново на актуальном элементе,

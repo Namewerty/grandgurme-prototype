@@ -22,9 +22,13 @@
 
    Высота 34px — ниже зоны касания 44px, и это осознанно: на тач-устройствах
    пейджер скрыт совсем (лента листается пальцем), он живёт только там,
-   где есть курсор.                                                          */
+   где есть курсор.
 
-.pager {
+   Класс — .rail-pager, а не .pager. Под .pager живёт постраничная навигация
+   каталога на Битриксе (components/pager.css), и в общей сборке эти правила
+   гасили её: opacity 0 на десктопе, display: none на тач-устройствах.    */
+
+.rail-pager {
   display: inline-flex;
   flex: none;
   border: 1px solid var(--hairline);
@@ -36,12 +40,12 @@
 }
 
 /* Лента влезла целиком — пейджера нет вовсе, а не «есть, но не нажимается». */
-.is-scrollable .pager {
+.is-scrollable .rail-pager {
   opacity: 1;
   pointer-events: auto;
 }
 
-.pager__btn {
+.rail-pager__btn {
   display: grid;
   place-items: center;
   width: 42px;
@@ -52,9 +56,9 @@
               opacity var(--dur-line) var(--ease-out);
 }
 
-.pager__btn + .pager__btn { border-left: 1px solid var(--hairline); }
+.rail-pager__btn + .rail-pager__btn { border-left: 1px solid var(--hairline); }
 
-.pager__btn svg,
+.rail-pager__btn svg,
 .rail-edge svg {
   width: 15px;
   height: 15px;
@@ -65,19 +69,19 @@
   stroke-linejoin: round;
 }
 
-.pager__btn:hover:not(:disabled) {
+.rail-pager__btn:hover:not(:disabled) {
   color: var(--caspian-fg);
   background: var(--surface);
 }
 
-.pager__btn:disabled {
+.rail-pager__btn:disabled {
   opacity: .28;
   cursor: default;
 }
 
 /* Курсора нет — листаем пальцем, кнопки не нужны. */
 @media (hover: none) {
-  .pager { display: none; }
+  .rail-pager { display: none; }
 }
 
 /* ---- Ползунок ------------------------------------------------------------

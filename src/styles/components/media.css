@@ -70,3 +70,33 @@
 
 /* Совсем мелкие кадры: прячем текст, оставляем рамку. */
 .media--compact .media__note { display: none; }
+
+/* ---- Кадра нет и не будет в ближайшее время ------------------------------
+   Серверная сетка Битрикса (gg_product_shot в include/catalog.php): фото
+   в выгрузку 1С не попали ни у одной позиции, и служебная подпись с именем
+   файла в сетке из двенадцати карточек читается как страница в работе.
+   Вместо неё — волосяной знак по фону поверхности. Появится файл —
+   сервер вернёт обычный слот.                                              */
+
+.media.is-blank {
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--hairline);
+  background: var(--surface);
+}
+
+.blank__mark {
+  display: flex;
+  color: var(--gold);
+  opacity: .45;
+}
+
+.blank__mark svg {
+  width: clamp(34px, 4vw, 52px);
+  height: clamp(34px, 4vw, 52px);
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.25;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}

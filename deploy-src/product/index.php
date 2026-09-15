@@ -76,9 +76,12 @@ if (!$element) {
             'PRICE_VAT_INCLUDE' => 'Y',
             'CONVERT_CURRENCY' => 'N',
             'USE_PRICE_COUNT' => 'N',
-            'BASKET_URL' => '/personal/basket.php',
+            'BASKET_URL' => '/cart/',
             'ACTION_VARIABLE' => 'action',
             'PRODUCT_ID_VARIABLE' => 'id',
+            /* Без этого параметра компонент кладёт в корзину одну штуку
+               и число из формы не читает вовсе. */
+            'USE_PRODUCT_QUANTITY' => 'Y',
             'PRODUCT_QUANTITY_VARIABLE' => 'quantity',
             'PRODUCT_PROPS_VARIABLE' => 'prop',
             'ADD_PROPERTIES_TO_BASKET' => 'N',
