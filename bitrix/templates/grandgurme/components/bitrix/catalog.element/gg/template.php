@@ -37,6 +37,14 @@ $val = static function (string $code) use ($ggProps): string {
 $price = gg_item_price($arResult);
 $inStock = gg_item_quantity($arResult) > 0;
 
+/* ПРЕДЗАКАЗ. Позиция под заказ кладётся в корзину, если Битрикс её примет:
+   с 16.09.2026 в торговом каталоге включено «Разрешить покупку при
+   отсутствии товара», и компонент помечает такую позицию CAN_BUY.
+   Решение принимает сам компонент, а не шаблон: выключат настройку или
+   запретят покупку у отдельного товара — вернётся «Заказать у менеджера»,
+   а не кнопка, которая молча ничего не кладёт. */
+$canBuy = $inStock || in_array($arResult['CAN_BUY'] ?? false, [true, 'Y'], true);
+
 $species = $val('RYBA');
 $line = $val('KATEGORIYA');
 $pack = $val('UPAKOVKA');
@@ -142,7 +150,7 @@ foreach (($cat['specs'] ?? []) as $spec) {
         </div>
 <?php endif; ?>
 
-<?php if ($inStock): ?>
+<?php if ($canBuy): ?>
         <form class="pbuy__actions" method="get" action="<?= gg_e($formAction) ?>">
           <input type="hidden" name="action" value="ADD2BASKET">
           <input type="hidden" name="id" value="<?= (int)$arResult['ID'] ?>">
@@ -156,11 +164,10 @@ foreach (($cat['specs'] ?? []) as $spec) {
           <a class="btn" href="/contacts"><?= gg_e($secondLabel) ?></a>
         </form>
 <?php else: ?>
-        <?php /* Позиция под заказ в корзину не кладётся: в настройках
-                 торгового каталога «Разрешить покупку при отсутствии товара»
-                 стоит «Нет», и Битрикс такую позицию в корзину не примет.
-                 Пока настройку не включили — честная кнопка к менеджеру,
-                 а не кнопка, которая молча ничего не делает. */ ?>
+        <?php /* Битрикс эту позицию в корзину не примет: покупка при
+                 отсутствии товара для неё запрещена (глобально или у самого
+                 товара). Честная кнопка к менеджеру, а не кнопка, которая
+                 молча ничего не делает. */ ?>
         <div class="pbuy__actions">
           <a class="btn btn--solid" href="/contacts">Заказать у менеджера</a>
           <a class="btn" href="/contacts"><?= gg_e($secondLabel) ?></a>
