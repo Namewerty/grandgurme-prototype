@@ -21,9 +21,13 @@
    всё равно занимает весь экран. Поэтому ниже 1024px поиск открывается
    полноэкранным слоем — тем же приёмом, что мобильное меню.
 
-   ВЫДАЧА НЕНАСТОЯЩАЯ. Совпадение подстрокой по уже имеющемуся набору товаров
-   и по дереву каталога — см. src/data/search.js. Задача прототипа — показать
-   поведение, а не искать.
+   ДВА ИСТОЧНИКА ВЫДАЧИ. В прототипе выдача ненастоящая: совпадение подстрокой
+   по набору товаров прототипа и дереву каталога (src/data/search.js). На
+   Битриксе шапка передаёт remote, и выдача приходит с сервера
+   (/search/suggest.php, include/search.php шаблона): товары и разделы живой
+   витрины. До 16.09.2026 стенд тоже искал по данным прототипа — у чёрной икры
+   там нет цен, отрисовка падала на первой же позиции, и панель оставалась
+   пустой.
 
    ТРИ СОСТОЯНИЯ ПАНЕЛИ:
      пустое поле  — последние запросы, популярные, недавно просмотренные;
@@ -53,6 +57,9 @@ const desktop = window.matchMedia('(min-width: 1024px)')
 
 /** Задержка перед перерисовкой выдачи. Ниже — дёргается, выше — ощущается. */
 const TYPE_DELAY = 120
+
+/** Задержка перед запросом к серверу подсказок. */
+const REMOTE_TYPE_DELAY = 250
 
 const escape = (text) =>
   String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -99,12 +106,32 @@ const productRow = ({ product }, query) => `
       <span class="srow__name">${highlight(product.name, query)}</span>
       <span class="srow__note">${escape(product.weightLabel)}</span>
     </span>
-    <span class="srow__price">${price(product.price)}</span>
+    <span class="srow__price">${product.price == null ? searchCopy.priceOnRequest : price(product.price)}</span>
+  </a>
+`
+
+/**
+ * Строка товара из ответа сервера. Цена приходит готовой строкой
+ * («7 990 ₽», «4 990 ₽ / кг», «Цена по запросу»), фотографий в выгрузке 1С
+ * нет — на месте кадра знак марки, как в сетке каталога.
+ */
+const remoteProductRow = (card, query) => `
+  <a class="srow" href="${escape(card.href)}" data-search-item>
+    <span class="srow__media">
+      <span class="media srow__frame is-blank" style="--media-ratio: 1 / 1" aria-hidden="true">
+        <span class="blank__mark">${icons.emptyFish}</span>
+      </span>
+    </span>
+    <span class="srow__body">
+      <span class="srow__name">${highlight(card.name, query)}</span>
+      <span class="srow__note">${escape(card.note)}</span>
+    </span>
+    <span class="srow__price">${escape(card.price)}</span>
   </a>
 `
 
 const categoryRow = (category, query) => `
-  <a class="scat" href="${ROUTES.category(category.slug)}" data-search-item>
+  <a class="scat" href="${category.href ? escape(category.href) : ROUTES.category(category.slug)}" data-search-item>
     <span class="scat__icon" aria-hidden="true">${icons[category.icon] || icons.search}</span>
     <span class="scat__name">${highlight(category.name, query)}</span>
   </a>
@@ -116,6 +143,43 @@ const group = (title, body, modifier = '') => `
     ${body}
   </section>
 `
+
+/* ---- последние запросы на живом сайте --------------------------------- */
+
+const RECENT_KEY = 'gg-search-recent'
+
+function readRecent() {
+  try {
+    const list = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]')
+    return Array.isArray(list) ? list.filter((item) => typeof item === 'string').slice(0, 5) : []
+  } catch {
+    return []
+  }
+}
+
+function rememberQuery(query) {
+  const q = String(query).trim()
+  if (q.length < 2) return
+  try {
+    const next = [q, ...readRecent().filter((item) => item.toLowerCase() !== q.toLowerCase())].slice(0, 5)
+    localStorage.setItem(RECENT_KEY, JSON.stringify(next))
+  } catch {
+    /* приватный режим — просто не запоминаем */
+  }
+}
+
+/**
+ * Пустое поле на живом сайте: свои последние запросы этого браузера и
+ * популярные. «Недавно смотрели» здесь нет — истории просмотров сайт
+ * пока не ведёт, а придуманная история хуже пустого места.
+ */
+function remoteIdleBody() {
+  const recent = readRecent()
+  return `
+    ${recent.length ? group(searchCopy.recent, `<div class="schips">${recent.map(chip).join('')}</div>`) : ''}
+    ${group(searchCopy.popular, `<div class="schips">${searchCopy.popularLive.map(chip).join('')}</div>`)}
+  `
+}
 
 /** Пустое поле: последние, популярные, недавно просмотренные. */
 function idleBody() {
@@ -137,7 +201,7 @@ function idleBody() {
 }
 
 /** Есть ввод: товары, разделы, «показать все». */
-function resultsBody(result) {
+function resultsBody(result, { row = productRow, url = searchUrl(result.query) } = {}) {
   const { query, products, categories, total } = result
 
   if (!total) {
@@ -157,7 +221,7 @@ function resultsBody(result) {
       products.length
         ? group(
             searchCopy.products,
-            `<div class="srows">${products.map((entry) => productRow(entry, query)).join('')}</div>`,
+            `<div class="srows">${products.map((entry) => row(entry, query)).join('')}</div>`,
           )
         : ''
     }
@@ -169,9 +233,9 @@ function resultsBody(result) {
           )
         : ''
     }
-    <a class="sall" href="${searchUrl(query)}" data-search-item>
+    <a class="sall" href="${escape(url)}" data-search-item>
       ${searchCopy.all}
-      <span class="sall__count">${total}</span>
+      ${products.length || categories.length ? `<span class="sall__count">${total}</span>` : ''}
     </a>
   `
 }
@@ -224,9 +288,11 @@ const results = (idSuffix) => `
  * @param {HTMLElement[]} o.triggers точки входа в поиск: капсула в шапке
  *   на десктопе и иконка на мобильном
  * @param {() => void} [o.onOpen] закрыть то, что не должно висеть вместе с поиском
+ * @param {{suggestUrl: string, resultsUrl: string}} [o.remote] выдача с сервера
+ *   (Битрикс). Без него — выдача прототипа по src/data/search.js
  * @returns {{open: () => void, close: () => void, isOpen: () => boolean}}
  */
-export function initSearch({ header, triggers = [], onOpen }) {
+export function initSearch({ header, triggers = [], onOpen, remote = null }) {
   if (!header) return { open: () => {}, close: () => {}, isOpen: () => false }
 
   /* ---- разметка ---------------------------------------------------------- */
@@ -290,10 +356,61 @@ export function initSearch({ header, triggers = [], onOpen }) {
 
   /* ---- выдача ------------------------------------------------------------ */
 
+  /* Ответы сервера по запросам: повторный ввод того же текста не ходит
+     на сервер, а устаревший ответ не перерисовывает свежую выдачу. */
+  const cache = new Map()
+  let pending = null
+
+  const resultsHref = (query) => `${remote.resultsUrl}?q=${encodeURIComponent(query)}`
+
+  async function fetchSuggest(query) {
+    if (cache.has(query)) return cache.get(query)
+    pending?.abort()
+    pending = new AbortController()
+    const response = await fetch(`${remote.suggestUrl}?q=${encodeURIComponent(query)}`, {
+      signal: pending.signal,
+      headers: { Accept: 'application/json' },
+    })
+    if (!response.ok) throw new Error(`suggest ${response.status}`)
+    const data = await response.json()
+    const result = {
+      query,
+      products: Array.isArray(data.products) ? data.products : [],
+      categories: Array.isArray(data.categories) ? data.categories : [],
+      total: Number(data.total) || 0,
+    }
+    result.total = Math.max(result.total, result.products.length) + result.categories.length
+    cache.set(query, result)
+    return result
+  }
+
   function paint() {
     const query = view().input.value.trim()
-    const html = query.length < 2 ? idleBody() : resultsBody(searchAll(query))
 
+    if (remote) {
+      if (query.length < 2) {
+        pending?.abort()
+        render(remoteIdleBody())
+        return
+      }
+      fetchSuggest(query)
+        .then((result) => {
+          // Пока ответ шёл, человек мог дописать запрос: старый ответ не рисуем.
+          if (view().input.value.trim() !== query) return
+          render(resultsBody(result, { row: remoteProductRow, url: resultsHref(query) }))
+        })
+        .catch((error) => {
+          if (error.name === 'AbortError') return
+          // Сервер не ответил — честно ведём на страницу результатов.
+          render(resultsBody({ query, products: [], categories: [], total: 1 }, { url: resultsHref(query) }))
+        })
+      return
+    }
+
+    render(query.length < 2 ? idleBody() : resultsBody(searchAll(query)))
+  }
+
+  function render(html) {
     // Рисуем в обе панели сразу: их две (шапка и мобильный слой), а какая
     // из них на экране — решает медиазапрос. Перекладывать DOM при повороте
     // экрана было бы дороже и ломало бы фокус.
@@ -416,7 +533,9 @@ export function initSearch({ header, triggers = [], onOpen }) {
   views.forEach((item) => {
     item.input.addEventListener('input', () => {
       clearTimeout(typing)
-      typing = setTimeout(paint, TYPE_DELAY)
+      // С сервером задержка длиннее: запрос на каждую букву — лишняя нагрузка
+      // и лишние хиты «Контроля активности».
+      typing = setTimeout(paint, remote ? REMOTE_TYPE_DELAY : TYPE_DELAY)
     })
 
     item.clear.addEventListener('click', () => {
@@ -431,6 +550,11 @@ export function initSearch({ header, triggers = [], onOpen }) {
       event.preventDefault()
       const query = item.input.value.trim()
       if (!query) return
+      if (remote) {
+        rememberQuery(query)
+        location.href = resultsHref(query)
+        return
+      }
       location.href = searchUrl(query)
     })
 
@@ -473,6 +597,7 @@ export function initSearch({ header, triggers = [], onOpen }) {
   // Чипы запросов подставляют текст в поле, ссылки работают ссылками.
   views.forEach((item) => {
     item.body.addEventListener('click', (event) => {
+      if (remote && event.target.closest('a[data-search-item]')) rememberQuery(item.input.value)
       const el = event.target.closest('[data-query]')
       if (!el) return
       item.input.value = el.dataset.query

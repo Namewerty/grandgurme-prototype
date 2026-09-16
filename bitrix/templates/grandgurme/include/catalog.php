@@ -27,6 +27,8 @@
 if (!defined('B_PROLOG_INCLUDED') || B_PROLOG_INCLUDED !== true) die();
 
 require_once __DIR__ . '/fn.php';
+/* Название для печати, характеристики и код товара (16.09.2026). */
+require_once __DIR__ . '/product-info.php';
 
 /** Сколько дней везём то, чего нет на складе. Подтверждено заказчиком. */
 const GG_PREORDER_DAYS = 7;

@@ -81,12 +81,13 @@ function gg_basket_lines(): array
     $props = gg_props_for_ids($productIds, ['UPAKOVKA', 'CML2_ARTICLE']);
     $elements = gg_elements_for_ids($productIds);
     $live = gg_products_live($productIds);
+    /* Название для печати и вес — как в каталоге и карточке (product-info.php). */
+    $goods = gg_goods_info_for_ids($productIds);
 
     $lines = [];
     foreach ($items as $item) {
         $pid = (int)$item->getProductId();
-        $pack = trim((string)($props[$pid]['UPAKOVKA'] ?? ''));
-        $name = (string)($elements[$pid]['NAME'] ?? $item->getField('NAME'));
+        $name = (string)($goods[$pid]['name'] ?? ($elements[$pid]['NAME'] ?? $item->getField('NAME')));
         $code = (string)($elements[$pid]['CODE'] ?? '');
         $price = (float)$item->getPrice();
         $data = $live[$pid] ?? ['id' => $pid, 'price' => null, 'quantity' => 0.0, 'canBuy' => false];
@@ -95,8 +96,8 @@ function gg_basket_lines(): array
             'id' => (int)$item->getId(),
             'productId' => $pid,
             'code' => $code,
-            'name' => gg_item_title($name, $pack),
-            'note' => $pack !== '' ? $pack : trim((string)($props[$pid]['CML2_ARTICLE'] ?? '')),
+            'name' => $name,
+            'note' => gg_line_weight($goods[$pid] ?? null),
             'article' => trim((string)($props[$pid]['CML2_ARTICLE'] ?? '')),
             'href' => $code !== '' ? '/product/' . $code : '/catalog',
             'price' => $price > 0 ? $price : null,

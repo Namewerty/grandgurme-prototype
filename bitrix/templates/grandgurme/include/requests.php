@@ -201,20 +201,21 @@ function gg_request_lines(): array
     $elements = gg_elements_for_ids($ids);
     $props = gg_props_for_ids($ids, ['UPAKOVKA', 'CML2_ARTICLE']);
     $live = gg_products_live($ids);
+    /* Название для печати и вес — как в каталоге и карточке (product-info.php). */
+    $goods = gg_goods_info_for_ids($ids);
 
     $lines = [];
     foreach ($list as $id => $qty) {
         if (!isset($elements[$id])) {
             continue;
         }
-        $pack = trim((string)($props[$id]['UPAKOVKA'] ?? ''));
         $code = (string)($elements[$id]['CODE'] ?? '');
         $lines[] = [
             'id' => $id,
             'productId' => $id,
             'code' => $code,
-            'name' => gg_item_title((string)$elements[$id]['NAME'], $pack),
-            'note' => $pack !== '' ? $pack : trim((string)($props[$id]['CML2_ARTICLE'] ?? '')),
+            'name' => (string)($goods[$id]['name'] ?? $elements[$id]['NAME']),
+            'note' => gg_line_weight($goods[$id] ?? null),
             'article' => trim((string)($props[$id]['CML2_ARTICLE'] ?? '')),
             'href' => $code !== '' ? '/product/' . $code : '/catalog',
             'price' => $live[$id]['price'] ?? null,

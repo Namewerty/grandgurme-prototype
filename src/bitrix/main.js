@@ -55,6 +55,7 @@ import '../styles/pages/category.css'
 import '../styles/pages/product.css'
 import '../styles/pages/cart.css'
 import '../styles/pages/checkout.css'
+import '../styles/pages/search.css'
 
 import { initHeader } from '../js/sections/header.js'
 import { initFooter } from '../js/sections/footer.js'

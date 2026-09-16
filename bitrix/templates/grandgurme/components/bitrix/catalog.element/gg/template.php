@@ -6,12 +6,13 @@
  * Галерея здесь одна и сразу собрана сервером: фотографий в выгрузке 1С нет
  * ни у одной позиции, переключать нечего, и лента миниатюр не рисуется.
  *
- * Характеристики берутся из заполненных свойств — список и порядок задаёт
- * карта витрины (ключ specs). Свойств у чёрной икры четыре плюс артикул;
- * остальные сто двадцать свойств стандарта GS1 в выгрузке пустые, и строки
- * с прочерками карточке только мешают. Строки «В наличии — N шт» здесь
- * больше нет: статус стоит под ценой, а число банок на складе покупателю
- * ничего не решает.
+ * НАЗВАНИЕ, ВЕС И АРТИКУЛ (16.09.2026) — include/product-info.php.
+ * Как на grandgurme.ru: над заголовком мелко артикул, заголовок — название
+ * для печати, под ним вес («50 г», у весового товара «100 г»), цена — за
+ * этот вес. Характеристик, упаковки и кодов из 1С карточка не показывает:
+ * в выгрузке они заведены разными словами, характеристики будут заводиться
+ * отдельно. Фасовки соседних позиций капсулами убраны по той же причине —
+ * подписями капсул были сырые значения «Упаковки».
  *
  * ВИД ПОЗИЦИИ (16.09.2026) — gg_item_kind: метка и одно предложение под
  * ценой. «В наличии» и «под заказ» кладутся в корзину (action=ADD2BASKET,
@@ -34,12 +35,9 @@ require_once $_SERVER['DOCUMENT_ROOT'] . SITE_TEMPLATE_PATH . '/include/catalog.
 
 $cat = gg_catalog_category((string)($arParams['GG_CATEGORY_SLUG'] ?? ''));
 
-/** Значение свойства как читаемая строка. */
-$ggProps = gg_item_props($arResult)
-    + (gg_props_for_ids([(int)$arResult['ID']], ['RYBA', 'KATEGORIYA', 'UPAKOVKA', 'ATRIBUT', 'CML2_ARTICLE'])[(int)$arResult['ID']] ?? []);
-$val = static function (string $code) use ($ggProps): string {
-    return trim((string)($ggProps[$code] ?? ''));
-};
+/* Название для печати, вес, весовой ли товар и артикул (product-info.php). */
+$goods = gg_goods_info_for_ids([(int)$arResult['ID']])[(int)$arResult['ID']]
+    ?? ['name' => (string)$arResult['NAME'], 'weight' => '', 'weighed' => false, 'article' => ''];
 
 $price = gg_item_price($arResult);
 
@@ -53,47 +51,9 @@ $kindText = [
     'request' => 'Менеджер уточнит цену и срок поставки и свяжется с вами. Оплатить этот товар на сайте нельзя.',
 ][$kind];
 
-$species = $val('RYBA');
-$line = $val('KATEGORIYA');
-$pack = $val('UPAKOVKA');
-$attr = $val('ATRIBUT');
-$subtitle = implode(' · ', array_filter([$species, $line]));
-
-/* Соседние фасовки той же линейки: у икры человек выбирает между банкой 50 г
-   и банкой на килограмм, и это единственная ось, по которой позиции внутри
-   линейки различаются. Запрос один, без цен — здесь нужны только адреса. */
-$siblings = [];
-if ($cat && $species !== '' && CModule::IncludeModule('iblock')) {
-    $filter = gg_catalog_filter($cat);
-    $filter['IBLOCK_ID'] = gg_map()['iblockId'];
-    $filter['PROPERTY_RYBA'] = gg_prop_enum_ids('RYBA', [$species]);
-    if ($line !== '') {
-        $filter['PROPERTY_KATEGORIYA'] = gg_prop_enum_ids('KATEGORIYA', [$line]);
-    }
-    $res = CIBlockElement::GetList(
-        ['NAME' => 'ASC'],
-        $filter,
-        false,
-        ['nTopCount' => 12],
-        ['ID', 'NAME', 'CODE', 'PROPERTY_UPAKOVKA']
-    );
-    while ($row = $res->Fetch()) {
-        $label = trim((string)($row['PROPERTY_UPAKOVKA_VALUE'] ?? ''));
-        if ($label === '') {
-            continue;
-        }
-        $siblings[] = [
-            'label' => $label,
-            'href' => gg_product_url($row),
-            'current' => (int)$row['ID'] === (int)$arResult['ID'],
-        ];
-    }
-}
-
-$alt = $arResult['NAME'] . ($pack !== '' ? ', ' . $pack : '');
-
-/* Заголовок без хвоста фасовки: она стоит строкой ниже капсулами. */
-$title = gg_item_title((string)$arResult['NAME'], $pack);
+/* Заголовок — название для печати целиком, как на grandgurme.ru. */
+$title = $goods['name'];
+$alt = $title . ($goods['weight'] !== '' ? ', ' . $goods['weight'] : '');
 
 /* Вторая кнопка. У позиции без цены она называется «Узнать цену» и ведёт
    туда же: виджета эксперта на Битриксе пока нет, заявку принимают
@@ -104,13 +64,6 @@ $secondLabel = $price === null ? 'Узнать цену' : 'Спросить э�
    обработки адресов вернул бы физический /product/index.php. */
 $formAction = (string)parse_url((string)($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH);
 
-$specs = [];
-foreach (($cat['specs'] ?? []) as $spec) {
-    $value = $val($spec['prop']);
-    if ($value !== '') {
-        $specs[] = ['term' => $spec['label'], 'value' => $value];
-    }
-}
 ?>
 <div class="product-page">
   <div class="container">
@@ -132,26 +85,18 @@ foreach (($cat['specs'] ?? []) as $spec) {
       </div>
 
       <div class="pbuy">
-        <h1 class="pbuy__title"><?= gg_e($title) ?></h1>
-<?php if ($subtitle !== ''): ?>
-        <p class="pbuy__line"><?= gg_e($subtitle . ($attr !== '' ? ' · ' . $attr : '')) ?></p>
+<?php if ($goods['article'] !== ''): ?>
+        <p class="pbuy__article">Артикул <?= gg_e($goods['article']) ?></p>
 <?php endif; ?>
-        <p class="pbuy__price"><?= gg_e(gg_price($price)) ?></p>
+        <h1 class="pbuy__title"><?= gg_e($title) ?></h1>
+<?php if ($goods['weight'] !== ''): ?>
+        <p class="pbuy__line"><?= gg_e($goods['weight']) ?></p>
+<?php endif; ?>
+        <p class="pbuy__price"><?= gg_e(gg_price(gg_shelf_price($price, $goods['weighed']))) ?></p>
         <div class="pbuy__kind">
           <?= gg_stock_tag($kind) ?>
           <p class="pbuy__kind-text"><?= gg_e($kindText) ?></p>
         </div>
-
-<?php if (count($siblings) > 1): ?>
-        <div class="pbuy__row">
-          <span class="pbuy__label">Фасовка</span>
-          <div class="pbuy__chips" role="group" aria-label="Фасовка">
-<?php foreach ($siblings as $sibling): ?>
-            <a class="chip<?= $sibling['current'] ? ' is-active' : '' ?>" href="<?= gg_e($sibling['href']) ?>"><?= gg_e($sibling['label']) ?></a>
-<?php endforeach; ?>
-          </div>
-        </div>
-<?php endif; ?>
 
         <?php /* Одна форма на оба пути: «в корзину» — ADD2BASKET, «в заявку» —
                  request_add. POST с проверкой сессии; без JS работает как есть. */ ?>
@@ -193,26 +138,16 @@ foreach (($cat['specs'] ?? []) as $spec) {
     </div>
 
     <div class="pblocks">
-<?php if ($specs): ?>
-      <section class="pblock">
-        <h2 class="pblock__title">Характеристики</h2>
-        <dl class="pspecs">
-<?php foreach ($specs as $row): ?>
-          <div class="pspecs__row">
-            <dt><?= gg_e($row['term']) ?></dt>
-            <dd><?= gg_e($row['value']) ?></dd>
-          </div>
-<?php endforeach; ?>
-        </dl>
-      </section>
-<?php endif; ?>
-
+<?php if (($cat['slug'] ?? '') === 'chernaya-ikra'): ?>
+      <?php /* Текст про осетровую икру — только ей. До 16.09 он стоял на всех
+               карточках, включая шоколад и чай. */ ?>
       <section class="pblock">
         <h2 class="pblock__title">Хранение</h2>
         <div class="pblock__text">
           <p>Осетровую икру держат при температуре от −4 до −2 °С. Открытую банку съедают в течение трёх суток и не хранят в морозильной камере: кристаллы льда рвут оболочку икринки.</p>
         </div>
       </section>
+<?php endif; ?>
     </div>
   </div>
 </div>

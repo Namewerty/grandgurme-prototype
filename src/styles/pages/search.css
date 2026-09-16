@@ -1,0 +1,62 @@
+/* ============================================================================
+   Страница результатов поиска /search/ (только Битрикс).
+
+   Выдача живёт в разметке каталога: заголовок, строка разделов, счётчик
+   и сетка карточек — те же классы, что у страницы категории, поэтому
+   своих стилей здесь только строка запроса. Она стоит на волосяной линии
+   капсулой, как строка поиска в шапке, а не полем формы оформления:
+   это поиск, и выглядеть он должен одинаково везде.
+   ============================================================================ */
+
+.search-page__form {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  max-width: 44rem;
+  margin-top: clamp(1rem, 2.5vh, 1.5rem);
+  padding: .35rem .35rem .35rem 1.1rem;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+  transition: border-color var(--dur-line) var(--ease-out);
+}
+
+.search-page__form:focus-within { border-color: var(--caspian); }
+
+.search-page__icon {
+  display: inline-flex;
+  flex: none;
+  color: var(--fg-mute);
+}
+
+.search-page__icon svg { width: 18px; height: 18px; }
+
+.search-page__input {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 40px;
+  border: 0;
+  background: transparent;
+  font-family: var(--font-body);
+  font-size: .95rem;
+  color: var(--fg);
+}
+
+.search-page__input::placeholder { color: var(--fg-mute); }
+.search-page__input:focus { outline: none; }
+.search-page__input::-webkit-search-cancel-button { display: none; }
+
+.search-page__submit { flex: none; }
+
+.search-page .facets { margin-top: clamp(1rem, 2.5vh, 1.5rem); }
+
+.search-page .catalog__status { margin-top: clamp(1rem, 2.5vh, 1.5rem); }
+
+.search-page__popular {
+  justify-content: center;
+  margin-block: 1rem;
+}
+
+@media (max-width: 479px) {
+  .search-page__form { padding-left: .9rem; }
+  .search-page__submit { padding-inline: 1.1rem; }
+}

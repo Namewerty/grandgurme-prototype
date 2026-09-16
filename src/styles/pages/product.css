@@ -296,6 +296,16 @@
   color: var(--fg);
 }
 
+/* Артикул над заголовком — как на grandgurme.ru: для звонка менеджеру
+   и сверки с 1С, не для выбора. Поэтому мелко и приглушённо. */
+.pbuy__article {
+  margin: 0 0 .5rem;
+  font-size: .72rem;
+  letter-spacing: .04em;
+  color: var(--fg-mute);
+  font-variant-numeric: tabular-nums;
+}
+
 /* ---- Ленты --------------------------------------------------------------- */
 
 .prail__head {

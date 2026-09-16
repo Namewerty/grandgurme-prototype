@@ -265,17 +265,18 @@ if ($items && $page['ids']) {
 <?php else: ?>
     <div class="catalog__grid">
 <?php
-    /* Свойства для всей страницы выдачи — одним запросом, см. gg_props_for_ids. */
-    $ggPagePropsById = gg_props_for_ids(array_column($items, 'ID'), ['UPAKOVKA', 'RYBA', 'KATEGORIYA', 'CML2_ARTICLE']);
+    /* Название для печати, вес и признак весового товара — одним запросом
+       на страницу (include/product-info.php). В карточке сетки только
+       название, вес и цена, как на grandgurme.ru: упаковка, артикул
+       и прочие признаки из 1С сюда не выводятся. */
+    $ggGoods = gg_goods_info_for_ids(array_column($items, 'ID'));
     foreach ($items as $item):
-        $price = gg_item_price($item);
-        $props = gg_item_props($item) + ($ggPagePropsById[(int)$item['ID']] ?? []);
-        $pack = $props['UPAKOVKA'] ?? '';
-        $title = gg_item_title((string)$item['NAME'], $pack);
-        $note = $pack !== '' ? $pack : ($props['CML2_ARTICLE'] ?? '');
+        $goods = $ggGoods[(int)$item['ID']] ?? ['name' => (string)$item['NAME'], 'weight' => '', 'weighed' => false];
+        $price = gg_shelf_price(gg_item_price($item), $goods['weighed']);
+        $title = $goods['name'];
         $kind = gg_item_kind($item, $cat);
         $href = gg_product_url($item);
-        $alt = $item['NAME'] . ($pack !== '' ? ', ' . $pack : '');
+        $alt = $title . ($goods['weight'] !== '' ? ', ' . $goods['weight'] : '');
 ?>
       <article class="product">
         <div class="product__frame">
@@ -283,7 +284,9 @@ if ($items && $page['ids']) {
         </div>
         <div class="product__body">
           <h3 class="product__name"><a href="<?= gg_e($href) ?>"><?= gg_e($title) ?></a></h3>
-          <p class="product__note"><?= gg_e($note) ?></p>
+<?php   if ($goods['weight'] !== ''): ?>
+          <p class="product__note"><?= gg_e($goods['weight']) ?></p>
+<?php   endif; ?>
           <p class="product__price"><?= gg_e(gg_price($price)) ?></p>
 <?php   if ($kind !== 'stock'): ?>
           <p class="product__tag"><?= gg_stock_tag($kind) ?></p>

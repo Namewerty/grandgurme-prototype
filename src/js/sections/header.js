@@ -567,6 +567,8 @@ export function initHeader({ ssr = false } = {}) {
     header,
     triggers: [...header.querySelectorAll('[data-search-trigger]')],
     onOpen: () => megamenu?.close(),
+    // На Битриксе выдача живая: подсказки и страница результатов — сервер.
+    remote: ssr ? { suggestUrl: '/search/suggest.php', resultsUrl: '/search/' } : null,
   })
 
   // Открытая строка поиска переводит шапку в плотное состояние по той же

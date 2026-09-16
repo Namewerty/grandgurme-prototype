@@ -68,13 +68,12 @@ if ($own && CModule::IncludeModule('sale')) {
             foreach ($order->getBasket() as $item) {
                 $ids[] = (int)$item->getProductId();
             }
-            $props = gg_props_for_ids($ids, ['UPAKOVKA']);
+            $goods = gg_goods_info_for_ids($ids);
             foreach ($order->getBasket() as $item) {
                 $pid = (int)$item->getProductId();
-                $pack = trim((string)($props[$pid]['UPAKOVKA'] ?? ''));
                 $items[] = [
-                    'name' => gg_item_title((string)$item->getField('NAME'), $pack),
-                    'note' => $pack,
+                    'name' => (string)($goods[$pid]['name'] ?? $item->getField('NAME')),
+                    'note' => gg_line_weight($goods[$pid] ?? null),
                     'qty' => (int)$item->getQuantity(),
                     'sum' => (float)$item->getPrice() * (int)$item->getQuantity(),
                 ];

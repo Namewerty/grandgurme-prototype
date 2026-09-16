@@ -36,7 +36,7 @@ if ($code !== '' && CModule::IncludeModule('iblock')) {
         ['IBLOCK_ID' => gg_map()['iblockId'], 'ACTIVE' => 'Y', 'CODE' => $code],
         false,
         ['nTopCount' => 1],
-        ['ID', 'NAME', 'CODE', 'IBLOCK_SECTION_ID']
+        ['ID', 'NAME', 'CODE', 'IBLOCK_SECTION_ID', 'PREVIEW_TEXT']
     );
     $element = $res->Fetch() ?: null;
 }
@@ -60,7 +60,7 @@ if (!$element) {
     /** Раздел витрины, которому принадлежит товар. */
     $slug = gg_item_category_slug((int)$element['ID']);
 
-    $APPLICATION->SetTitle($element['NAME'] . ' — №1 Гранд Гурмэ');
+    $APPLICATION->SetTitle(gg_display_name((string)$element['NAME'], (string)$element['PREVIEW_TEXT']) . ' — №1 Гранд Гурмэ');
 
     $APPLICATION->IncludeComponent(
         'bitrix:catalog.element',
