@@ -20,22 +20,26 @@
    первой версии честно читаются пустыми — вид позиции в них угадывать
    нельзя, он считается один раз, в kindOf.
 
-   ВЕРСИЯ 3 КОРЗИНЫ (16.09.2026, вечер): в версии 2 вид у позиций с
-   fulfillment на самой позиции считался неверно (store.js → toLine), и
-   такие корзины хранят «заявку» вместо «под заказ». Пересчитать их нельзя
-   по той же причине, что и версию 1, — читаются пустыми. Заказы и заявки
-   форму не меняли и остаются на версии 2: ссылки «Заказ принят» из
-   истории браузера продолжают открываться.
+   ВЕРСИЯ 3 КОРЗИНЫ (16.09.2026, вечер): у позиции появилось поле
+   fulfillment — без него вид «под заказ» у позиции, помеченной так в обход
+   раздела, терялся и она уезжала в заявку. Версия 2 ЧИТАЕТСЯ, а не
+   обнуляется: недостающий fulfillment берётся из каталога по слагу, вид
+   заново считает store.js. Обнулять нельзя — вкладки, открытые до выкладки,
+   ещё пишут версию 2, и новая страница корзины показывала бы пустоту,
+   пока человек не перезагрузит всё. Заказы и заявки остаются на версии 2.
 
    ЗАЯВКИ МЕНЕДЖЕРУ лежат рядом с заказами, под своим ключом gg-requests
    и со своим счётчиком номеров. На Битриксе заявка — элемент инфоблока
    «Заявки менеджеру», а не заказ магазина: в обмен с 1С она не попадает.
    ============================================================================ */
 
+import { findProductBySlug } from '../../data/catalog-products.js'
+
 const CART_KEY = 'gg-cart'
 const ORDERS_KEY = 'gg-orders'
 const REQUESTS_KEY = 'gg-requests'
 const CART_VERSION = 3
+const CART_VERSIONS_READ = [2, 3]
 const RECORD_VERSION = 2
 
 /**
@@ -73,11 +77,17 @@ function write(key, value) {
 
 /* --------------------------------------------------------------- корзина */
 
+/** Позиция версии 2 — без fulfillment; берём его из каталога по слагу. */
+const upgradeLine = (line) =>
+  line && line.fulfillment === undefined
+    ? { ...line, fulfillment: findProductBySlug(line.slug)?.fulfillment ?? null }
+    : line
+
 export function loadCart() {
   const data = read(CART_KEY)
-  if (!data || data.version !== CART_VERSION || !Array.isArray(data.items)) return emptyCart()
+  if (!data || !CART_VERSIONS_READ.includes(data.version) || !Array.isArray(data.items)) return emptyCart()
   return {
-    items: data.items,
+    items: data.items.map(upgradeLine),
     promo: typeof data.promo === 'string' ? data.promo : '',
   }
 }

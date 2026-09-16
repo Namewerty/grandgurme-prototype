@@ -16,12 +16,13 @@
    наборы — выгрузки по ним нет), и искать их по id было бы негде.
 
    ОДНА КОРЗИНА НА ТРИ ВИДА (src/data/fulfillment.js). Заказ — позиции
-   stock и preorder, заявка — request. Вид считается в момент добавления
-   ПО САМОМУ ТОВАРУ, а не по снимку: у снимка нет полей, от которых зависит
-   вид у исключений (fulfillment у тестовых позиций икры), и первая версия
-   именно так превращала «под заказ» в заявку. На Битриксе вид считается
-   при каждой отрисовке по живому остатку и цене, и позиция переезжает
-   между корзиной и заявкой сама.
+   stock и preorder, заявка — request. Снимок хранит всё, от чего зависит
+   вид (цена, наличие, раздел, fulfillment), а сам вид считается заново из
+   снимка при каждой загрузке — так запись, сделанная другой версией кода,
+   не может принести с собой чужой вид. Первая версия хранила вид, но не
+   fulfillment, и «под заказ» у помеченной так позиции уезжало в заявку.
+   На Битриксе вид считается при каждой отрисовке по живому остатку и цене,
+   и позиция переезжает между корзиной и заявкой сама.
    ============================================================================ */
 
 import { ROUTES } from '../../data/routes.js'
@@ -39,38 +40,34 @@ const clampQty = (qty) => Math.max(0, Math.min(MAX_QTY, Math.round(Number(qty) |
  */
 function toLine(product, qty) {
   const slug = product.slug ?? null
-  const price = typeof product.price === 'number' ? product.price : null
-  const inStock = product.inStock !== false
-  return {
+  const line = {
     id: String(product.id ?? slug),
     slug,
     name: product.name,
     note: product.note ?? product.weightLabel ?? '',
     href: product.href ?? (slug ? ROUTES.product(slug) : ROUTES.catalog),
     image: product.image ?? product.photo ?? null,
-    price,
+    price: typeof product.price === 'number' ? product.price : null,
     qty,
-    inStock,
+    inStock: product.inStock !== false,
     categorySlug: product.categorySlug ?? null,
-    // Те же нормализованные цена и наличие, что легли в снимок, плюс всё,
-    // что kindOf смотрит у товара сверх них (раздел, fulfillment).
-    kind: kindOf({ ...product, price, inStock }),
+    fulfillment: product.fulfillment === 'preorder' ? 'preorder' : null,
   }
+  return { ...line, kind: kindOf(line) }
 }
 
 /** Запись из хранилища могла быть поправлена руками или другой версией кода. */
 const isValidLine = (line) =>
-  line &&
-  typeof line.id === 'string' &&
-  typeof line.name === 'string' &&
-  KINDS.includes(line.kind) &&
-  clampQty(line.qty) > 0
+  line && typeof line.id === 'string' && typeof line.name === 'string' && clampQty(line.qty) > 0
 
 let state = sanitize(loadCart())
 
+/** Вид не доверяем записи — считаем из снимка (см. шапку файла). */
 function sanitize({ items, promo }) {
   return {
-    items: items.filter(isValidLine).map((line) => ({ ...line, qty: clampQty(line.qty) })),
+    items: items
+      .filter(isValidLine)
+      .map((line) => ({ ...line, qty: clampQty(line.qty), kind: kindOf(line) })),
     promo,
   }
 }
