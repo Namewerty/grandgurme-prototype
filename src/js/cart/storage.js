@@ -20,6 +20,13 @@
    первой версии честно читаются пустыми — вид позиции в них угадывать
    нельзя, он считается один раз, в kindOf.
 
+   ВЕРСИЯ 3 КОРЗИНЫ (16.09.2026, вечер): в версии 2 вид у позиций с
+   fulfillment на самой позиции считался неверно (store.js → toLine), и
+   такие корзины хранят «заявку» вместо «под заказ». Пересчитать их нельзя
+   по той же причине, что и версию 1, — читаются пустыми. Заказы и заявки
+   форму не меняли и остаются на версии 2: ссылки «Заказ принят» из
+   истории браузера продолжают открываться.
+
    ЗАЯВКИ МЕНЕДЖЕРУ лежат рядом с заказами, под своим ключом gg-requests
    и со своим счётчиком номеров. На Битриксе заявка — элемент инфоблока
    «Заявки менеджеру», а не заказ магазина: в обмен с 1С она не попадает.
@@ -28,7 +35,8 @@
 const CART_KEY = 'gg-cart'
 const ORDERS_KEY = 'gg-orders'
 const REQUESTS_KEY = 'gg-requests'
-const VERSION = 2
+const CART_VERSION = 3
+const RECORD_VERSION = 2
 
 /**
  * ⚠ ПОДТВЕРДИТЬ У ЗАКАЗЧИКА: формат номера заказа. В прототипе номер
@@ -67,7 +75,7 @@ function write(key, value) {
 
 export function loadCart() {
   const data = read(CART_KEY)
-  if (!data || data.version !== VERSION || !Array.isArray(data.items)) return emptyCart()
+  if (!data || data.version !== CART_VERSION || !Array.isArray(data.items)) return emptyCart()
   return {
     items: data.items,
     promo: typeof data.promo === 'string' ? data.promo : '',
@@ -75,7 +83,7 @@ export function loadCart() {
 }
 
 export function saveCart({ items, promo }) {
-  return write(CART_KEY, { version: VERSION, items, promo })
+  return write(CART_KEY, { version: CART_VERSION, items, promo })
 }
 
 /**
@@ -93,18 +101,18 @@ export function onExternalCartChange(fn) {
 /** Запись с номером под ключом; номер — следующий после последнего. */
 function saveNumbered(key, first, record) {
   const data = read(key)
-  const list = data?.version === VERSION && data.list ? data.list : {}
+  const list = data?.version === RECORD_VERSION && data.list ? data.list : {}
   const last = Math.max(first - 1, ...Object.keys(list).map(Number).filter(Number.isFinite))
   const number = last + 1
 
   list[number] = { ...record, number }
-  write(key, { version: VERSION, list })
+  write(key, { version: RECORD_VERSION, list })
   return number
 }
 
 function loadNumbered(key, number) {
   const data = read(key)
-  if (data?.version !== VERSION || !data.list) return null
+  if (data?.version !== RECORD_VERSION || !data.list) return null
   return data.list[number] || null
 }
 

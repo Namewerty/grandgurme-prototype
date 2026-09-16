@@ -16,9 +16,12 @@
    наборы — выгрузки по ним нет), и искать их по id было бы негде.
 
    ОДНА КОРЗИНА НА ТРИ ВИДА (src/data/fulfillment.js). Заказ — позиции
-   stock и preorder, заявка — request. В прототипе вид не пересчитывается:
-   это снимок. На Битриксе вид считается при каждой отрисовке по живому
-   остатку и цене, и позиция переезжает между корзиной и заявкой сама.
+   stock и preorder, заявка — request. Вид считается в момент добавления
+   ПО САМОМУ ТОВАРУ, а не по снимку: у снимка нет полей, от которых зависит
+   вид у исключений (fulfillment у тестовых позиций икры), и первая версия
+   именно так превращала «под заказ» в заявку. На Битриксе вид считается
+   при каждой отрисовке по живому остатку и цене, и позиция переезжает
+   между корзиной и заявкой сама.
    ============================================================================ */
 
 import { ROUTES } from '../../data/routes.js'
@@ -36,19 +39,23 @@ const clampQty = (qty) => Math.max(0, Math.min(MAX_QTY, Math.round(Number(qty) |
  */
 function toLine(product, qty) {
   const slug = product.slug ?? null
-  const line = {
+  const price = typeof product.price === 'number' ? product.price : null
+  const inStock = product.inStock !== false
+  return {
     id: String(product.id ?? slug),
     slug,
     name: product.name,
     note: product.note ?? product.weightLabel ?? '',
     href: product.href ?? (slug ? ROUTES.product(slug) : ROUTES.catalog),
     image: product.image ?? product.photo ?? null,
-    price: typeof product.price === 'number' ? product.price : null,
+    price,
     qty,
-    inStock: product.inStock !== false,
+    inStock,
     categorySlug: product.categorySlug ?? null,
+    // Те же нормализованные цена и наличие, что легли в снимок, плюс всё,
+    // что kindOf смотрит у товара сверх них (раздел, fulfillment).
+    kind: kindOf({ ...product, price, inStock }),
   }
-  return { ...line, kind: kindOf(line) }
 }
 
 /** Запись из хранилища могла быть поправлена руками или другой версией кода. */

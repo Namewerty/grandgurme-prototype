@@ -1865,7 +1865,7 @@ public/media/catalog/ryba/<слаг позиции>.jpg   1400×1400, 1:1, пэ�
 | `src/js/components/stock-tag.js` · `styles/components/stock-tag.css` | метка вида `.stock-tag` |
 | `src/js/cart/add.js` | «добавить и показать тост» — одна функция на все кнопки |
 | `src/js/cart/demo.js` | `/cart?demo=mixed\|order\|request` — инструмент показа, в сборку Битрикса не входит |
-| `src/js/cart/storage.js` | **единственное место, которое трогает `localStorage`**: корзина (`gg-cart`, версия 2 — у позиции `kind` и `categorySlug`), заказы (`gg-orders`) и заявки (`gg-requests`). Всё в `try/catch` |
+| `src/js/cart/storage.js` | **единственное место, которое трогает `localStorage`**: корзина (`gg-cart`, версия 3 — у позиции `kind` и `categorySlug`; версия 2 хранила неверный вид у тестовой икры «под заказ» и читается пустой), заказы (`gg-orders`) и заявки (`gg-requests`, версия 2). Всё в `try/catch` |
 | `src/js/cart/store.js` | состояние и API: `getItems`, `add`, `setQty` (0 удаляет), `remove`, `clear`, `getTotals`, `subscribe`, плюс `getPromo` / `setPromo`. Изменения — событием `cart:change` на `document` |
 | `src/js/cart/toast.js` | тост, переехавший из старого `cart.js`; добавилась ссылка «Перейти» |
 | `src/js/cart/summary.js` | тексты сводки из итогов — общие для корзины, оформления и «Заказ принят» |
