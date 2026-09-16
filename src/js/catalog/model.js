@@ -197,8 +197,10 @@ export function stockView(pool, state) {
   return { inStock, preorder, forced, showPreorder: forced || state.withPreorder }
 }
 
+/* Позиции с pin (тестовые, см. TEST_CAVIAR в catalog-products.js) видны
+   при любом правиле наличия: для проверки трёх видов они нужны всегда. */
 export const applyStock = (pool, state) =>
-  stockView(pool, state).showPreorder ? pool : pool.filter((product) => product.inStock)
+  stockView(pool, state).showPreorder ? pool : pool.filter((product) => product.inStock || product.pin)
 
 /** Позиции, прошедшие фильтры, без учёта наличия. */
 export const filterPool = (products, state, index) =>
@@ -212,7 +214,9 @@ export const filterAll = (products, state, index) => applyStock(filterPool(produ
  * группы порядок сортировки сохраняется: Array#sort стабилен.
  */
 export const stockFirst = (list) =>
-  list.slice().sort((a, b) => Number(Boolean(b.inStock)) - Number(Boolean(a.inStock)))
+  list
+    .slice()
+    .sort((a, b) => (a.pin || 99) - (b.pin || 99) || Number(Boolean(b.inStock)) - Number(Boolean(a.inStock)))
 
 /**
  * Счётчики опций одной фасеты. Собственная фасета из отбора исключена.

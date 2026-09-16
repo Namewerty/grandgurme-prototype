@@ -65,6 +65,14 @@ const group = (kind) => `
     <p class="cart-group__lead cart-group__lead--${kind}">
       <span class="cart-group__icon" aria-hidden="true">${kindIcon(kind)}</span><span data-group-lead></span>
     </p>
+    ${
+      /* Подсказка про раздельную доставку стоит у срока, который она
+         предлагает обойти, а не под суммой заказа: там она читалась
+         условием оплаты. */
+      kind === 'preorder'
+        ? `<p class="cart-group__hint" data-split-hint hidden>${copy.summary.splitHint}</p>`
+        : ''
+    }
     <ul class="cart-list" data-lines aria-label="${copy.groups[kind].title}"></ul>
   </section>`
 
@@ -88,9 +96,6 @@ function layout() {
             <p class="summary__total">
               <span>${s.total}</span>
               <span class="summary__total-value" data-total aria-live="polite"></span>
-            </p>
-            <p class="ready-line summary__hint" data-split-hint hidden>
-              <span class="ready-line__mark" aria-hidden="true">⬦</span><span>${s.splitHint}</span>
             </p>
           </div>
 

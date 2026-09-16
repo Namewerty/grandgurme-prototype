@@ -805,6 +805,68 @@ export const caviarProducts = CAVIAR_LINES.flatMap((line) =>
   photo: caviarShot[line.species],
 }))
 
+/**
+ * ⚠ ТЕСТОВЫЕ ПОЗИЦИИ — ПРИДУМАНЫ, УБРАТЬ ДО ПОКАЗА КЛИЕНТУ.
+ *
+ * По просьбе Дениса (16.09.2026): три позиции чёрной икры, по одной на каждый
+ * вид (src/data/fulfillment.js), стоят ПЕРВЫМИ на странице раздела при любой
+ * сортировке и видны без «+ и под заказ» — поле pin (model.js → stockFirst,
+ * applyStock). Названия с пометкой «тест», цены выдуманы.
+ *
+ * Средняя позиция — «под заказ» в разделе, где предзаказа нет: для неё
+ * заведено поле fulfillment: 'preorder' у самой позиции. Это исключение
+ * живёт только здесь и в kindOf; на Битриксе его нет — там вид считается
+ * по разделу.
+ *
+ * Удалить: этот массив и его распаковку в caviarProducts ниже.
+ */
+const TEST_CAVIAR = [
+  {
+    id: 901,
+    slug: 'test-ikra-v-nalichii',
+    name: 'Тест · Икра осетра в наличии',
+    weightLabel: 'Банка металл, 125 г',
+    weightG: 125,
+    price: 9900,
+    inStock: true,
+    pin: 1,
+    species: 'Осётр',
+  },
+  {
+    id: 902,
+    slug: 'test-ikra-pod-zakaz',
+    name: 'Тест · Икра осетра под заказ',
+    weightLabel: 'Банка металл, 125 г',
+    weightG: 125,
+    price: 10900,
+    inStock: false,
+    fulfillment: 'preorder',
+    pin: 2,
+    species: 'Осётр',
+  },
+  {
+    id: 903,
+    slug: 'test-ikra-cherez-menedzhera',
+    name: 'Тест · Икра белуги через менеджера',
+    weightLabel: 'Банка металл, 125 г',
+    weightG: 125,
+    price: 24900,
+    inStock: false,
+    pin: 3,
+    species: 'Белуга',
+  },
+].map(({ species, ...item }) => ({
+  ...item,
+  oldPrice: null,
+  isNew: false,
+  isSale: false,
+  isClearance: false,
+  popularity: 0,
+  addedAt: null,
+  attrs: { grade: 'Тестовые позиции', format: '125 г', packaging: 'Банка металл', species },
+  photo: caviarShot[species],
+}))
+
 /* ----------------------------------------------------------------- реестр */
 
 /**
@@ -814,7 +876,7 @@ export const caviarProducts = CAVIAR_LINES.flatMap((line) =>
  */
 export const productsByCategory = {
   ryba: fishProducts,
-  'chernaya-ikra': caviarProducts,
+  'chernaya-ikra': [...TEST_CAVIAR, ...caviarProducts],
 }
 
 export const hasProducts = (slug) => Boolean(productsByCategory[slug]?.length)

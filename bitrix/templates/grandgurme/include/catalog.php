@@ -756,7 +756,7 @@ function gg_kind_labels(): array
     return [
         'stock' => 'В наличии',
         'preorder' => 'Под заказ · ' . gg_days_label(GG_PREORDER_DAYS),
-        'request' => 'По заявке',
+        'request' => 'Через менеджера',
     ];
 }
 

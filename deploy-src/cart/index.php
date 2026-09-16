@@ -83,6 +83,11 @@ $hasLines = $totals['positions'] > 0;
         <p class="cart-group__lead cart-group__lead--<?= $kind ?>">
           <span class="cart-group__icon" aria-hidden="true"><?= gg_kind_icon($kind) ?></span><span><?= gg_e($group['lead']) ?></span>
         </p>
+<?php if ($kind === 'preorder' && $texts['splitHint'] !== ''): ?>
+        <?php /* Подсказка про раздельную доставку — у срока, который она
+                 предлагает обойти, а не под суммой заказа. */ ?>
+        <p class="cart-group__hint"><?= gg_e($texts['splitHint']) ?></p>
+<?php endif; ?>
         <ul class="cart-list" aria-label="<?= gg_e($group['title']) ?>">
 <?php foreach ($lines as $line):
         $sumClass = $line['price'] === null ? ' is-request' : ($isRequest ? ' is-estimate' : '');
@@ -132,11 +137,6 @@ $hasLines = $totals['positions'] > 0;
             <span>Итого</span>
             <span class="summary__total-value"><?= gg_e($texts['total']) ?></span>
           </p>
-<?php   if ($texts['splitHint'] !== ''): ?>
-          <p class="ready-line summary__hint">
-            <span class="ready-line__mark" aria-hidden="true">⬦</span><span><?= gg_e($texts['splitHint']) ?></span>
-          </p>
-<?php   endif; ?>
         </div>
 <?php endif; ?>
 

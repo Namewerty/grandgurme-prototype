@@ -61,7 +61,10 @@ export function kindOf(product) {
   const hasPrice = typeof product?.price === 'number' && product.price > 0
   if (!hasPrice) return 'request'
   if (product.inStock) return 'stock'
-  return PREORDER_SECTIONS.has(product.categorySlug) ? 'preorder' : 'request'
+  // fulfillment у самой позиции — только тестовые позиции прототипа
+  // (TEST_CAVIAR в catalog-products.js): в чёрной икре предзаказа нет.
+  const preorder = product.fulfillment === 'preorder' || PREORDER_SECTIONS.has(product.categorySlug)
+  return preorder ? 'preorder' : 'request'
 }
 
 /** Позиция оплачивается на сайте — то есть идёт в заказ, а не в заявку. */

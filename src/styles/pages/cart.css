@@ -108,6 +108,19 @@
 
 .cart-group__lead--request .cart-group__icon { color: var(--gold-fg); }
 
+/* Подсказка про раздельную доставку — под сроком группы «Под заказ»,
+   с отступом на ширину знака: читается продолжением той же строки. */
+.cart-group__hint {
+  margin: -.55rem 0 .9rem;
+  padding-left: calc(16px + .5rem);
+  font-size: .8rem;
+  line-height: 1.5;
+  color: var(--fg-mute);
+  text-wrap: pretty;
+}
+
+.cart-group__hint[hidden] { display: none; }
+
 .cart-group__icon svg {
   width: 100%;
   height: 100%;
@@ -219,10 +232,6 @@
 .summary__request[hidden],
 .cart__promo[hidden] { display: none; }
 
-.summary__hint {
-  margin-top: .9rem;
-  font-size: .82rem;
-}
 
 /* Блок заявки под блоком заказа — через волосяную линию, как строки. */
 .summary__request {

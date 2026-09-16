@@ -1,14 +1,17 @@
 /* ============================================================================
    Метка вида позиции (.stock-tag): «В наличии», «Под заказ · 7 дней»,
-   «По заявке». Разметка — src/js/components/stock-tag.js и gg_stock_tag
+   «Через менеджера». Разметка — src/js/components/stock-tag.js и gg_stock_tag
    на Битриксе.
 
-   Капсула с обводкой в 1px, без заливки: золотых заливок и теней на сайте
-   нет. Различают виды обводка и цвет текста со знаком:
+   СТРОКА СО ЗНАКОМ, А НЕ КАПСУЛА (правка Дениса 16.09.2026). Первая версия
+   была капсулой с обводкой, и на чёрной икре, где почти всё идёт через
+   менеджера, золотые рамки стояли под каждой карточкой — сетка тяжелела.
+   Теперь виды различают только знак и цвет:
 
-     stock     обводка --hairline, текст --fg, знак --caspian-fg;
-     preorder  обводка --caspian,  текст и знак --caspian-fg;
-     request   обводка --gold,     текст и знак --gold-fg.
+     stock     текст --fg,       знак --caspian-fg;
+     preorder  текст и знак --caspian-fg — срок, на него стоит обратить внимание;
+     request   текст --fg-mute,  знак --gold-fg — самый частый случай
+               на икре, он должен звучать тише всех.
 
    Текстовые версии акцентов (--caspian-fg, --gold-fg) держат контраст 5:1
    на перламутре и переопределены для тёмной темы в tokens.css — развилок
@@ -25,10 +28,6 @@
   align-items: center;
   gap: .35rem;
   max-width: 100%;
-  min-height: 1.6rem;
-  padding: .15rem .6rem .15rem .45rem;
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-pill);
   font-family: var(--font-body);
   font-size: .78rem;
   font-weight: 500;
@@ -65,15 +64,9 @@
   text-overflow: ellipsis;
 }
 
-.stock-tag--preorder {
-  border-color: var(--caspian);
-  color: var(--caspian-fg);
-}
+.stock-tag--preorder { color: var(--caspian-fg); }
 
-.stock-tag--request {
-  border-color: var(--gold);
-  color: var(--gold-fg);
-}
+.stock-tag--request { color: var(--fg-mute); }
 
 .stock-tag--request .stock-tag__icon { color: var(--gold-fg); }
 
@@ -85,11 +78,4 @@
   display: flex;
   min-width: 0;
   margin-top: .45rem;
-}
-
-@media (max-width: 479px) {
-  .product__tag .stock-tag {
-    gap: .3rem;
-    padding-inline: .35rem .5rem;
-  }
 }

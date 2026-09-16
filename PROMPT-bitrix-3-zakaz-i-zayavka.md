@@ -20,7 +20,7 @@
 |---|---|---|
 | **В наличии** | есть на складе и есть цена | в корзину, оплатить, доставка день в день |
 | **Под заказ** | нет на складе, есть цена, раздел «Рыба» или «Красная икра» (со всеми подразделами) — ключ `'fulfillment' => 'preorder'` в `catalog-map.php` | в корзину, оплатить, привезём через 7 дней |
-| **По заявке** | всё остальное: нет на складе вне рыбы и красной икры (**включая чёрную икру**), позиция без цены при любом наличии, позиция, которую Битрикс купить не даёт | оплатить нельзя, уходит менеджеру заявкой |
+| **Через менеджера** (заявка) | всё остальное: нет на складе вне рыбы и красной икры (**включая чёрную икру**), позиция без цены при любом наличии, позиция, которую Битрикс купить не даёт | оплатить нельзя, уходит менеджеру заявкой |
 
 Главные следствия:
 
@@ -95,7 +95,7 @@
 
 Архивы от Дениса, пути от корня сайта:
 
-- `grandgurme-bitrix-build-2026-09-16-zakaz.zip` — заливка (≈ 197 КБ);
+- `grandgurme-bitrix-build-2026-09-16-zakaz.zip` — заливка (≈ 192 КБ);
 - `grandgurme-bitrix-rollback-2026-09-16.zip` — откат: те же пути в версии
   `c6f918c` (≈ 179 КБ).
 
@@ -112,10 +112,10 @@
 ```php
 $root = $_SERVER['DOCUMENT_ROOT'];
 $files = [
-    '/bitrix/templates/grandgurme/assets/css/app.css' => ['a9c2652ca622482cad4174d56e9e3fc8', '461532b1349b2f9b855697958b2054c2'],
-    '/bitrix/templates/grandgurme/assets/js/app.js' => ['48fb317df24ab597faf71516412ea8a5', '848e4da395a34967e99e065e308f36b2'],
-    '/bitrix/templates/grandgurme/include/generated.php' => ['daf6a27559361e3853c7caa348f7b6e9', '9bd7f0ad010bf4f20764313ec2e0a2b9'],
-    '/bitrix/templates/grandgurme/include/catalog.php' => ['a9f631798e32c534c26c5d6f8199511e', '6667933a769f12f16dfea445c09cc11c'],
+    '/bitrix/templates/grandgurme/assets/css/app.css' => ['a9c2652ca622482cad4174d56e9e3fc8', 'fbbf99c1530823d27a03eaceaef606ac'],
+    '/bitrix/templates/grandgurme/assets/js/app.js' => ['48fb317df24ab597faf71516412ea8a5', '62f0bae2f6da4625b3fbf2d8b47f1566'],
+    '/bitrix/templates/grandgurme/include/generated.php' => ['daf6a27559361e3853c7caa348f7b6e9', 'cdf67a1588cb10030413dd5607ba6ecc'],
+    '/bitrix/templates/grandgurme/include/catalog.php' => ['a9f631798e32c534c26c5d6f8199511e', 'ac31c8416807562778468525c5537f1a'],
     '/bitrix/templates/grandgurme/include/catalog-map.php' => ['47414ec5ace1e4e093da8f4274a36f38', '0ee8aaf9ba33957dcf6ba48271dcc4ce'],
     '/bitrix/templates/grandgurme/include/cart.php' => ['6b84d0119ecc80da2d177829516cbfd5', '395c6f962c1b16e2f500db8b63d25268'],
     '/bitrix/templates/grandgurme/include/checkout.php' => ['1b7035f1bee19a5f2c30421db1c17ed6', '08d16e224779fb3375701a807e8455fa'],
@@ -123,7 +123,7 @@ $files = [
     '/bitrix/templates/grandgurme/include/fn.php' => ['cbd57cfd8ab16562a558655c3af88170', '3d9990268b9104f6be8c3d94183050da'],
     '/bitrix/templates/grandgurme/components/bitrix/catalog.section/gg/template.php' => ['856f4e35654fd5e46c4bccc1dcd87077', 'e48b7d7df5419767583da1072c44c24c'],
     '/bitrix/templates/grandgurme/components/bitrix/catalog.element/gg/template.php' => ['aef72617ab4e196bc0721d5ae77a3d72', '6969fb380ce2efd52d911b26880af692'],
-    '/cart/index.php' => ['3c84fa8a5ae17142ad5c542e5faeb916', '288cf4216518a71cd03beb2a3a1ea608'],
+    '/cart/index.php' => ['3c84fa8a5ae17142ad5c542e5faeb916', '0649ca8659cb16d9259c1530366b4d8e'],
     '/checkout/index.php' => ['e69e229e6cbb9f67e499d11bf1fc6480', 'b193e56b6a898b7be963d6036eb09deb'],
     '/order-success/index.php' => ['2f83ec18906e3b9c34806976dd8881cd', '8c3f894c1980d055fe2b0352abc2e5ae'],
     '/delivery/index.php' => ['8ee4a2fe96ec90155e1891bff9424488', '52502d570264eaedb39b8462d84f5854'],
@@ -146,10 +146,10 @@ foreach ($files as $path => [$old, $new]) {
 
 | Путь на сервере | md5 версии `c6f918c` | md5 новой версии |
 |---|---|---|
-| `/bitrix/templates/grandgurme/assets/css/app.css` | `a9c2652ca622482cad4174d56e9e3fc8` | `461532b1349b2f9b855697958b2054c2` |
-| `/bitrix/templates/grandgurme/assets/js/app.js` | `48fb317df24ab597faf71516412ea8a5` | `848e4da395a34967e99e065e308f36b2` |
-| `/bitrix/templates/grandgurme/include/generated.php` | `daf6a27559361e3853c7caa348f7b6e9` | `9bd7f0ad010bf4f20764313ec2e0a2b9` |
-| `/bitrix/templates/grandgurme/include/catalog.php` | `a9f631798e32c534c26c5d6f8199511e` | `6667933a769f12f16dfea445c09cc11c` |
+| `/bitrix/templates/grandgurme/assets/css/app.css` | `a9c2652ca622482cad4174d56e9e3fc8` | `fbbf99c1530823d27a03eaceaef606ac` |
+| `/bitrix/templates/grandgurme/assets/js/app.js` | `48fb317df24ab597faf71516412ea8a5` | `62f0bae2f6da4625b3fbf2d8b47f1566` |
+| `/bitrix/templates/grandgurme/include/generated.php` | `daf6a27559361e3853c7caa348f7b6e9` | `cdf67a1588cb10030413dd5607ba6ecc` |
+| `/bitrix/templates/grandgurme/include/catalog.php` | `a9f631798e32c534c26c5d6f8199511e` | `ac31c8416807562778468525c5537f1a` |
 | `/bitrix/templates/grandgurme/include/catalog-map.php` | `47414ec5ace1e4e093da8f4274a36f38` | `0ee8aaf9ba33957dcf6ba48271dcc4ce` |
 | `/bitrix/templates/grandgurme/include/cart.php` | `6b84d0119ecc80da2d177829516cbfd5` | `395c6f962c1b16e2f500db8b63d25268` |
 | `/bitrix/templates/grandgurme/include/checkout.php` | `1b7035f1bee19a5f2c30421db1c17ed6` | `08d16e224779fb3375701a807e8455fa` |
@@ -157,7 +157,7 @@ foreach ($files as $path => [$old, $new]) {
 | `/bitrix/templates/grandgurme/include/fn.php` | `cbd57cfd8ab16562a558655c3af88170` | `3d9990268b9104f6be8c3d94183050da` |
 | `/bitrix/templates/grandgurme/components/bitrix/catalog.section/gg/template.php` | `856f4e35654fd5e46c4bccc1dcd87077` | `e48b7d7df5419767583da1072c44c24c` |
 | `/bitrix/templates/grandgurme/components/bitrix/catalog.element/gg/template.php` | `aef72617ab4e196bc0721d5ae77a3d72` | `6969fb380ce2efd52d911b26880af692` |
-| `/cart/index.php` | `3c84fa8a5ae17142ad5c542e5faeb916` | `288cf4216518a71cd03beb2a3a1ea608` |
+| `/cart/index.php` | `3c84fa8a5ae17142ad5c542e5faeb916` | `0649ca8659cb16d9259c1530366b4d8e` |
 | `/checkout/index.php` | `e69e229e6cbb9f67e499d11bf1fc6480` | `b193e56b6a898b7be963d6036eb09deb` |
 | `/order-success/index.php` | `2f83ec18906e3b9c34806976dd8881cd` | `8c3f894c1980d055fe2b0352abc2e5ae` |
 | `/delivery/index.php` | `8ee4a2fe96ec90155e1891bff9424488` | `52502d570264eaedb39b8462d84f5854` |
@@ -217,10 +217,11 @@ foreach ($files as $path => [$old, $new]) {
   `document.querySelector('#season') === null`), консоль без ошибок,
   кольцо прогресса нумерует остановки без пропуска.
 - **`/catalog/ryba?stock=all` и `/catalog/krasnaya-ikra?stock=all`:** у позиций
-  не на складе с ценой — метка «Под заказ · 7 дней» (бирюзовая обводка
-  и часы), у позиций без цены — «По заявке» (золотая обводка), у позиций
+  не на складе с ценой — метка «Под заказ · 7 дней» (бирюзовый текст
+  и часы, без рамки), у позиций без цены — «Через менеджера» (серый текст,
+  золотой знак реплики, без рамки), у позиций
   в наличии метки нет; кадры не приглушены, приписки «· под заказ» у фасовки
-  нет. **`/catalog/bakaleya`** — у того, чего нет на складе, «По заявке».
+  нет. **`/catalog/bakaleya`** — у того, чего нет на складе, «Через менеджера».
 - **Карточки.** Остатки живые — перед проверкой сверь статус позиции на
   странице её раздела с `?stock=all`, и если он другой, возьми соседнюю
   позицию того же вида и скажи какую:
@@ -229,7 +230,7 @@ foreach ($files as $path => [$old, $new]) {
   - под заказ — `/product/ikra_krasnaya_gorbusha_banka_steklo_125_g`:
     «Под заказ · 7 дней», «Закажем и привезём к <сегодня + 7>», «В корзину»;
   - по заявке с ценой — `/product/ikra_chyernaya_beluga_daymond_banka_metall_125_g`:
-    «По заявке», «Менеджер уточнит цену…», «Добавить в заявку»;
+    «Через менеджера», «Менеджер уточнит цену…», «Добавить в заявку»;
   - по заявке без цены — `/product/ayoli_klassicheskiy`: то же, вторая
     кнопка «Узнать цену»;
   - в наличии без цены — `/product/ikra_krasnaya_nerka_banka_steklo_125_g`:
@@ -255,7 +256,8 @@ foreach ($files as $path => [$old, $new]) {
      у каждой число позиций справа и строка со знаком под заголовком;
    - счётчик в шапке считает штуки всех видов;
    - сводка: «Итог заказа» (Товаров, Сумма, Доставка, Итого) — только по
-     заказу; подсказка «⬦ Товары в наличии можно получить раньше…»; блок
+     заказу; подсказка «Товары в наличии можно получить раньше…» стоит
+     под сроком в группе «Под заказ» (и только когда есть оба вида); блок
      «Заявка менеджеру — 1 позиция, в итог не входят»; кнопка «Оформить заказ
      и заявку»; промокод есть;
    - у позиции заявки с ценой сумма приглушённая, без цены — «Цена по запросу»;
