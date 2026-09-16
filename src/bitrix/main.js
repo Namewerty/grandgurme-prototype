@@ -34,6 +34,7 @@ import '../styles/components/toast.css'
 import '../styles/components/expert.css'
 import '../styles/components/rail.css'
 import '../styles/components/product-card.css'
+import '../styles/components/stock-tag.css'
 import '../styles/components/post-card.css'
 import '../styles/components/crumbs.css'
 import '../styles/components/qty.css'
@@ -44,7 +45,6 @@ import '../styles/sections/brand.css'
 import '../styles/sections/categories.css'
 import '../styles/sections/types.css'
 import '../styles/sections/shop.css'
-import '../styles/sections/season.css'
 import '../styles/sections/proof.css'
 import '../styles/sections/offline.css'
 import '../styles/sections/why.css'
@@ -64,7 +64,7 @@ import { initExpert } from '../js/expert.js'
 import { hydrateMedia } from '../js/media.js'
 import { maskPhone } from '../js/checkout/validate.js'
 import { hydrateQtySteppers } from './qty-hydrate.js'
-import { hydrateCartBar, hydrateReceiveMethod } from './purchase-hydrate.js'
+import { hydrateCartBar, hydrateReceiveMethod, hydrateServerToast } from './purchase-hydrate.js'
 
 function boot() {
   const main = document.querySelector('#main')
@@ -85,6 +85,7 @@ function boot() {
   document.querySelectorAll('input[data-phone-mask]').forEach(maskPhone)
   hydrateCartBar(document)
   hydrateReceiveMethod(document)
+  hydrateServerToast(document)
 
   initScroll()
 

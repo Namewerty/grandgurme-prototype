@@ -26,15 +26,16 @@
    ============================================================================ */
 
 import { categories } from '../../data/catalog.js'
-import { categoryCopy } from '../../data/category-copy.js'
 import { findProductBySlug, galleryOf, getProducts } from '../../data/catalog-products.js'
 import { journalPosts } from '../../data/journal.js'
 import { productCopy } from '../../data/product-copy.js'
 import { ROUTES } from '../../data/routes.js'
 import { cartCopy } from '../../data/cart-copy.js'
-import { add as addToCart } from '../cart/store.js'
-import { showToast } from '../cart/toast.js'
+import { formatDayMonth, kindOf, preorderDate } from '../../data/fulfillment.js'
+import { addWithToast } from '../cart/add.js'
+import { fillText } from '../cart/summary.js'
 import { createProductCard } from '../components/product-card.js'
+import { stockTagHtml } from '../components/stock-tag.js'
 import { createQtyStepper } from '../components/qty-stepper.js'
 import { createImage } from '../media.js'
 import { escapeHtml, formatPrice } from '../catalog/model.js'
@@ -184,25 +185,30 @@ function buyColumn(product) {
      у рыбы линейки нет вовсе, и лишнего разделителя быть не должно. */
   const line = [product.attrs.species, product.attrs.grade].filter(Boolean).join(' · ')
 
-  /* Статус стоит сразу под ценой: «сколько» и «когда» — один вопрос,
-     и отвечать на него через два блока нельзя. Знак ⬦ — тот же ромб,
-     что у пунктов обязательств на главной. */
-  const status = product.inStock ? copy.status.inStock : copy.status.preorder
+  /* Вид позиции стоит сразу под ценой: «сколько» и «когда» — один вопрос,
+     и отвечать на него через два блока нельзя. Метка — та же, что в сетке
+     каталога, но здесь она есть и у «в наличии»: на карточке человек
+     решает, покупать ли. */
+  const kind = kindOf(product)
+  const kindText = fillText(copy.kind[kind], { date: formatDayMonth(preorderDate()) })
 
   return `
     <div class="pbuy">
       <h1 class="pbuy__title">${escapeHtml(product.name)}</h1>
       ${line ? `<p class="pbuy__line">${escapeHtml(line)}</p>` : ''}
       <p class="pbuy__price">${priceLabel(product)}</p>
-      <p class="pbuy__status${product.inStock ? '' : ' is-preorder'}">
-        <span class="pbuy__status-mark" aria-hidden="true">⬦</span>${status}
-      </p>
+      <div class="pbuy__kind">
+        ${stockTagHtml(kind)}
+        <p class="pbuy__kind-text">${kindText}</p>
+      </div>
 
       ${buyRows(product)}
 
       <div class="pbuy__actions">
         <span data-qty></span>
-        <button type="button" class="btn btn--solid" data-add-to-cart>${copy.buy.add}</button>
+        <button type="button" class="btn btn--solid" data-add-to-cart>
+          ${kind === 'request' ? copy.buy.addRequest : copy.buy.add}
+        </button>
         <button type="button" class="btn" data-ask-expert>
           ${product.price == null ? copy.buy.askPrice : copy.buy.expert}
         </button>
@@ -320,27 +326,24 @@ function notFound(mount) {
     </div>`
 }
 
-/** Кладёт в корзину и показывает тост со ссылкой на неё. */
-function addWithToast(product, qty = 1) {
-  addToCart(product, qty)
-  showToast(cartCopy.toast.added, cartCopy.toast.action)
-}
-
-/** Карточки для ленты. Кадр берётся из самой позиции, как в сетке каталога. */
-function cardFor(product) {
+/**
+ * Карточки для ленты. Кадр берётся из самой позиции, как в сетке каталога.
+ * Соседи по ленте — из того же раздела, что и открытая позиция.
+ */
+function cardFor(product, categorySlug) {
+  const item = { ...product, categorySlug }
+  const kind = kindOf(item)
   return createProductCard({
     name: product.name,
-    note: product.inStock
-      ? product.weightLabel
-      : `${product.weightLabel} · ${categoryCopy.card.outOfStock}`,
+    note: product.weightLabel,
     href: ROUTES.product(product.slug),
     price: priceLabel(product),
     image: { src: product.photo, ratio: '1:1' },
     add: {
-      label: categoryCopy.card.add,
-      onAdd: () => addWithToast(product),
+      label: cartCopy.addLabel[kind],
+      onAdd: () => addWithToast(item),
     },
-    muted: !product.inStock,
+    kind,
   })
 }
 
@@ -362,7 +365,7 @@ function otherSpecies(product) {
     .filter(Boolean)
 }
 
-function fillRail(root, id, products) {
+function fillRail(root, id, products, categorySlug) {
   const block = root.querySelector(`[data-rail="${id}"]`)
   if (!block) return
 
@@ -373,7 +376,7 @@ function fillRail(root, id, products) {
   }
 
   const track = block.querySelector('[data-rail-track]')
-  products.forEach((product) => track.appendChild(cardFor(product)))
+  products.forEach((product) => track.appendChild(cardFor(product, categorySlug)))
 
   const pager = createPager(track.getAttribute('aria-label'))
   block.querySelector('[data-rail-pager]').appendChild(pager.node)
@@ -517,8 +520,9 @@ export function initProductPage(mount) {
     mount,
     'formats',
     lineOf(product).filter((item) => item.slug !== product.slug),
+    product.categorySlug,
   )
-  fillRail(mount, 'species', otherSpecies(product))
+  fillRail(mount, 'species', otherSpecies(product), product.categorySlug)
 
   // Количество живёт в степпере до нажатия «В корзину»: карточка ничего
   // не пишет в корзину, пока человек не решил.

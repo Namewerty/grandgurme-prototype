@@ -31,8 +31,13 @@ import { initHeader } from './js/sections/header.js'
 import { initFooter } from './js/sections/footer.js'
 import { initSmoothScroll } from './js/scroll.js'
 import { initCartPage } from './js/cart/cart-page.js'
+import { applyCartDemo } from './js/cart/demo.js'
 
 initSmoothScroll()
+
+// Демонстрационное наполнение (?demo=mixed|order|request) — до шапки:
+// бейдж корзины сразу показывает подменённый состав.
+applyCartDemo()
 
 initHeader()
 initFooter()

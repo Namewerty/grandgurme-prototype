@@ -41,8 +41,8 @@ import { PAGE_SIZE, getSchema } from '../../data/facets.js'
 import { getProducts } from '../../data/catalog-products.js'
 import { ROUTES } from '../../data/routes.js'
 import { cartCopy } from '../../data/cart-copy.js'
-import { add as addToCart } from '../cart/store.js'
-import { showToast } from '../cart/toast.js'
+import { kindOf } from '../../data/fulfillment.js'
+import { addWithToast } from '../cart/add.js'
 import { createProductCard } from '../components/product-card.js'
 import { icons } from '../icons.js'
 import { getLenis } from '../scroll.js'
@@ -281,11 +281,14 @@ function badgeFor(product) {
 }
 
 function buildCard(ctx, product) {
-  const note = product.inStock ? product.weightLabel : `${product.weightLabel} · ${copy.card.outOfStock}`
+  // Раздел у позиции берётся из страницы: от него зависит, под заказ это
+  // или заявка (kindOf в src/data/fulfillment.js).
+  const item = { ...product, categorySlug: ctx.category.slug }
+  const kind = kindOf(item)
 
   return createProductCard({
     name: product.name,
-    note,
+    note: product.weightLabel,
     // У каждой позиции свой адрес: карточка открывает именно её, а не общий
     // шаблон. Страницы по этим слагам генерируются из тех же данных
     // (см. productPages в src/data/routes.js).
@@ -301,13 +304,10 @@ function buildCard(ctx, product) {
       onToggle: (on) => (on ? ctx.favorites.add(product.id) : ctx.favorites.delete(product.id)),
     },
     add: {
-      label: copy.card.add,
-      onAdd: () => {
-        addToCart(product)
-        showToast(cartCopy.toast.added, cartCopy.toast.action)
-      },
+      label: cartCopy.addLabel[kind],
+      onAdd: () => addWithToast(item),
     },
-    muted: !product.inStock,
+    kind,
   })
 }
 

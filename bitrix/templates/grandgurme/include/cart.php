@@ -1,38 +1,44 @@
 <?php
 /**
- * Корзина и оформление: чтение sale.basket, итоги, тексты сводки, даты.
+ * Корзина: заказ из sale.basket, заявка из cookie, группы, итоги, тексты.
  *
  * ГРАНИЦА ТА ЖЕ, ЧТО В ПРОТОТИПЕ. В прототипе состав корзины лежал
  * в localStorage (src/js/cart/storage.js), а страницы работали через
  * store.js и не знали, откуда он берётся. Здесь вместо storage.js —
- * \Bitrix\Sale\Basket, а тексты сводки (src/js/cart/summary.js) и правила
- * дат (src/data/fulfillment.js) перенесены слово в слово.
+ * \Bitrix\Sale\Basket для заказа и cookie gg_request для заявки
+ * (include/requests.php), а тексты сводки (src/js/cart/summary.js,
+ * src/data/cart-copy.js) перенесены слово в слово.
+ *
+ * ОДНА КОРЗИНА НА ТРИ ВИДА ПОЗИЦИИ (gg_item_kind в catalog.php):
+ *   stock, preorder — лежат в корзине Битрикса и уходят в заказ;
+ *   request         — лежат в cookie и уходят менеджеру заявкой.
+ * В заказе нет позиций «по запросу»: итог заказа всегда точная сумма.
+ *
+ * ВИД СЧИТАЕТСЯ ПО ЖИВЫМ ДАННЫМ ПРИ КАЖДОЙ ОТРИСОВКЕ, и хранилище следует
+ * за видом (gg_cart_sync): позиция корзины, ставшая заявкой, переезжает
+ * в cookie, позиция заявки, которую снова можно купить, — в корзину.
  *
  * ПОЧЕМУ НЕ ШАБЛОН sale.basket.basket. Разметка корзины обязана совпасть
  * с прототипом до класса — стили общие. Родной компонент приносит свой
- * JS на тысячи строк и свою разметку, и переписать её дешевле один раз
- * здесь, чем чинить расхождения после каждого обновления ядра.
- *
- * НАЛИЧИЕ СТРОКИ СЧИТАЕТСЯ ПО ТЕКУЩЕМУ ОСТАТКУ ТОВАРА, а не по снимку
- * в момент добавления: между «положил в корзину» и «оформил» проходит
- * время, и обещать «доставим сегодня» по вчерашнему остатку нельзя.
+ * JS на тысячи строк и свою разметку.
  */
 if (!defined('B_PROLOG_INCLUDED') || B_PROLOG_INCLUDED !== true) die();
 
 require_once __DIR__ . '/catalog.php';
+require_once __DIR__ . '/requests.php';
 
-/** Больше 99 банок за раз — это уже разговор с менеджером, а не форма. */
-const GG_MAX_QTY = 99;
+/** Порядок видов везде: группы корзины, сводка, отгрузки. */
+const GG_KINDS = ['stock', 'preorder', 'request'];
 
 /* -------------------------------------------------------------------------
    Состав корзины
    ------------------------------------------------------------------------- */
 
 /** Корзина текущего покупателя. null — модуль магазина недоступен. */
-function gg_basket(): ?\Bitrix\Sale\Basket
+function gg_basket(bool $reload = false): ?\Bitrix\Sale\Basket
 {
     static $basket = false;
-    if ($basket !== false) {
+    if ($basket !== false && !$reload) {
         return $basket;
     }
     $basket = null;
@@ -51,11 +57,10 @@ function gg_basket(): ?\Bitrix\Sale\Basket
 }
 
 /**
- * Строки корзины простыми массивами: разметка о Битриксе не знает ничего.
- *
- * Порядок — наличие выше, под заказ ниже; внутри групп порядок добавления.
+ * Строки корзины Битрикса простыми массивами: разметка о Битриксе не знает.
+ * Вид строки — по живому остатку, цене и доступности товара.
  */
-function gg_cart_lines(): array
+function gg_basket_lines(): array
 {
     $basket = gg_basket();
     if (!$basket) {
@@ -64,10 +69,9 @@ function gg_cart_lines(): array
 
     $items = [];
     foreach ($basket as $item) {
-        if ($item->isDelay()) {
-            continue;
+        if (!$item->isDelay()) {
+            $items[] = $item;
         }
-        $items[] = $item;
     }
     if (!$items) {
         return [];
@@ -76,7 +80,7 @@ function gg_cart_lines(): array
     $productIds = array_map(static fn($item) => (int)$item->getProductId(), $items);
     $props = gg_props_for_ids($productIds, ['UPAKOVKA', 'CML2_ARTICLE']);
     $elements = gg_elements_for_ids($productIds);
-    $quantities = gg_quantities_for_ids($productIds);
+    $live = gg_products_live($productIds);
 
     $lines = [];
     foreach ($items as $item) {
@@ -85,6 +89,7 @@ function gg_cart_lines(): array
         $name = (string)($elements[$pid]['NAME'] ?? $item->getField('NAME'));
         $code = (string)($elements[$pid]['CODE'] ?? '');
         $price = (float)$item->getPrice();
+        $data = $live[$pid] ?? ['id' => $pid, 'price' => null, 'quantity' => 0.0, 'canBuy' => false];
 
         $lines[] = [
             'id' => (int)$item->getId(),
@@ -92,111 +97,212 @@ function gg_cart_lines(): array
             'code' => $code,
             'name' => gg_item_title($name, $pack),
             'note' => $pack !== '' ? $pack : trim((string)($props[$pid]['CML2_ARTICLE'] ?? '')),
+            'article' => trim((string)($props[$pid]['CML2_ARTICLE'] ?? '')),
             'href' => $code !== '' ? '/product/' . $code : '/catalog',
             'price' => $price > 0 ? $price : null,
             'qty' => max(1, (int)$item->getQuantity()),
-            'inStock' => (float)($quantities[$pid] ?? 0) > 0,
+            'kind' => gg_item_kind($data),
         ];
     }
-
-    return gg_in_stock_first($lines);
-}
-
-/** В наличии — наверх, под заказ — вниз; внутри групп порядок добавления. */
-function gg_in_stock_first(array $lines): array
-{
-    $first = [];
-    $rest = [];
-    foreach ($lines as $line) {
-        if (!empty($line['inStock'])) {
-            $first[] = $line;
-        } else {
-            $rest[] = $line;
-        }
-    }
-    return array_merge($first, $rest);
+    return $lines;
 }
 
 /**
- * Итоги.
- *   count          штук товара — «Товаров 3» в сводке и бейдж шапки;
- *   positions      строк в корзине — «2 позиции» под заголовком;
- *   sum            сумма по позициям с известной ценой;
- *   onRequestCount позиций без цены;
- *   hasPreorder    есть ли позиции под заказ;
- *   readyAt        день готовности заказа целиком (timestamp).
+ * Хранилище следует за видом. Возвращает уведомления для строки над группами.
+ *
+ * Позиция корзины, ставшая заявкой, уходит из корзины Битрикса в cookie.
+ * Позиция заявки, которую снова можно купить, кладётся в корзину; не принял
+ * Битрикс — остаётся в заявке молча. Запускается один раз за хит.
  */
-function gg_cart_totals(array $lines): array
+function gg_cart_sync(): array
 {
-    $count = 0;
-    $sum = 0.0;
-    $onRequest = 0;
-    $hasPreorder = false;
+    static $notices = null;
+    if ($notices !== null) {
+        return $notices;
+    }
+    $notices = [];
 
-    foreach ($lines as $line) {
-        $count += (int)$line['qty'];
-        if ($line['price'] === null) {
-            $onRequest++;
-        } else {
-            $sum += (float)$line['price'] * (int)$line['qty'];
+    $basket = gg_basket();
+    $toRequest = array_filter(gg_basket_lines(), static fn($line) => $line['kind'] === 'request');
+    if ($basket && $toRequest) {
+        $list = gg_request_list();
+        foreach ($toRequest as $line) {
+            $item = $basket->getItemById($line['id']);
+            if (!$item) {
+                continue;
+            }
+            $item->delete();
+            $list[$line['productId']] = min(GG_MAX_QTY, ($list[$line['productId']] ?? 0) + (int)$line['qty']);
+            $notices[] = '«' . $line['name'] . '» закончилась на складе — перенесли в заявку менеджеру';
         }
-        if (empty($line['inStock'])) {
-            $hasPreorder = true;
+        $basket->save();
+        gg_request_save($list);
+        gg_basket(true);
+    }
+
+    $toOrder = array_filter(gg_request_lines(), static fn($line) => gg_item_kind($line['live']) !== 'request');
+    if ($toOrder && CModule::IncludeModule('catalog') && CModule::IncludeModule('sale')) {
+        $moved = false;
+        foreach ($toOrder as $line) {
+            try {
+                $result = \Bitrix\Catalog\Product\Basket::addProduct(
+                    ['PRODUCT_ID' => $line['productId'], 'QUANTITY' => $line['qty']],
+                    [],
+                    ['USE_MERGE' => 'Y']
+                );
+                $ok = $result->isSuccess();
+            } catch (\Throwable $e) {
+                $ok = false;
+            }
+            if ($ok) {
+                gg_request_remove((int)$line['productId']);
+                $notices[] = '«' . $line['name'] . '» снова можно заказать — перенесли в заказ';
+                $moved = true;
+            }
+        }
+        if ($moved) {
+            gg_basket(true);
         }
     }
 
+    return $notices;
+}
+
+/**
+ * Всё, что нужно корзине и оформлению, одним вызовом: переносы, строки
+ * заказа и заявки, итоги.
+ */
+function gg_cart_state(): array
+{
+    $notices = gg_cart_sync();
+    $orderLines = array_values(array_filter(gg_basket_lines(), static fn($line) => $line['kind'] !== 'request'));
+    $requestLines = gg_request_lines();
+
     return [
-        'count' => $count,
-        'positions' => count($lines),
-        'sum' => $sum,
-        'onRequestCount' => $onRequest,
-        'hasPreorder' => $hasPreorder,
-        'readyAt' => gg_ready_date($hasPreorder),
+        'notices' => $notices,
+        'orderLines' => $orderLines,
+        'requestLines' => $requestLines,
+        'groups' => gg_group_lines(array_merge($orderLines, $requestLines)),
+        'totals' => gg_cart_totals($orderLines, $requestLines),
     ];
 }
 
+/** Строки, разложенные по видам в порядке групп; пустых групп нет. */
+function gg_group_lines(array $lines): array
+{
+    $groups = [];
+    foreach (GG_KINDS as $kind) {
+        $items = array_values(array_filter($lines, static fn($line) => $line['kind'] === $kind));
+        if ($items) {
+            $groups[$kind] = $items;
+        }
+    }
+    return $groups;
+}
+
 /**
- * Всё, что сводка пишет словами, одним массивом.
- *
- * Главное, что здесь решается, — корзина из одних позиций «по запросу»:
- * цен по чёрной икре в выгрузке нет, и «Сумма 0 ₽ · Итого 0 ₽ · Оформить
- * заказ» читалось бы как поломка.
+ * Итоги — та же форма, что getTotals() в src/js/cart/store.js.
+ *   count, positions — все виды: бейдж шапки и «5 позиций» под заголовком;
+ *   order   — count, positions, sum, hasStock, hasPreorder, readyAt;
+ *   request — count, positions.
+ */
+function gg_cart_totals(array $orderLines, array $requestLines): array
+{
+    $orderCount = 0;
+    $sum = 0.0;
+    $hasStock = false;
+    $hasPreorder = false;
+    foreach ($orderLines as $line) {
+        $orderCount += (int)$line['qty'];
+        $sum += (float)$line['price'] * (int)$line['qty'];
+        $hasStock = $hasStock || $line['kind'] === 'stock';
+        $hasPreorder = $hasPreorder || $line['kind'] === 'preorder';
+    }
+    $requestCount = (int)array_sum(array_column($requestLines, 'qty'));
+
+    return [
+        'count' => $orderCount + $requestCount,
+        'positions' => count($orderLines) + count($requestLines),
+        'order' => [
+            'count' => $orderCount,
+            'positions' => count($orderLines),
+            'sum' => $sum,
+            'hasStock' => $hasStock,
+            'hasPreorder' => $hasPreorder,
+            'readyAt' => gg_ready_date($hasPreorder),
+        ],
+        'request' => [
+            'count' => $requestCount,
+            'positions' => count($requestLines),
+        ],
+    ];
+}
+
+/** order | both | request — как modeOf в src/js/cart/summary.js. */
+function gg_cart_mode(array $totals): string
+{
+    $hasOrder = $totals['order']['positions'] > 0;
+    $hasRequest = $totals['request']['positions'] > 0;
+    if ($hasOrder && $hasRequest) {
+        return 'both';
+    }
+    return $hasRequest ? 'request' : 'order';
+}
+
+/** Заголовки и строки групп — src/data/cart-copy.js → groups. */
+function gg_group_texts(string $kind, int $readyAt): array
+{
+    $texts = [
+        'stock' => ['В наличии', 'Доставим день в день по Москве'],
+        'preorder' => ['Под заказ', 'Привезём к ' . gg_format_day_month($readyAt) . ' — через ' . gg_days_label(GG_PREORDER_DAYS) . ' после оформления'],
+        'request' => ['Заявка менеджеру', 'Оплатить эти позиции на сайте нельзя: менеджер уточнит цену и срок поставки и свяжется с вами'],
+    ];
+    return ['title' => $texts[$kind][0], 'lead' => $texts[$kind][1]];
+}
+
+/** Знак вида у строки под заголовком группы. */
+function gg_kind_icon(string $kind): string
+{
+    return gg_icon(['stock' => 'check', 'preorder' => 'clock', 'request' => 'dialog'][$kind] ?? 'check');
+}
+
+/**
+ * Всё, что сводка корзины пишет словами, — summaryTexts прототипа.
  */
 function gg_summary_texts(array $totals): array
 {
-    $allOnRequest = $totals['positions'] > 0 && $totals['onRequestCount'] === $totals['positions'];
-
-    $note = '';
-    if ($allOnRequest) {
-        $note = 'Цены по всем позициям подтвердит менеджер и пришлёт итог';
-    } elseif ($totals['onRequestCount'] === 1) {
-        $note = 'По одной позиции цену подтвердит менеджер, итог изменится';
-    } elseif ($totals['onRequestCount'] > 1) {
-        $note = 'По ' . $totals['onRequestCount'] . ' позициям цену подтвердит менеджер, итог изменится';
-    }
+    $mode = gg_cart_mode($totals);
+    $order = $totals['order'];
+    $requestCount = gg_positions_label((int)$totals['request']['positions']);
+    $checkout = [
+        'order' => 'Оформить заказ',
+        'both' => 'Оформить заказ и заявку',
+        'request' => 'Оформить заявку',
+    ];
 
     return [
-        'allOnRequest' => $allOnRequest,
-        'count' => (string)$totals['count'],
-        'sum' => $allOnRequest ? 'по запросу' : gg_price((float)$totals['sum']),
-        'total' => $allOnRequest ? 'после подтверждения' : gg_price((float)$totals['sum']),
-        'onRequest' => $totals['onRequestCount'] ? (string)$totals['onRequestCount'] : '',
-        'note' => $note,
-        'checkout' => $allOnRequest ? 'Отправить заказ на подтверждение' : 'Оформить заказ',
-        'ready' => $totals['hasPreorder']
-            ? 'Заказ будет готов ' . gg_format_ready_date($totals['readyAt'])
-            : 'Соберём сегодня, доставим день в день по Москве',
+        'mode' => $mode,
+        'showOrder' => $mode !== 'request',
+        'showRequest' => $mode !== 'order',
+        'count' => (string)$order['count'],
+        'sum' => gg_price((float)$order['sum']),
+        'total' => gg_price((float)$order['sum']),
+        'splitHint' => ($order['hasStock'] && $order['hasPreorder'])
+            ? 'Товары в наличии можно получить раньше, отдельной доставкой. Выберете при оформлении.'
+            : '',
+        'requestNote' => $mode === 'request'
+            ? 'Менеджер уточнит цену и срок поставки и свяжется с вами. Оплатить эти позиции на сайте нельзя.'
+            : $requestCount . ', в итог не входят',
+        'checkout' => $checkout[$mode],
+        'barLabel' => $mode === 'request' ? 'Заявка' : 'Итого',
+        'barValue' => $mode === 'request' ? $requestCount : gg_price((float)$order['sum']),
     ];
 }
 
-/** «Банка стекло, 113 г · в наличии». */
-function gg_line_note(array $line): string
-{
-    $tail = !empty($line['inStock']) ? 'в наличии' : 'под заказ · до ' . GG_PREORDER_DAYS . ' дней';
-    return trim((string)$line['note']) !== '' ? $line['note'] . ' · ' . $tail : $tail;
-}
-
-/** Сумма строки. Позиция без цены суммы не имеет — и не должна её изображать. */
+/**
+ * Сумма строки. Без цены — «Цена по запросу»; у заявки с ценой сумма
+ * пишется приглушённо (is-estimate): в итог она не входит.
+ */
 function gg_line_sum(array $line): string
 {
     return $line['price'] === null ? 'Цена по запросу' : gg_price((float)$line['price'] * (int)$line['qty']);
@@ -206,76 +312,6 @@ function gg_line_sum(array $line): string
 function gg_positions_label(int $n): string
 {
     return $n . ' ' . gg_plural($n, 'позиция', 'позиции', 'позиций');
-}
-
-/* -------------------------------------------------------------------------
-   Даты.
-
-   ДНИ КАЛЕНДАРНЫЕ, А НЕ РАБОЧИЕ. Подпись «привезём примерно за 7 дней»
-   и дата «к 21 сентября» обязаны сходиться, а производственного календаря
-   с праздниками у нас нет.
-   ------------------------------------------------------------------------- */
-
-/** Начало дня — все сравнения дат идут по дню, а не по секундам. */
-function gg_day_start(?int $ts = null): int
-{
-    $ts = $ts ?? time();
-    return (int)mktime(0, 0, 0, (int)date('n', $ts), (int)date('j', $ts), (int)date('Y', $ts));
-}
-
-function gg_add_days(int $ts, int $days): int
-{
-    return (int)strtotime('+' . $days . ' days', gg_day_start($ts));
-}
-
-/** День готовности заказа: максимум сроков по составу от сегодня. */
-function gg_ready_date(bool $hasPreorder, ?int $now = null): int
-{
-    return gg_add_days(gg_day_start($now), $hasPreorder ? GG_PREORDER_DAYS : 0);
-}
-
-/** «21 сентября». */
-function gg_format_day_month(int $ts): string
-{
-    $months = [
-        1 => 'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
-        'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря',
-    ];
-    return (int)date('j', $ts) . ' ' . $months[(int)date('n', $ts)];
-}
-
-/** «к 21 сентября» — так дата готовности пишется везде на сайте. */
-function gg_format_ready_date(int $ts): string
-{
-    return 'к ' . gg_format_day_month($ts);
-}
-
-/** «пн», «вт» — для ленты дней на оформлении. */
-function gg_format_weekday(int $ts): string
-{
-    $days = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
-    return $days[(int)date('w', $ts)];
-}
-
-/** «15 сен» — вторая строка капсулы дня. */
-function gg_format_day_short(int $ts): string
-{
-    $months = [1 => 'янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
-    return (int)date('j', $ts) . ' ' . $months[(int)date('n', $ts)];
-}
-
-/** 2026-09-21 — так день уезжает в форму и в заказ. */
-function gg_iso_day(int $ts): string
-{
-    return date('Y-m-d', gg_day_start($ts));
-}
-
-function gg_day_from_iso(string $value): ?int
-{
-    if (!preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $value, $m)) {
-        return null;
-    }
-    return (int)mktime(0, 0, 0, (int)$m[2], (int)$m[3], (int)$m[1]);
 }
 
 /* -------------------------------------------------------------------------
@@ -309,6 +345,10 @@ function gg_set_promo(string $code): void
 function gg_cart_handle_post(string $back = '/cart/'): void
 {
     if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+        return;
+    }
+    /* Строки заявки — свой обработчик (requests.php). */
+    if (gg_request_handle_post($back)) {
         return;
     }
     if (!check_bitrix_sessid()) {
@@ -352,6 +392,60 @@ function gg_cart_handle_post(string $back = '/cart/'): void
         }
     }
 
+    LocalRedirect($back);
+}
+
+/**
+ * Добавление в корзину с карточки товара.
+ *
+ * Форма карточки по-прежнему шлёт action=ADD2BASKET, id и quantity — ровно
+ * то, что понимает catalog.element. Но страница перехватывает запрос ДО
+ * компонента: компонент после добавления молча уводит на ту же карточку,
+ * и подтвердить добавление было нечем. Здесь позиция кладётся D7, в сессию
+ * пишется тост, и только потом редирект. Модуль магазина недоступен —
+ * запрос уходит компоненту как раньше.
+ */
+function gg_cart_add_handle(string $back): void
+{
+    $action = (string)($_REQUEST['action'] ?? '');
+    if ($action !== 'ADD2BASKET' || ($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+        return;
+    }
+    if (!check_bitrix_sessid()) {
+        LocalRedirect($back);
+    }
+    if (!CModule::IncludeModule('catalog') || !CModule::IncludeModule('sale')) {
+        return;
+    }
+
+    $id = (int)($_REQUEST['id'] ?? 0);
+    $qty = max(1, min(GG_MAX_QTY, (int)($_REQUEST['quantity'] ?? 1)));
+    $live = gg_products_live([$id])[$id] ?? null;
+    $kind = $live ? gg_item_kind($live) : 'request';
+
+    if ($kind === 'request') {
+        /* Позиция стала заявкой, пока карточка была открыта. */
+        if (gg_request_add($id, $qty)) {
+            gg_flash_toast_set(gg_toast_text('request'));
+        }
+        LocalRedirect($back);
+    }
+
+    try {
+        $result = \Bitrix\Catalog\Product\Basket::addProduct(
+            ['PRODUCT_ID' => $id, 'QUANTITY' => $qty],
+            [],
+            ['USE_MERGE' => 'Y']
+        );
+        if ($result->isSuccess()) {
+            gg_flash_toast_set(gg_toast_text($kind));
+        } elseif (gg_request_add($id, $qty)) {
+            /* Битрикс позицию не принял — значит, её можно только заявить. */
+            gg_flash_toast_set(gg_toast_text('request'));
+        }
+    } catch (\Throwable $e) {
+        // Ничего не добавилось — возвращаем на карточку без тоста.
+    }
     LocalRedirect($back);
 }
 

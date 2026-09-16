@@ -11,7 +11,9 @@
      oldPrice  зачёркнутая старая цена рядом с новой.
 
    Порядок подписей общий и взят с главной: название, потом фасовка, потом
-   цена. В прототипе фильтров фасовка стояла НАД названием — на странице, где
+   цена, под ценой — метка вида позиции (.stock-tag), если она нужна.
+   Приглушённого кадра у позиций не на складе больше нет: вид говорит
+   метка, а погашенный кадр читался как «товара нет вовсе». В прототипе фильтров фасовка стояла НАД названием — на странице, где
    рядом стоят карточки из двух источников, разный порядок читался бы
    как две разные карточки.
 
@@ -21,6 +23,7 @@
 
 import { createImage } from '../media.js'
 import { icons } from '../icons.js'
+import { stockTagHtml } from './stock-tag.js'
 
 /**
  * @param {object} data
@@ -33,7 +36,10 @@ import { icons } from '../icons.js'
  * @param {object} [data.badge]   { kind: 'new'|'sale'|'discount', label }
  * @param {object} [data.favorite] { active: boolean, label, onToggle(next) }
  * @param {object} data.add       { label, onAdd() }
- * @param {boolean} [data.muted]  товар не в наличии — кадр приглушён
+ * @param {string} [data.kind]    'preorder' | 'request' — метка под ценой.
+ *                                У 'stock' метки в сетке нет: наличие здесь
+ *                                норма, и метка на каждой второй карточке
+ *                                превратилась бы в шум
  * @returns {HTMLElement}
  */
 export function createProductCard({
@@ -46,10 +52,10 @@ export function createProductCard({
   badge,
   favorite,
   add,
-  muted = false,
+  kind,
 }) {
   const card = document.createElement('article')
-  card.className = `product${muted ? ' product--muted' : ''}`
+  card.className = 'product'
 
   /* Кадр — ссылка-дубль названия. Из потока фокуса убрана: у карточки должен
      быть один табстоп, а не два одинаковых. */
@@ -112,6 +118,7 @@ export function createProductCard({
     <p class="product__price">
       ${price}${oldPrice ? `<s class="product__price-old">${oldPrice}</s>` : ''}
     </p>
+    ${kind && kind !== 'stock' ? `<p class="product__tag">${stockTagHtml(kind)}</p>` : ''}
   `
 
   card.append(frame, body)

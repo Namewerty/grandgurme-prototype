@@ -16,6 +16,15 @@
  * ПРИДУМАНЫ — заменить выгрузкой по рыбе, когда она придёт. Ось «Обработка»
  * приведена к четырём реальным значениям из 1С.
  *
+ * ⚠ НАЛИЧИЕ ЧЕТЫРЁХ ПОЗИЦИЙ РЫБЫ ПЕРЕКЛЮЧЕНО РУКАМИ (16.09.2026): клыкач
+ * филе х/к в коробке, форель филе х/к с укропом, палтус филе г/к с перцем
+ * и угорь г/к стоят inStock: false. Зачем: рыба — раздел с предзаказом
+ * (fulfillment: 'preorder' в src/data/catalog.js), и без позиций не
+ * на складе в прототипе нечем показать вид «Под заказ · 7 дней», группу
+ * «Под заказ» в корзине и разделение на две доставки. Цены оставлены.
+ * Вместе с треской (её выгрузка-образец и так числила отсутствующей)
+ * под заказ пять позиций из двадцати двух.
+ *
  * ЧТО ЗДЕСЬ ВАЖНО ДЛЯ КОДА, А НЕ ДЛЯ КЛИЕНТА
  *
  * Свойства, по которым фильтруют, лежат в attrs — плоским словарём
@@ -169,7 +178,7 @@ export const fishProducts = [
     weightG: 206,
     price: 2039,
     oldPrice: null,
-    inStock: true,
+    inStock: false, // демонстрация «под заказ», см. шапку файла
     isNew: false,
     isSale: false,
     isClearance: false,
@@ -238,7 +247,7 @@ export const fishProducts = [
     weightG: 100,
     price: 1050,
     oldPrice: null,
-    inStock: true,
+    inStock: false, // демонстрация «под заказ», см. шапку файла
     isNew: false,
     isSale: false,
     isClearance: false,
@@ -284,7 +293,7 @@ export const fishProducts = [
     weightG: 150,
     price: 1520,
     oldPrice: 1690,
-    inStock: true,
+    inStock: false, // демонстрация «под заказ», см. шапку файла
     isNew: false,
     isSale: true,
     isClearance: false,
@@ -422,7 +431,7 @@ export const fishProducts = [
     weightG: 120,
     price: 1690,
     oldPrice: 1890,
-    inStock: true,
+    inStock: false, // демонстрация «под заказ», см. шапку файла
     isNew: false,
     isSale: false,
     isClearance: false,

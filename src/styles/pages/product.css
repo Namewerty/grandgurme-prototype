@@ -96,23 +96,25 @@
   color: var(--fg);
 }
 
-/* ---- Статус наличия ------------------------------------------------------
-   Сразу под ценой. Ромб золотом — акцент линией, текст приглушённый:
-   бирюзовый здесь нельзя, это не интерактив.                               */
+/* ---- Вид позиции ---------------------------------------------------------
+   Сразу под ценой: метка (.stock-tag, общий компонент) и одно предложение
+   обычным цветом — «когда» и «можно ли оплатить» здесь главный ответ,
+   а не сноска. Прежняя серая строка с ромбом не читалась вовсе.           */
 
-.pbuy__status {
+.pbuy__kind {
   display: flex;
-  align-items: baseline;
+  flex-direction: column;
+  align-items: flex-start;
   gap: .5rem;
-  margin-top: .45rem;
-  font-size: .82rem;
-  line-height: 1.5;
-  color: var(--fg-mute);
+  margin-top: .75rem;
 }
 
-.pbuy__status-mark {
-  flex: none;
-  color: var(--gold-fg);
+.pbuy__kind-text {
+  max-width: 34rem;
+  font-size: .9rem;
+  line-height: 1.55;
+  color: var(--fg);
+  text-wrap: pretty;
 }
 
 /* ---- Ряды выбора ---------------------------------------------------------

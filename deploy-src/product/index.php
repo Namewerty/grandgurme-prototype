@@ -6,14 +6,20 @@
  * своих слагов у товаров нет и придумывать их нельзя: на следующей выгрузке
  * они разойдутся с учётом. По коду же товар находится однозначно.
  *
- * Раздел витрины определяется по разделу 1С, в котором товар лежит, —
- * по той же карте, что и весь каталог. Он нужен для хлебных крошек
- * и для набора характеристик.
+ * Раздел витрины определяется по разделам 1С, в которых товар лежит, с учётом
+ * вложенности (gg_item_category_slug) — по той же карте, что и весь каталог.
+ * Он нужен для хлебных крошек, набора характеристик и вида позиции.
+ *
+ * ДОБАВЛЕНИЕ С КАРТОЧКИ И ТОСТ (16.09.2026). catalog.element после
+ * ADD2BASKET молча уводил на ту же карточку — подтверждения не было вовсе.
+ * Теперь запрос перехватывается здесь, до компонента: «в корзину»
+ * (gg_cart_add_handle) и «в заявку» (gg_request_handle_post) пишут тост
+ * в сессию, после редиректа он показывается разметкой .toast.
  */
 define('GG_PAGE_CLASS', 'page-product');
 
 require($_SERVER['DOCUMENT_ROOT'] . '/bitrix/header.php');
-require_once $_SERVER['DOCUMENT_ROOT'] . SITE_TEMPLATE_PATH . '/include/catalog.php';
+require_once $_SERVER['DOCUMENT_ROOT'] . SITE_TEMPLATE_PATH . '/include/cart.php';
 
 $path = (string)parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH);
 $rest = trim(substr($path, strlen('/product')), '/');
@@ -35,6 +41,13 @@ if ($code !== '' && CModule::IncludeModule('iblock')) {
     $element = $res->Fetch() ?: null;
 }
 
+/* Адрес карточки без параметров — туда возвращаемся после добавления. */
+$back = '/product/' . rawurlencode($code);
+if ($element) {
+    gg_request_handle_post($back);
+    gg_cart_add_handle($back);
+}
+
 if (!$element) {
     CHTTP::SetStatus('404 Not Found');
     @define('ERROR_404', 'Y');
@@ -45,16 +58,7 @@ if (!$element) {
         . '</div></div></div>';
 } else {
     /** Раздел витрины, которому принадлежит товар. */
-    $slug = '';
-    $sectionId = (int)$element['IBLOCK_SECTION_ID'];
-    foreach (gg_map()['categories'] as $candidate) {
-        $own = in_array($sectionId, array_map('intval', $candidate['sections']), true);
-        $extra = in_array((int)$element['ID'], array_map('intval', $candidate['extraElements'] ?? []), true);
-        if ($own || $extra) {
-            $slug = $candidate['slug'];
-            break;
-        }
-    }
+    $slug = gg_item_category_slug((int)$element['ID']);
 
     $APPLICATION->SetTitle($element['NAME'] . ' — №1 Гранд Гурмэ');
 
@@ -112,6 +116,8 @@ if (!$element) {
             'GG_CATEGORY_SLUG' => $slug,
         ]
     );
+
+    echo gg_flash_toast();
 }
 
 require($_SERVER['DOCUMENT_ROOT'] . '/bitrix/footer.php');

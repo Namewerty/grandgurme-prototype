@@ -13,6 +13,13 @@
  * больше нет: статус стоит под ценой, а число банок на складе покупателю
  * ничего не решает.
  *
+ * ВИД ПОЗИЦИИ (16.09.2026) — gg_item_kind: метка и одно предложение под
+ * ценой. «В наличии» и «под заказ» кладутся в корзину (action=ADD2BASKET,
+ * запрос перехватывает /product/index.php, чтобы показать тост), «по заявке»
+ * — в заявку менеджеру (gg_action=request_add, include/requests.php).
+ * Кнопки «Заказать у менеджера» больше нет: её место заняла «Добавить
+ * в заявку».
+ *
  * СТЕППЕР И «В КОРЗИНУ» — ОДНА ФОРМА, и форма эта и есть .pbuy__actions:
  * отдельная обёртка сломала бы ряд кнопок, а без формы количество пришлось
  * бы дописывать в адрес скриптом. Без JS форма работает как есть, скрипт
@@ -35,15 +42,16 @@ $val = static function (string $code) use ($ggProps): string {
 };
 
 $price = gg_item_price($arResult);
-$inStock = gg_item_quantity($arResult) > 0;
 
-/* ПРЕДЗАКАЗ. Позиция под заказ кладётся в корзину, если Битрикс её примет:
-   с 16.09.2026 в торговом каталоге включено «Разрешить покупку при
-   отсутствии товара», и компонент помечает такую позицию CAN_BUY.
-   Решение принимает сам компонент, а не шаблон: выключат настройку или
-   запретят покупку у отдельного товара — вернётся «Заказать у менеджера»,
-   а не кнопка, которая молча ничего не кладёт. */
-$canBuy = $inStock || in_array($arResult['CAN_BUY'] ?? false, [true, 'Y'], true);
+/* Вид считает только gg_item_kind: цена, живой остаток, CAN_BUY компонента
+   и раздел витрины. Раздел карточки ($cat) определён по разделам товара
+   с учётом вложенности — см. /product/index.php. */
+$kind = gg_item_kind($arResult, $cat);
+$kindText = [
+    'stock' => 'Доставим день в день по Москве',
+    'preorder' => 'Закажем и привезём к ' . gg_format_day_month(gg_add_days(gg_day_start(), GG_PREORDER_DAYS)),
+    'request' => 'Менеджер уточнит цену и срок поставки и свяжется с вами. Оплатить этот товар на сайте нельзя.',
+][$kind];
 
 $species = $val('RYBA');
 $line = $val('KATEGORIYA');
@@ -87,12 +95,6 @@ $alt = $arResult['NAME'] . ($pack !== '' ? ', ' . $pack : '');
 /* Заголовок без хвоста фасовки: она стоит строкой ниже капсулами. */
 $title = gg_item_title((string)$arResult['NAME'], $pack);
 
-/* Статус под ценой. «Доставка день в день», а не «доставка сегодня»:
-   часа отсечки в данных нет, и к вечеру «сегодня» стало бы неправдой. */
-$status = $inStock
-    ? 'В наличии · доставка день в день по Москве'
-    : 'Под заказ · привезём примерно за ' . GG_PREORDER_DAYS . ' дней';
-
 /* Вторая кнопка. У позиции без цены она называется «Узнать цену» и ведёт
    туда же: виджета эксперта на Битриксе пока нет, заявку принимают
    контакты. */
@@ -135,9 +137,10 @@ foreach (($cat['specs'] ?? []) as $spec) {
         <p class="pbuy__line"><?= gg_e($subtitle . ($attr !== '' ? ' · ' . $attr : '')) ?></p>
 <?php endif; ?>
         <p class="pbuy__price"><?= gg_e(gg_price($price)) ?></p>
-        <p class="pbuy__status<?= $inStock ? '' : ' is-preorder' ?>">
-          <span class="pbuy__status-mark" aria-hidden="true">⬦</span><?= gg_e($status) ?>
-        </p>
+        <div class="pbuy__kind">
+          <?= gg_stock_tag($kind) ?>
+          <p class="pbuy__kind-text"><?= gg_e($kindText) ?></p>
+        </div>
 
 <?php if (count($siblings) > 1): ?>
         <div class="pbuy__row">
@@ -150,9 +153,15 @@ foreach (($cat['specs'] ?? []) as $spec) {
         </div>
 <?php endif; ?>
 
-<?php if ($canBuy): ?>
-        <form class="pbuy__actions" method="get" action="<?= gg_e($formAction) ?>">
+        <?php /* Одна форма на оба пути: «в корзину» — ADD2BASKET, «в заявку» —
+                 request_add. POST с проверкой сессии; без JS работает как есть. */ ?>
+        <form class="pbuy__actions" method="post" action="<?= gg_e($formAction) ?>">
+          <?= bitrix_sessid_post() ?>
+<?php if ($kind === 'request'): ?>
+          <input type="hidden" name="gg_action" value="request_add">
+<?php else: ?>
           <input type="hidden" name="action" value="ADD2BASKET">
+<?php endif; ?>
           <input type="hidden" name="id" value="<?= (int)$arResult['ID'] ?>">
           <div class="qty" data-qty-hydrate role="group" aria-label="Количество">
             <button type="button" class="qty__btn" data-step="-1" aria-label="Меньше"><?= gg_icon('minus') ?></button>
@@ -160,19 +169,9 @@ foreach (($cat['specs'] ?? []) as $spec) {
                    name="quantity" value="1" min="1" max="99" maxlength="2" aria-label="Количество">
             <button type="button" class="qty__btn" data-step="1" aria-label="Больше"><?= gg_icon('plus') ?></button>
           </div>
-          <button type="submit" class="btn btn--solid">В корзину</button>
+          <button type="submit" class="btn btn--solid"><?= $kind === 'request' ? 'Добавить в заявку' : 'В корзину' ?></button>
           <a class="btn" href="/contacts"><?= gg_e($secondLabel) ?></a>
         </form>
-<?php else: ?>
-        <?php /* Битрикс эту позицию в корзину не примет: покупка при
-                 отсутствии товара для неё запрещена (глобально или у самого
-                 товара). Честная кнопка к менеджеру, а не кнопка, которая
-                 молча ничего не делает. */ ?>
-        <div class="pbuy__actions">
-          <a class="btn btn--solid" href="/contacts">Заказать у менеджера</a>
-          <a class="btn" href="/contacts"><?= gg_e($secondLabel) ?></a>
-        </div>
-<?php endif; ?>
 
         <?php /* Обещания и их иконки — те же три, что в прототипе
                  (src/data/product-copy.js). Иконка обязательна: строка

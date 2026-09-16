@@ -1,0 +1,95 @@
+/* ============================================================================
+   Метка вида позиции (.stock-tag): «В наличии», «Под заказ · 7 дней»,
+   «По заявке». Разметка — src/js/components/stock-tag.js и gg_stock_tag
+   на Битриксе.
+
+   Капсула с обводкой в 1px, без заливки: золотых заливок и теней на сайте
+   нет. Различают виды обводка и цвет текста со знаком:
+
+     stock     обводка --hairline, текст --fg, знак --caspian-fg;
+     preorder  обводка --caspian,  текст и знак --caspian-fg;
+     request   обводка --gold,     текст и знак --gold-fg.
+
+   Текстовые версии акцентов (--caspian-fg, --gold-fg) держат контраст 5:1
+   на перламутре и переопределены для тёмной темы в tokens.css — развилок
+   по теме здесь нет.
+
+   НЕ ПЕРЕНОСИТСЯ. На 375 px в две колонки карточка уже 160 px, и метка
+   в две строки вытолкнула бы цену из общего ряда. Поэтому nowrap и
+   обрезание многоточием как страховка, а не норма: «Под заказ · 7 дней»
+   на этой ширине помещается целиком.
+   ============================================================================ */
+
+.stock-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  max-width: 100%;
+  min-height: 1.6rem;
+  padding: .15rem .6rem .15rem .45rem;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+  font-family: var(--font-body);
+  font-size: .78rem;
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: nowrap;
+  color: var(--fg);
+}
+
+.stock-tag__icon {
+  display: inline-flex;
+  flex: none;
+  width: 14px;
+  height: 14px;
+  color: var(--caspian-fg);
+}
+
+/* Знак на 14 px при линии 1.25 из сетки 24 выходит тоньше пикселя и
+   рассыпается; здесь линия чуть плотнее, рисунок тот же. */
+.stock-tag__icon svg {
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.stock-tag__text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stock-tag--preorder {
+  border-color: var(--caspian);
+  color: var(--caspian-fg);
+}
+
+.stock-tag--request {
+  border-color: var(--gold);
+  color: var(--gold-fg);
+}
+
+.stock-tag--request .stock-tag__icon { color: var(--gold-fg); }
+
+/* ---- Место метки в карточке сетки -----------------------------------------
+   Под ценой. Цена у карточки прижата к низу (margin-top: auto), метка идёт
+   следом и в ряду карточек стоит на одной линии.                           */
+
+.product__tag {
+  display: flex;
+  min-width: 0;
+  margin-top: .45rem;
+}
+
+@media (max-width: 479px) {
+  .product__tag .stock-tag {
+    gap: .3rem;
+    padding-inline: .35rem .5rem;
+  }
+}

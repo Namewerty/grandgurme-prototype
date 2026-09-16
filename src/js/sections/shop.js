@@ -49,8 +49,8 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { productSets, shopCopy } from '../../data/products.js'
 import { findProductBySlug } from '../../data/catalog-products.js'
 import { cartCopy } from '../../data/cart-copy.js'
-import { add as addToCart } from '../cart/store.js'
-import { showToast } from '../cart/toast.js'
+import { kindOf } from '../../data/fulfillment.js'
+import { addWithToast } from '../cart/add.js'
 import { createProductCard } from '../components/product-card.js'
 import { createArrow, createPager, initRail } from '../rail.js'
 
@@ -108,6 +108,10 @@ function cartProductOf(item, key, index) {
 
 function buildCard(item, key, index) {
   const { name, note, price, href, media } = item
+  // Вид позиции витрины: у позиции каталога — по её разделу, у снимка —
+  // «в наличии и с ценой — stock, иначе request» (src/data/fulfillment.js).
+  const product = cartProductOf(item, key, index)
+  const kind = kindOf(product)
   return createProductCard({
     name,
     note,
@@ -117,12 +121,10 @@ function buildCard(item, key, index) {
     // скринридера, но так он осмысленно попадёт в поиск по картинкам.
     image: { src: media.src, ratio: '1:1' },
     add: {
-      label: shopCopy.add,
-      onAdd: () => {
-        addToCart(cartProductOf(item, key, index))
-        showToast(cartCopy.toast.added, cartCopy.toast.action)
-      },
+      label: cartCopy.addLabel[kind],
+      onAdd: () => addWithToast(product),
     },
+    kind,
   })
 }
 

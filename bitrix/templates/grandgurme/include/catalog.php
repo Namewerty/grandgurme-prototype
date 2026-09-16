@@ -31,6 +31,9 @@ require_once __DIR__ . '/fn.php';
 /** Сколько дней везём то, чего нет на складе. Подтверждено заказчиком. */
 const GG_PREORDER_DAYS = 7;
 
+/** Больше 99 банок за раз — это уже разговор с менеджером, а не форма. */
+const GG_MAX_QTY = 99;
+
 /** Сколько карточек на странице выдачи. */
 const GG_PAGE_SIZE = 12;
 
@@ -712,4 +715,373 @@ function gg_elements_for_ids(array $ids): array
         $out[(int)$row['ID']] = $row;
     }
     return $out;
+}
+
+/* -------------------------------------------------------------------------
+   Вид позиции: stock | preorder | request (16.09.2026).
+
+   Та же модель, что kindOf в src/data/fulfillment.js прототипа, и считается
+   она ТОЛЬКО здесь — шаблоны, корзина и оформление вид не угадывают:
+
+     stock     есть на складе и есть цена — заказать и оплатить;
+     preorder  нет на складе, есть цена, раздел витрины с 'fulfillment' =>
+               'preorder' в карте («Рыба», «Красная икра» со всеми
+               подразделами и extraElements) — заказать и оплатить,
+               привезём через GG_PREORDER_DAYS дней;
+     request   всё остальное — заявка менеджеру. Сюда же позиция без цены
+               при любом наличии и позиция, которую Битрикс купить не даст
+               (компонент не отдал CAN_BUY, у товара AVAILABLE = N).
+
+   Вид считается при каждой отрисовке по живому остатку и цене: снимков,
+   как в прототипе, здесь нет.
+   ------------------------------------------------------------------------- */
+
+/** Метка вида — разметка .stock-tag до класса, как stockTagHtml прототипа. */
+function gg_stock_tag(string $kind): string
+{
+    $icons = ['stock' => 'check', 'preorder' => 'clock', 'request' => 'dialog'];
+    $texts = gg_kind_labels();
+    if (!isset($texts[$kind])) {
+        return '';
+    }
+    return '<span class="stock-tag stock-tag--' . $kind . '">'
+        . '<span class="stock-tag__icon" aria-hidden="true">' . gg_icon($icons[$kind]) . '</span>'
+        . '<span class="stock-tag__text">' . gg_e($texts[$kind]) . '</span>'
+        . '</span>';
+}
+
+/** Тексты меток — src/data/cart-copy.js → kinds. */
+function gg_kind_labels(): array
+{
+    return [
+        'stock' => 'В наличии',
+        'preorder' => 'Под заказ · ' . gg_days_label(GG_PREORDER_DAYS),
+        'request' => 'По заявке',
+    ];
+}
+
+/** «7 дней», «1 день», «3 дня». */
+function gg_days_label(int $n): string
+{
+    return $n . ' ' . gg_plural($n, 'день', 'дня', 'дней');
+}
+
+/** Корень раздела инфоблока с границами дерева. Кеш на хит. */
+function gg_section_bounds(int $id): ?array
+{
+    static $cache = [];
+    if (array_key_exists($id, $cache)) {
+        return $cache[$id];
+    }
+    $cache[$id] = null;
+    if (CModule::IncludeModule('iblock')) {
+        $row = CIBlockSection::GetList(
+            [],
+            ['IBLOCK_ID' => gg_map()['iblockId'], 'ID' => $id],
+            false,
+            ['ID', 'LEFT_MARGIN', 'RIGHT_MARGIN']
+        )->Fetch();
+        if ($row) {
+            $cache[$id] = ['left' => (int)$row['LEFT_MARGIN'], 'right' => (int)$row['RIGHT_MARGIN']];
+        }
+    }
+    return $cache[$id];
+}
+
+/**
+ * Разделы инфоблока, где работает предзаказ: разделы витрины с
+ * 'fulfillment' => 'preorder' и ВСЕ вложенные в них. Один запрос на корень.
+ *
+ * @return array ID раздела => true
+ */
+function gg_preorder_section_ids(): array
+{
+    static $ids = null;
+    if ($ids !== null) {
+        return $ids;
+    }
+    $ids = [];
+    if (!CModule::IncludeModule('iblock')) {
+        return $ids;
+    }
+    foreach (gg_map()['categories'] as $cat) {
+        if (($cat['fulfillment'] ?? '') !== 'preorder') {
+            continue;
+        }
+        foreach (array_map('intval', $cat['sections']) as $rootId) {
+            $root = gg_section_bounds($rootId);
+            if (!$root) {
+                continue;
+            }
+            $res = CIBlockSection::GetList(
+                [],
+                ['IBLOCK_ID' => gg_map()['iblockId'], '>=LEFT_MARGIN' => $root['left'], '<=RIGHT_MARGIN' => $root['right']],
+                false,
+                ['ID']
+            );
+            while ($row = $res->Fetch()) {
+                $ids[(int)$row['ID']] = true;
+            }
+        }
+    }
+    return $ids;
+}
+
+/**
+ * Лежит ли товар в разделе с предзаказом — по всем его разделам инфоблока
+ * (привязок бывает несколько) и по extraElements карты.
+ *
+ * @return array ID товара => bool
+ */
+function gg_preorder_items(array $ids): array
+{
+    static $cache = [];
+    $ids = array_values(array_unique(array_filter(array_map('intval', $ids))));
+    $missing = array_values(array_diff($ids, array_keys($cache)));
+
+    if ($missing) {
+        $extra = [];
+        foreach (gg_map()['categories'] as $cat) {
+            if (($cat['fulfillment'] ?? '') === 'preorder') {
+                foreach (($cat['extraElements'] ?? []) as $extraId) {
+                    $extra[(int)$extraId] = true;
+                }
+            }
+        }
+        foreach ($missing as $id) {
+            $cache[$id] = isset($extra[$id]);
+        }
+        $sections = gg_preorder_section_ids();
+        if ($sections && CModule::IncludeModule('iblock')) {
+            $res = CIBlockElement::GetElementGroups($missing, true, ['ID', 'IBLOCK_ELEMENT_ID']);
+            while ($row = $res->Fetch()) {
+                if (isset($sections[(int)$row['ID']])) {
+                    $cache[(int)$row['IBLOCK_ELEMENT_ID']] = true;
+                }
+            }
+        }
+    }
+
+    $out = [];
+    foreach ($ids as $id) {
+        $out[$id] = $cache[$id] ?? false;
+    }
+    return $out;
+}
+
+/**
+ * Раздел витрины товара с учётом вложенности разделов и extraElements.
+ *
+ * Раньше /product/index.php сверял только IBLOCK_SECTION_ID с разделами
+ * карты, и товар из подраздела («Рыба» → «Слабосолёная») оставался без
+ * раздела витрины: без крошек и без набора характеристик.
+ */
+function gg_item_category_slug(int $id): string
+{
+    if (!$id || !CModule::IncludeModule('iblock')) {
+        return '';
+    }
+    $groups = [];
+    $res = CIBlockElement::GetElementGroups($id, true, ['ID', 'LEFT_MARGIN', 'RIGHT_MARGIN']);
+    while ($row = $res->Fetch()) {
+        $groups[] = ['left' => (int)$row['LEFT_MARGIN'], 'right' => (int)$row['RIGHT_MARGIN']];
+    }
+    foreach (gg_map()['categories'] as $cat) {
+        if (in_array($id, array_map('intval', $cat['extraElements'] ?? []), true)) {
+            return $cat['slug'];
+        }
+        foreach (array_map('intval', $cat['sections']) as $rootId) {
+            $root = gg_section_bounds($rootId);
+            if (!$root) {
+                continue;
+            }
+            foreach ($groups as $group) {
+                if ($group['left'] >= $root['left'] && $group['right'] <= $root['right']) {
+                    return $cat['slug'];
+                }
+            }
+        }
+    }
+    return '';
+}
+
+/**
+ * Тип цены, из которого витрина берёт цены, — по названию, как PRICE_CODE
+ * у компонентов каталога. ID в код не зашиваем.
+ */
+function gg_price_group_id(): int
+{
+    static $id = null;
+    if ($id !== null) {
+        return $id;
+    }
+    $id = 0;
+    if (CModule::IncludeModule('catalog')) {
+        $row = \Bitrix\Catalog\GroupTable::getList([
+            'filter' => ['=NAME' => 'Интернет-магазин'],
+            'select' => ['ID'],
+            'limit' => 1,
+        ])->fetch();
+        $id = $row ? (int)$row['ID'] : 0;
+    }
+    return $id;
+}
+
+/**
+ * Живые данные для вида по списку ID: остаток, доступность к покупке
+ * (AVAILABLE учитывает «Разрешить покупку при отсутствии товара») и цена
+ * типа «Интернет-магазин». Два запроса на весь список.
+ *
+ * @return array ID => ['id', 'price' => ?float, 'quantity' => float, 'canBuy' => bool]
+ */
+function gg_products_live(array $ids): array
+{
+    $out = [];
+    $ids = array_values(array_unique(array_filter(array_map('intval', $ids))));
+    if (!$ids) {
+        return $out;
+    }
+    foreach ($ids as $id) {
+        $out[$id] = ['id' => $id, 'price' => null, 'quantity' => 0.0, 'canBuy' => false];
+    }
+    if (!CModule::IncludeModule('catalog')) {
+        return $out;
+    }
+
+    $res = \Bitrix\Catalog\ProductTable::getList([
+        'filter' => ['@ID' => $ids],
+        'select' => ['ID', 'QUANTITY', 'AVAILABLE'],
+    ]);
+    while ($row = $res->fetch()) {
+        $out[(int)$row['ID']]['quantity'] = (float)$row['QUANTITY'];
+        $out[(int)$row['ID']]['canBuy'] = ($row['AVAILABLE'] ?? 'N') === 'Y';
+    }
+
+    $group = gg_price_group_id();
+    if ($group) {
+        $res = \Bitrix\Catalog\PriceTable::getList([
+            'filter' => ['@PRODUCT_ID' => $ids, '=CATALOG_GROUP_ID' => $group],
+            'select' => ['PRODUCT_ID', 'PRICE'],
+        ]);
+        while ($row = $res->fetch()) {
+            if ((float)$row['PRICE'] > 0) {
+                $out[(int)$row['PRODUCT_ID']]['price'] = (float)$row['PRICE'];
+            }
+        }
+    }
+    return $out;
+}
+
+/**
+ * Вид позиции.
+ *
+ * $item — либо результат каталожного компонента (ID, цены, остаток, CAN_BUY),
+ * либо простой массив ['id', 'price', 'quantity', 'canBuy'] из
+ * gg_products_live — так его собирают корзина и заявка.
+ *
+ * $cat — раздел витрины, если он известен наверняка (страница раздела):
+ * тогда предзаказ определяется по нему, без запроса разделов. null — по
+ * разделам самого товара.
+ */
+function gg_item_kind(array $item, ?array $cat = null): string
+{
+    if (array_key_exists('price', $item)) {
+        $id = (int)($item['id'] ?? 0);
+        $price = $item['price'] !== null ? (float)$item['price'] : null;
+        $quantity = (float)($item['quantity'] ?? 0);
+        $canBuy = $item['canBuy'] ?? null;
+    } else {
+        $id = (int)($item['ID'] ?? 0);
+        $price = gg_item_price($item);
+        $quantity = gg_item_quantity($item);
+        $canBuy = array_key_exists('CAN_BUY', $item) ? in_array($item['CAN_BUY'], [true, 'Y'], true) : null;
+    }
+
+    /* Оплатить то, у чего нет суммы, нельзя. */
+    if ($price === null || $price <= 0) {
+        return 'request';
+    }
+    /* Битрикс эту позицию в корзину не примет. */
+    if ($canBuy === false) {
+        return 'request';
+    }
+    if ($quantity > 0) {
+        return 'stock';
+    }
+
+    $preorder = $cat !== null
+        ? (($cat['fulfillment'] ?? '') === 'preorder')
+        : (gg_preorder_items([$id])[$id] ?? false);
+
+    return $preorder ? 'preorder' : 'request';
+}
+
+/* -------------------------------------------------------------------------
+   Даты.
+
+   ДНИ КАЛЕНДАРНЫЕ, А НЕ РАБОЧИЕ. Подпись «привезём примерно за 7 дней»
+   и дата «к 21 сентября» обязаны сходиться, а производственного календаря
+   с праздниками у нас нет.
+   ------------------------------------------------------------------------- */
+
+/** Начало дня — все сравнения дат идут по дню, а не по секундам. */
+function gg_day_start(?int $ts = null): int
+{
+    $ts = $ts ?? time();
+    return (int)mktime(0, 0, 0, (int)date('n', $ts), (int)date('j', $ts), (int)date('Y', $ts));
+}
+
+function gg_add_days(int $ts, int $days): int
+{
+    return (int)strtotime('+' . $days . ' days', gg_day_start($ts));
+}
+
+/** День готовности заказа: максимум сроков по составу от сегодня. */
+function gg_ready_date(bool $hasPreorder, ?int $now = null): int
+{
+    return gg_add_days(gg_day_start($now), $hasPreorder ? GG_PREORDER_DAYS : 0);
+}
+
+/** «21 сентября». */
+function gg_format_day_month(int $ts): string
+{
+    $months = [
+        1 => 'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
+        'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря',
+    ];
+    return (int)date('j', $ts) . ' ' . $months[(int)date('n', $ts)];
+}
+
+/** «к 21 сентября» — так дата готовности пишется везде на сайте. */
+function gg_format_ready_date(int $ts): string
+{
+    return 'к ' . gg_format_day_month($ts);
+}
+
+/** «пн», «вт» — для ленты дней на оформлении. */
+function gg_format_weekday(int $ts): string
+{
+    $days = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
+    return $days[(int)date('w', $ts)];
+}
+
+/** «15 сен» — вторая строка капсулы дня. */
+function gg_format_day_short(int $ts): string
+{
+    $months = [1 => 'янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+    return (int)date('j', $ts) . ' ' . $months[(int)date('n', $ts)];
+}
+
+/** 2026-09-21 — так день уезжает в форму и в заказ. */
+function gg_iso_day(int $ts): string
+{
+    return date('Y-m-d', gg_day_start($ts));
+}
+
+function gg_day_from_iso(string $value): ?int
+{
+    if (!preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $value, $m)) {
+        return null;
+    }
+    return (int)mktime(0, 0, 0, (int)$m[2], (int)$m[3], (int)$m[1]);
 }

@@ -316,6 +316,9 @@ function gg_logo(bool $hero): string
  * позиции давали в шапке единицу, тогда как сама корзина писала «Товаров 3».
  * Два числа про одно и то же на одном экране читаются как ошибка счёта.
  * Отложенные позиции в счёт не идут: их в заказе нет.
+ *
+ * ЗАЯВКА ТОЖЕ СЧИТАЕТСЯ (16.09.2026): её позиции лежат на той же странице
+ * корзины, только в cookie, а не в sale.basket (include/requests.php).
  */
 function gg_cart_count(): int
 {
@@ -334,7 +337,8 @@ function gg_cart_count(): int
             }
             $count += (int)$item->getQuantity();
         }
-        return $count;
+        require_once __DIR__ . '/requests.php';
+        return $count + gg_request_count();
     } catch (\Throwable $e) {
         return 0;
     }

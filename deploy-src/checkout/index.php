@@ -2,39 +2,49 @@
 /**
  * Оформление /checkout. Одна страница, без шагов-вкладок и без регистрации.
  *
- * ГРАММАТИКА — БЛОКИ ДРУГ ПОД ДРУГОМ через волосяную линию, каждый с крупной
- * цифрой слева и подписью-надзаголовком. Никаких рамок вокруг групп полей:
- * страницы оформления чаще всего выпадают из сайта именно из-за них.
+ * ТРИ РЕЖИМА ПО СОДЕРЖИМОМУ КОРЗИНЫ — как в src/js/checkout/checkout-page.js:
+ *   только заказ   — Контакты · Как получить · Когда · Оплата · Комментарий · Согласие;
+ *   заказ и заявка — … · Оплата · Заявка менеджеру · Комментарий · Согласие;
+ *   только заявка  — Контакты · Заявка менеджеру · Согласие.
+ * Нумерация сквозная по показанным шагам.
+ *
+ * ДВЕ ДОСТАВКИ. Когда в заказе есть и наличие, и под заказ, шаг «Когда»
+ * начинается с выбора «одной / двумя». Сервер рисует ОБА подблока: без
+ * скрипта переключатель ничего бы не прятал. Со скриптом
+ * (src/bitrix/purchase-hydrate.js) виден только выбранный. Подблоки двух
+ * доставок проверяются только при выбранном «двумя».
+ *
+ * ПОРЯДОК ОТПРАВКИ: сначала заказ; не создался — ошибка на форме, заявка
+ * тоже не создаётся. Заказ создан, заявка нет — страница успеха заказа со
+ * строкой «Заявку отправить не удалось, позвоните нам».
  *
  * ПРОВЕРКА НА СЕРВЕРЕ. Ошибка — текстом под полем, поле помечено
- * aria-invalid, введённое возвращается в форму. Разметка и тексты —
- * src/js/checkout/checkout-page.js и src/data/checkout-copy.js.
- *
- * СЕРВЕР РИСУЕТ ОБА БЛОКА СПОСОБА ПОЛУЧЕНИЯ. Без скрипта переключатель
- * ничего бы не переключал, а два видимых блока лучше мёртвой капсулы.
- * Со скриптом (src/bitrix/purchase-hydrate.js) виден только выбранный —
- * блоки помечены data-panel. Поля адреса при самовывозе не проверяются
- * и в заказ не уезжают.
+ * aria-invalid, введённое возвращается в форму. Тексты —
+ * src/data/checkout-copy.js.
  */
 define('GG_PAGE_CLASS', 'page-checkout');
 
 require($_SERVER['DOCUMENT_ROOT'] . '/bitrix/header.php');
 require_once $_SERVER['DOCUMENT_ROOT'] . SITE_TEMPLATE_PATH . '/include/checkout.php';
 
-$APPLICATION->SetTitle('Оформление заказа — №1 Гранд Гурмэ');
 $APPLICATION->SetPageProperty('robots', 'noindex, nofollow');
 
-$lines = gg_cart_lines();
+$state = gg_cart_state();
 
 /* Оформлять нечего — возвращаем в корзину: там пустое состояние с выходами. */
-if (!$lines) {
+if ($state['totals']['positions'] === 0) {
     LocalRedirect('/cart/');
 }
 
-$totals = gg_cart_totals($lines);
-$texts = gg_summary_texts($totals);
-$readyAt = (int)$totals['readyAt'];
+$plan = gg_checkout_plan($state);
+$mode = gg_checkout_modes()[$plan['mode']];
+$totals = $plan['totals'];
+$readyAt = $plan['readyAt'];
+$today = $plan['today'];
 $points = gg_pickup_points();
+$ways = gg_contact_ways();
+
+$APPLICATION->SetTitle($mode['title'] . ' — №1 Гранд Гурмэ');
 
 $post = ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' ? $_POST : [];
 $errors = [];
@@ -44,56 +54,108 @@ if ($post) {
     if (!check_bitrix_sessid()) {
         LocalRedirect('/checkout/');
     }
-    $errors = gg_checkout_validate($post, $readyAt);
+    $errors = gg_checkout_validate($post, $plan);
 
-    if (!$errors) {
-        $digits = gg_phone_digits((string)$post['phone']);
+    if (!$errors && gg_request_is_spam($post)) {
+        $formError = 'Заявку отправить не удалось, позвоните нам';
+    } elseif (!$errors) {
+        $name = trim((string)$post['name']);
+        $phone = gg_phone_format(gg_phone_digits((string)$post['phone']));
+        $email = trim((string)($post['email'] ?? ''));
+        $method = ($post['method'] ?? 'delivery') === 'pickup' ? 'pickup' : 'delivery';
+        $pickup = $points[0]['city'] . ', ' . $points[0]['address'];
+        $shipments = gg_checkout_shipments($post, $plan);
+        $orderNumber = '';
+        $orderId = 0;
 
-        /* Способ оплаты уезжает в комментарий словами, а не кодом: читает
-           его менеджер, а не платёжный модуль. */
-        $paymentLabel = '';
-        foreach (gg_payment_options() as $option) {
-            if ($option['value'] === (string)($post['payment'] ?? '')) {
-                $paymentLabel = $option['label'];
+        /* 1. Заказ. */
+        if ($plan['hasOrder']) {
+            /* Способ оплаты уезжает в комментарий словами, а не кодом: читает
+               его менеджер, а не платёжный модуль. */
+            $paymentLabel = '';
+            foreach (gg_payment_options() as $option) {
+                if ($option['value'] === (string)($post['payment'] ?? '')) {
+                    $paymentLabel = $option['label'];
+                }
+            }
+            $result = gg_create_order([
+                'name' => $name,
+                'phone' => $phone,
+                'email' => $email,
+                'method' => $method,
+                'street' => trim((string)($post['street'] ?? '')),
+                'apartment' => trim((string)($post['apartment'] ?? '')),
+                'intercom' => trim((string)($post['intercom'] ?? '')),
+                'pickup' => $pickup,
+                'shipments' => $shipments,
+                'payment' => $paymentLabel,
+                'comment' => trim((string)($post['comment'] ?? '')),
+                'promo' => gg_promo(),
+            ]);
+            if (!$result['ok']) {
+                $formError = $result['error'] !== '' ? $result['error'] : 'Заказ не удалось принять, попробуйте ещё раз';
+            } else {
+                $orderNumber = $result['number'];
+                $orderId = $result['id'];
             }
         }
-        if ($totals['onRequestCount']) {
-            $paymentLabel = '';
-        }
-        $result = gg_create_order([
-            'name' => trim((string)$post['name']),
-            'phone' => gg_phone_format($digits),
-            'email' => trim((string)$post['email']),
-            'method' => ($post['method'] ?? 'delivery') === 'pickup' ? 'pickup' : 'delivery',
-            'street' => trim((string)($post['street'] ?? '')),
-            'apartment' => trim((string)($post['apartment'] ?? '')),
-            'intercom' => trim((string)($post['intercom'] ?? '')),
-            'pickup' => $points[0]['city'] . ', ' . $points[0]['address'],
-            'date' => (string)($post['date'] ?? ''),
-            'interval' => (string)($post['interval'] ?? ''),
-            'payment' => $paymentLabel,
-            'comment' => trim((string)($post['comment'] ?? '')),
-            'promo' => gg_promo(),
-            'onRequest' => (int)$totals['onRequestCount'],
-        ]);
 
-        if ($result['ok']) {
-            gg_remember_order($result['number'], [
-                'id' => $result['id'],
-                'date' => (string)($post['date'] ?? ''),
-                'interval' => (string)($post['interval'] ?? ''),
-                'method' => ($post['method'] ?? 'delivery') === 'pickup' ? 'pickup' : 'delivery',
-                'address' => ($post['method'] ?? 'delivery') === 'pickup'
-                    ? $points[0]['city'] . ', ' . $points[0]['address']
-                    : trim((string)($post['street'] ?? '')),
-                'onRequest' => (int)$totals['onRequestCount'],
-                'readyAt' => $readyAt,
-                'createdAt' => time(),
+        /* 2. Заявка — только если заказ создан или его не было. */
+        $requestNumber = '';
+        $requestFailed = false;
+        if ($formError === '' && $plan['hasRequest']) {
+            $way = isset($ways[(string)($post['contact_way'] ?? '')]) ? (string)$post['contact_way'] : 'call';
+            $request = gg_request_create([
+                'name' => $name,
+                'phone' => $phone,
+                'email' => $email,
+                'contactWay' => $way,
+                'question' => trim((string)($post['question'] ?? '')),
+                'orderNumber' => $orderNumber,
+                'lines' => $plan['requestLines'],
             ]);
-            gg_set_promo('');
-            LocalRedirect('/order-success/?n=' . rawurlencode($result['number']));
+            if ($request['ok']) {
+                $requestNumber = (string)$request['id'];
+                gg_request_save([]);
+                gg_remember_request($requestNumber, [
+                    'contactWay' => $way,
+                    'items' => array_map(static fn($line) => [
+                        'name' => $line['name'],
+                        'note' => $line['note'],
+                        'qty' => (int)$line['qty'],
+                    ], $plan['requestLines']),
+                ]);
+            } elseif ($plan['hasOrder']) {
+                $requestFailed = true;
+            } else {
+                $formError = $request['error'];
+            }
         }
-        $formError = $result['error'] !== '' ? $result['error'] : 'Заказ не удалось принять, попробуйте ещё раз';
+
+        if ($formError === '') {
+            $query = [];
+            if ($plan['hasOrder']) {
+                gg_remember_order($orderNumber, [
+                    'id' => $orderId,
+                    'shipments' => array_map(static fn($s) => [
+                        'kind' => $s['kind'],
+                        'date' => $s['date'],
+                        'interval' => $s['interval'],
+                    ], $shipments),
+                    'method' => $method,
+                    'address' => $method === 'pickup' ? $pickup : trim((string)($post['street'] ?? '')),
+                    'readyAt' => $readyAt,
+                    'createdAt' => time(),
+                    'requestFailed' => $requestFailed,
+                ]);
+                gg_set_promo('');
+                $query[] = 'n=' . rawurlencode($orderNumber);
+            }
+            if ($requestNumber !== '') {
+                $query[] = 'r=' . rawurlencode($requestNumber);
+            }
+            LocalRedirect('/order-success/?' . implode('&', $query));
+        }
     }
 }
 
@@ -102,9 +164,9 @@ $v = static function (string $name, string $default = '') use ($post): string {
     return isset($post[$name]) ? trim((string)$post[$name]) : $default;
 };
 $method = ($post['method'] ?? 'delivery') === 'pickup' ? 'pickup' : 'delivery';
-$interval = (string)($post['interval'] ?? '');
+$split = gg_checkout_split($post, $plan);
 $payment = (string)($post['payment'] ?? 'card');
-$date = (string)($post['date'] ?? gg_iso_day($readyAt));
+$contactWay = isset($ways[(string)($post['contact_way'] ?? '')]) ? (string)$post['contact_way'] : 'call';
 
 /** Поле формы: подпись, ввод, ошибка под ним. */
 $field = static function (array $o) use ($errors, $v): string {
@@ -132,6 +194,64 @@ $field = static function (array $o) use ($errors, $v): string {
         . '<p class="field__error" id="' . $id . '-error"' . ($error === '' ? ' hidden' : '') . '>' . gg_e($error) . '</p>'
         . '</div>';
 };
+
+/**
+ * Лента дней и интервалы одной отгрузки.
+ * $key — '' | 'stock' | 'preorder'; дни раньше $blockedBefore выключены.
+ */
+$shipmentFields = static function (string $key, int $from, int $length, int $blockedBefore, string $hint = '') use ($post, $errors, $today): string {
+    $suffix = $key !== '' ? '_' . $key : '';
+    $checkedDate = (string)($post['date' . $suffix] ?? gg_iso_day(max($from, $blockedBefore)));
+    $interval = (string)($post['interval' . $suffix] ?? '');
+    $intervalError = $errors['interval' . $suffix] ?? '';
+    $dateError = $errors['date' . $suffix] ?? '';
+
+    $html = '<fieldset class="group" aria-describedby="co-date' . $suffix . '-error">'
+        . '<legend class="field__label">Дата</legend><div class="caps days">';
+    for ($i = 0; $i < $length; $i++) {
+        $day = gg_add_days($from, $i);
+        $iso = gg_iso_day($day);
+        $top = $day === $today ? 'Сегодня' : ($day === gg_add_days($today, 1) ? 'Завтра' : gg_format_weekday($day));
+        $html .= '<label class="cap cap--day">'
+            . '<input type="radio" name="date' . $suffix . '" value="' . gg_e($iso) . '"'
+            . ($iso === $checkedDate ? ' checked' : '') . ($day < $blockedBefore ? ' disabled' : '')
+            . ' aria-label="' . gg_e($top . ', ' . gg_format_day_month($day)) . '">'
+            . '<span class="cap__face">' . gg_e($top) . '<span class="cap__sub">' . gg_e(gg_format_day_short($day)) . '</span></span>'
+            . '</label>';
+    }
+    $html .= '</div>'
+        . ($hint !== '' ? '<p class="field__hint">' . gg_e($hint) . '</p>' : '')
+        . '<p class="field__error" id="co-date' . $suffix . '-error"' . ($dateError === '' ? ' hidden' : '') . '>' . gg_e($dateError) . '</p>'
+        . '</fieldset>';
+
+    $html .= '<fieldset class="group" aria-describedby="co-interval' . $suffix . '-error">'
+        . '<legend class="field__label">Интервал</legend><div class="caps">';
+    foreach (gg_intervals() as $option) {
+        $html .= '<label class="cap">'
+            . '<input type="radio" name="interval' . $suffix . '" value="' . gg_e($option) . '"'
+            . ($interval === $option ? ' checked' : '') . ($intervalError !== '' ? ' aria-invalid="true"' : '') . '>'
+            . '<span class="cap__face">' . gg_e($option) . '</span></label>';
+    }
+    $html .= '</div><p class="field__error" id="co-interval' . $suffix . '-error"' . ($intervalError === '' ? ' hidden' : '') . '>'
+        . gg_e($intervalError) . '</p></fieldset>';
+    return $html;
+};
+
+$step = 0;
+$num = static function () use (&$step): int {
+    return ++$step;
+};
+
+$splitTexts = [
+    'delivery' => [
+        'one' => ['Одной доставкой', 'Всё вместе к ' . gg_format_day_month($readyAt)],
+        'two' => ['Двумя доставками', 'Сначала то, что в наличии, затем под заказ к ' . gg_format_day_month($readyAt)],
+    ],
+    'pickup' => [
+        'one' => ['Одним визитом', 'Всё вместе к ' . gg_format_day_month($readyAt)],
+        'two' => ['Двумя визитами', 'Сначала то, что в наличии, затем под заказ к ' . gg_format_day_month($readyAt)],
+    ],
+];
 ?>
 <div class="container">
   <nav class="crumbs" aria-label="Хлебные крошки">
@@ -143,20 +263,24 @@ $field = static function (array $o) use ($errors, $v): string {
   </nav>
 
   <div class="checkout__head">
-    <h1 class="checkout__title">Оформление заказа</h1>
-    <p class="checkout__lead">Без регистрации: нужны только контакты и адрес.</p>
+    <h1 class="checkout__title"><?= gg_e($mode['title']) ?></h1>
+    <p class="checkout__lead"><?= gg_e($mode['lead']) ?></p>
   </div>
 
   <div class="checkout__layout">
     <form class="checkout__form" id="checkout-form" method="post" action="/checkout/" novalidate>
       <?= bitrix_sessid_post() ?>
+      <?php /* Поле-ловушка против ботов: скрыто от людей и от скринридера. */ ?>
+      <div class="visually-hidden" aria-hidden="true">
+        <label>Сайт компании <input type="text" name="<?= GG_REQUEST_TRAP ?>" tabindex="-1" autocomplete="off"></label>
+      </div>
 
 <?php if ($formError !== ''): ?>
       <p class="field__error" role="alert"><?= gg_e($formError) ?></p>
 <?php endif; ?>
 
       <section class="co-step" aria-labelledby="co-contacts">
-        <span class="co-step__num" aria-hidden="true">1</span>
+        <span class="co-step__num" aria-hidden="true"><?= $num() ?></span>
         <div class="co-step__body">
           <h2 class="co-step__title" id="co-contacts">Контакты</h2>
           <div class="fields">
@@ -164,13 +288,15 @@ $field = static function (array $o) use ($errors, $v): string {
             <?= $field(['id' => 'co-phone', 'name' => 'phone', 'label' => 'Телефон', 'type' => 'tel',
                         'autocomplete' => 'tel', 'inputmode' => 'tel', 'placeholder' => '+7 ___ ___-__-__', 'mask' => true]) ?>
             <?= $field(['id' => 'co-email', 'name' => 'email', 'label' => 'Email', 'type' => 'email',
-                        'autocomplete' => 'email', 'inputmode' => 'email', 'placeholder' => 'name@example.ru']) ?>
+                        'autocomplete' => 'email', 'inputmode' => 'email', 'placeholder' => 'name@example.ru',
+                        'optional' => !$plan['hasOrder']]) ?>
           </div>
         </div>
       </section>
 
+<?php if ($plan['hasOrder']): ?>
       <section class="co-step" aria-labelledby="co-receive">
-        <span class="co-step__num" aria-hidden="true">2</span>
+        <span class="co-step__num" aria-hidden="true"><?= $num() ?></span>
         <div class="co-step__body">
           <h2 class="co-step__title" id="co-receive">Как получить</h2>
           <fieldset class="group">
@@ -203,8 +329,7 @@ $field = static function (array $o) use ($errors, $v): string {
           </div>
 
           <?php /* Пункт самовывоза один, и он показан блоком, а не радиокнопкой:
-                   переключатель из одного значения — брак. Появится второй —
-                   ряд радиокнопок включится сам. */ ?>
+                   переключатель из одного значения — брак. */ ?>
           <div class="co-panel" data-panel="pickup">
             <p class="field__hint">Заказ будет ждать вас здесь:</p>
             <ul class="pickup">
@@ -223,57 +348,54 @@ $field = static function (array $o) use ($errors, $v): string {
       </section>
 
       <section class="co-step" aria-labelledby="co-when">
-        <span class="co-step__num" aria-hidden="true">3</span>
+        <span class="co-step__num" aria-hidden="true"><?= $num() ?></span>
         <div class="co-step__body">
           <h2 class="co-step__title" id="co-when">Когда</h2>
-          <fieldset class="group" aria-describedby="co-date-error">
-            <legend class="field__label">Дата</legend>
-            <div class="caps days">
 <?php
-$today = gg_day_start();
-for ($i = 0; $i < GG_DAYS_AHEAD; $i++):
-    $day = gg_add_days($today, $i);
-    $iso = gg_iso_day($day);
-    $blocked = $day < $readyAt;
-    $top = $i === 0 ? 'Сегодня' : ($i === 1 ? 'Завтра' : gg_format_weekday($day));
+    $blockedHint = $totals['order']['hasPreorder']
+        ? 'Раньше ' . gg_format_day_month($readyAt) . ' не успеем: в заказе есть позиции под заказ'
+        : '';
+    $single = $shipmentFields('', $today, GG_DAYS_AHEAD, $readyAt, $blockedHint);
 ?>
-              <label class="cap cap--day">
-                <input type="radio" name="date" value="<?= gg_e($iso) ?>"<?= $iso === $date ? ' checked' : '' ?><?= $blocked ? ' disabled' : '' ?>
-                       aria-label="<?= gg_e($top . ', ' . gg_format_day_month($day)) ?>">
-                <span class="cap__face"><?= gg_e($top) ?><span class="cap__sub"><?= gg_e(gg_format_day_short($day)) ?></span></span>
-              </label>
-<?php endfor; ?>
-            </div>
-<?php if ($totals['hasPreorder']): ?>
-            <p class="field__hint">Раньше <?= gg_e(gg_format_day_month($readyAt)) ?> не успеем: в заказе есть позиции под заказ</p>
-<?php endif; ?>
-            <p class="field__error" id="co-date-error"<?= isset($errors['date']) ? '' : ' hidden' ?>><?= gg_e($errors['date'] ?? '') ?></p>
-          </fieldset>
-
-          <fieldset class="group" aria-describedby="co-interval-error">
-            <legend class="field__label">Интервал</legend>
-            <div class="caps">
-<?php foreach (gg_intervals() as $option): ?>
-              <label class="cap">
-                <input type="radio" name="interval" value="<?= gg_e($option) ?>"<?= $interval === $option ? ' checked' : '' ?><?= isset($errors['interval']) ? ' aria-invalid="true"' : '' ?>>
-                <span class="cap__face"><?= gg_e($option) ?></span>
+<?php if (!$plan['canSplit']): ?>
+          <?= $single ?>
+<?php else: ?>
+          <fieldset class="group">
+            <legend class="field__label">Как привезти</legend>
+            <div class="split" data-split-texts="<?= gg_e(json_encode($splitTexts, JSON_UNESCAPED_UNICODE)) ?>">
+<?php foreach (['one', 'two'] as $key): ?>
+              <label class="cap cap--split">
+                <input type="radio" name="split" value="<?= $key ?>"<?= $split === $key ? ' checked' : '' ?>>
+                <span class="cap__face"><span class="cap__label" data-split-label="<?= $key ?>"><?= gg_e($splitTexts[$method][$key][0]) ?></span><span class="cap__sub" data-split-sub="<?= $key ?>"><?= gg_e($splitTexts[$method][$key][1]) ?></span></span>
               </label>
 <?php endforeach; ?>
             </div>
-            <p class="field__error" id="co-interval-error"<?= isset($errors['interval']) ? '' : ' hidden' ?>><?= gg_e($errors['interval'] ?? '') ?></p>
           </fieldset>
+
+          <div class="co-panel" data-split-panel="one">
+            <?= $single ?>
+          </div>
+
+          <div class="co-panel" data-split-panel="two">
+            <div class="co-sub" role="group" aria-labelledby="co-sub-stock">
+              <h3 class="co-sub__title" id="co-sub-stock">Товары в наличии · <?= gg_e(gg_positions_label(count($plan['stockLines']))) ?></h3>
+              <?= $shipmentFields('stock', $today, max(1, (int)round(($readyAt - $today) / 86400)), $today) ?>
+            </div>
+            <div class="co-sub" role="group" aria-labelledby="co-sub-preorder">
+              <h3 class="co-sub__title" id="co-sub-preorder">Товары под заказ · <?= gg_e(gg_positions_label(count($plan['preorderLines']))) ?></h3>
+              <?= $shipmentFields('preorder', $readyAt, GG_DAYS_AHEAD, $readyAt) ?>
+            </div>
+            <?php /* ⚠ ПОДТВЕРДИТЬ У ЗАКАЗЧИКА: стоимость второй доставки. */ ?>
+            <p class="ready-line co-note"><span class="ready-line__mark" aria-hidden="true">⬦</span><span>Стоимость каждой доставки подтвердит менеджер</span></p>
+          </div>
+<?php endif; ?>
         </div>
       </section>
 
       <section class="co-step" aria-labelledby="co-payment">
-        <span class="co-step__num" aria-hidden="true">4</span>
+        <span class="co-step__num" aria-hidden="true"><?= $num() ?></span>
         <div class="co-step__body">
           <h2 class="co-step__title" id="co-payment">Оплата</h2>
-<?php if ($totals['onRequestCount']): ?>
-          <?php /* В заказе есть позиции по запросу — способа оплаты выбирать
-                   не из чего: суммы ещё нет. */ ?>
-          <p class="ready-line co-note"><span class="ready-line__mark" aria-hidden="true">⬦</span><span>Точную сумму подтвердит менеджер и пришлёт ссылку на оплату в сообщения на ваш телефон</span></p>
-<?php else: ?>
           <fieldset class="group">
             <legend class="visually-hidden">Способ оплаты</legend>
             <div class="caps">
@@ -285,12 +407,53 @@ for ($i = 0; $i < GG_DAYS_AHEAD; $i++):
 <?php endforeach; ?>
             </div>
           </fieldset>
+<?php if ($plan['hasRequest']): ?>
+          <p class="ready-line co-note"><span class="ready-line__mark" aria-hidden="true">⬦</span><span>Оплачиваете только заказ, <?= gg_e(gg_price((float)$totals['order']['sum'])) ?>. Позиции заявки менеджер подтвердит отдельно.</span></p>
 <?php endif; ?>
         </div>
       </section>
+<?php endif; ?>
 
+<?php if ($plan['hasRequest']): ?>
+      <section class="co-step" aria-labelledby="co-request">
+        <span class="co-step__num" aria-hidden="true"><?= $num() ?></span>
+        <div class="co-step__body">
+          <h2 class="co-step__title" id="co-request">Заявка менеджеру</h2>
+          <ul class="order-lines co-request__lines" aria-label="Позиции заявки">
+<?php foreach ($plan['requestLines'] as $line): ?>
+            <li class="order-lines__row">
+              <span class="order-lines__name"><?= gg_e($line['name']) ?>
+                <span class="order-lines__note"><?= gg_e(trim($line['note'] . ' × ' . $line['qty'])) ?></span>
+              </span>
+            </li>
+<?php endforeach; ?>
+          </ul>
+          <p class="co-request__edit"><a class="link-btn" href="/cart/">Изменить состав</a></p>
+
+          <fieldset class="group">
+            <legend class="field__label">Как с вами связаться</legend>
+            <div class="caps">
+<?php foreach ($ways as $value => $way): ?>
+              <label class="cap">
+                <input type="radio" name="contact_way" value="<?= gg_e($value) ?>"<?= $contactWay === $value ? ' checked' : '' ?>>
+                <span class="cap__face"><?= gg_e($way['label']) ?></span>
+              </label>
+<?php endforeach; ?>
+            </div>
+          </fieldset>
+
+          <div class="field field--wide">
+            <label class="field__label" for="co-question">Вопрос менеджеру<span class="field__optional"> — необязательно</span></label>
+            <textarea class="field__input" id="co-question" name="question" rows="3"
+                      placeholder="Например: нужно к пятнице или подойдёт другая фасовка"><?= gg_e($v('question')) ?></textarea>
+          </div>
+        </div>
+      </section>
+<?php endif; ?>
+
+<?php if ($plan['hasOrder']): ?>
       <section class="co-step" aria-labelledby="co-comment">
-        <span class="co-step__num" aria-hidden="true">5</span>
+        <span class="co-step__num" aria-hidden="true"><?= $num() ?></span>
         <div class="co-step__body">
           <h2 class="co-step__title" id="co-comment">Комментарий</h2>
           <div class="field field--wide">
@@ -300,9 +463,10 @@ for ($i = 0; $i < GG_DAYS_AHEAD; $i++):
           </div>
         </div>
       </section>
+<?php endif; ?>
 
       <section class="co-step" aria-labelledby="co-consent-title">
-        <span class="co-step__num" aria-hidden="true">6</span>
+        <span class="co-step__num" aria-hidden="true"><?= $num() ?></span>
         <div class="co-step__body">
           <h2 class="co-step__title" id="co-consent-title">Согласие</h2>
           <div class="field">
@@ -318,33 +482,52 @@ for ($i = 0; $i < GG_DAYS_AHEAD; $i++):
       </section>
     </form>
 
-    <aside class="checkout__aside summary-sticky" aria-label="Ваш заказ">
+<?php $requestOnly = $plan['mode'] === 'request'; ?>
+    <aside class="checkout__aside summary-sticky" aria-label="<?= $requestOnly ? 'Заявка менеджеру' : 'Ваш заказ' ?>">
       <div class="summary">
-        <h2 class="summary__title">Ваш заказ</h2>
-        <ul class="summary__items" aria-label="Состав заказа">
-<?php foreach ($lines as $line): ?>
-          <li class="summary__item<?= $line['inStock'] ? '' : ' is-preorder' ?>">
-            <span class="summary__item-shot"><?= gg_product_shot(['CODE' => $line['code']], $line['name'], 'media--compact') ?></span>
-            <span class="summary__qty" aria-hidden="true"><?= (int)$line['qty'] ?></span>
-            <span class="visually-hidden"><?= gg_e($line['name'] . ', ' . $line['note'] . ' — ' . $line['qty'] . ' шт.') ?></span>
-          </li>
-<?php endforeach; ?>
-        </ul>
+        <h2 class="summary__title"><?= $requestOnly ? 'Заявка менеджеру' : 'Ваш заказ' ?></h2>
+<?php
+$shots = static function (array $lines, string $label): string {
+    $html = '<ul class="summary__items" aria-label="' . gg_e($label) . '">';
+    foreach ($lines as $line) {
+        $html .= '<li class="summary__item">'
+            . '<span class="summary__item-shot">' . gg_product_shot(['CODE' => $line['code']], $line['name'], 'media--compact') . '</span>'
+            . '<span class="summary__qty" aria-hidden="true">' . (int)$line['qty'] . '</span>'
+            . '<span class="visually-hidden">' . gg_e($line['name'] . ', ' . $line['note'] . ' — ' . $line['qty'] . ' шт.') . '</span>'
+            . '</li>';
+    }
+    return $html . '</ul>';
+};
+?>
+<?php if ($plan['hasOrder']): ?>
+        <?= $shots($plan['orderLines'], 'Состав заказа') ?>
+<?php endif; ?>
+<?php if ($plan['hasRequest']): ?>
+<?php   if ($plan['hasOrder']): ?>
+        <p class="summary__label">Заявка менеджеру</p>
+<?php   endif; ?>
+        <?= $shots($plan['requestLines'], 'Состав заявки') ?>
+<?php endif; ?>
         <p class="checkout__edit"><a class="link-btn" href="/cart/">Изменить состав</a></p>
 
+<?php if ($plan['hasOrder']): ?>
         <dl class="summary__rows">
-          <div class="summary__row"><dt>Сумма</dt><dd><?= gg_e($texts['sum']) ?></dd></div>
-          <div class="summary__row"><dt>Доставка</dt><dd data-summary-delivery data-delivery="подтвердит менеджер" data-pickup="не нужна"><?= $method === 'pickup' ? 'не нужна' : 'подтвердит менеджер' ?></dd></div>
+          <div class="summary__row"><dt>Сумма</dt><dd><?= gg_e(gg_price((float)$totals['order']['sum'])) ?></dd></div>
+          <div class="summary__row"><dt>Доставка</dt><dd data-summary-delivery data-delivery="подтвердит менеджер" data-delivery-two="две, подтвердит менеджер" data-pickup="не нужна"><?=
+            $method === 'pickup' ? 'не нужна' : ($split === 'two' ? 'две, подтвердит менеджер' : 'подтвердит менеджер')
+          ?></dd></div>
         </dl>
         <p class="summary__total">
           <span>Итого</span>
-          <span class="summary__total-value<?= $texts['allOnRequest'] ? ' is-text' : '' ?>"><?= gg_e($texts['total']) ?></span>
+          <span class="summary__total-value"><?= gg_e(gg_price((float)$totals['order']['sum'])) ?></span>
         </p>
-<?php if ($texts['note'] !== ''): ?>
-        <p class="summary__note"><?= gg_e($texts['note']) ?></p>
+<?php else: ?>
+        <dl class="summary__rows">
+          <div class="summary__row"><dt>Позиций</dt><dd><?= (int)$totals['request']['positions'] ?></dd></div>
+        </dl>
 <?php endif; ?>
 
-        <button type="submit" form="checkout-form" class="btn btn--solid summary__action">Подтвердить заказ</button>
+        <button type="submit" form="checkout-form" class="btn btn--solid summary__action"><?= gg_e($mode['submit']) ?></button>
       </div>
     </aside>
   </div>

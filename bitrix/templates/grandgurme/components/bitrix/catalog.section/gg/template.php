@@ -18,6 +18,11 @@
  * переключается, нечестно. Правая работает как чекбокс и живёт в ?stock=all.
  * Порядок выдачи (наличие, потом под заказ) считает gg_catalog_page.
  *
+ * ВИД ПОЗИЦИИ (16.09.2026). Под ценой — метка .stock-tag для «под заказ»
+ * и «по заявке» (gg_item_kind, gg_stock_tag). У «в наличии» метки в сетке
+ * нет: наличие здесь норма. Приглушённого кадра и приписки «· под заказ»
+ * к фасовке больше нет. Кнопки добавления в сетке стенда нет.
+ *
  * Кадров у товаров нет ни одного: фотографии в выгрузку 1С не попали.
  * Пока файла нет, на месте кадра стоит знак марки (gg_product_shot).
  */
@@ -264,20 +269,15 @@ if ($items && $page['ids']) {
     $ggPagePropsById = gg_props_for_ids(array_column($items, 'ID'), ['UPAKOVKA', 'RYBA', 'KATEGORIYA', 'CML2_ARTICLE']);
     foreach ($items as $item):
         $price = gg_item_price($item);
-        $inStock = gg_item_quantity($item) > 0;
         $props = gg_item_props($item) + ($ggPagePropsById[(int)$item['ID']] ?? []);
         $pack = $props['UPAKOVKA'] ?? '';
         $title = gg_item_title((string)$item['NAME'], $pack);
         $note = $pack !== '' ? $pack : ($props['CML2_ARTICLE'] ?? '');
-        /* Строчными и через точку: подпись идёт хвостом фасовки, а не
-           отдельной плашкой — «Банка металл 250 г · под заказ». */
-        if (!$inStock) {
-            $note = $note !== '' ? $note . ' · под заказ' : 'под заказ';
-        }
+        $kind = gg_item_kind($item, $cat);
         $href = gg_product_url($item);
         $alt = $item['NAME'] . ($pack !== '' ? ', ' . $pack : '');
 ?>
-      <article class="product<?= $inStock ? '' : ' product--muted' ?>">
+      <article class="product">
         <div class="product__frame">
           <a class="product__shot" href="<?= gg_e($href) ?>" tabindex="-1" aria-hidden="true"><?= gg_product_shot($item, $alt) ?></a>
         </div>
@@ -285,6 +285,9 @@ if ($items && $page['ids']) {
           <h3 class="product__name"><a href="<?= gg_e($href) ?>"><?= gg_e($title) ?></a></h3>
           <p class="product__note"><?= gg_e($note) ?></p>
           <p class="product__price"><?= gg_e(gg_price($price)) ?></p>
+<?php   if ($kind !== 'stock'): ?>
+          <p class="product__tag"><?= gg_stock_tag($kind) ?></p>
+<?php   endif; ?>
         </div>
       </article>
 <?php endforeach; ?>

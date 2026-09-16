@@ -15,11 +15,20 @@
    ВЕРСИЯ В ЗАПИСИ. Поменяется форма позиции — поднимаем VERSION, и старые
    записи честно считаются пустой корзиной, а не ломают страницу полями,
    которых код больше не ждёт.
+
+   ВЕРСИЯ 2 (16.09.2026): у позиции появились kind и categorySlug. Корзины
+   первой версии честно читаются пустыми — вид позиции в них угадывать
+   нельзя, он считается один раз, в kindOf.
+
+   ЗАЯВКИ МЕНЕДЖЕРУ лежат рядом с заказами, под своим ключом gg-requests
+   и со своим счётчиком номеров. На Битриксе заявка — элемент инфоблока
+   «Заявки менеджеру», а не заказ магазина: в обмен с 1С она не попадает.
    ============================================================================ */
 
 const CART_KEY = 'gg-cart'
 const ORDERS_KEY = 'gg-orders'
-const VERSION = 1
+const REQUESTS_KEY = 'gg-requests'
+const VERSION = 2
 
 /**
  * ⚠ ПОДТВЕРДИТЬ У ЗАКАЗЧИКА: формат номера заказа. В прототипе номер
@@ -27,6 +36,12 @@ const VERSION = 1
  * вида. Настоящий номер присвоит sale.order на Битриксе.
  */
 const FIRST_ORDER_NUMBER = 10241
+
+/**
+ * ⚠ ПОДТВЕРДИТЬ У ЗАКАЗЧИКА: формат номера заявки. В прототипе — локальный
+ * счётчик с 501; на Битриксе номер заявки — ID элемента инфоблока.
+ */
+const FIRST_REQUEST_NUMBER = 501
 
 const emptyCart = () => ({ items: [], promo: '' })
 
@@ -73,23 +88,34 @@ export function onExternalCartChange(fn) {
   })
 }
 
-/* ---------------------------------------------------------------- заказы */
+/* -------------------------------------------------------- заказы и заявки */
 
-/** Кладёт заказ и возвращает присвоенный номер. */
-export function saveOrder(order) {
-  const data = read(ORDERS_KEY)
-  const orders = data?.version === VERSION && data.orders ? data.orders : {}
-  const last = Math.max(FIRST_ORDER_NUMBER - 1, ...Object.keys(orders).map(Number).filter(Number.isFinite))
+/** Запись с номером под ключом; номер — следующий после последнего. */
+function saveNumbered(key, first, record) {
+  const data = read(key)
+  const list = data?.version === VERSION && data.list ? data.list : {}
+  const last = Math.max(first - 1, ...Object.keys(list).map(Number).filter(Number.isFinite))
   const number = last + 1
 
-  orders[number] = { ...order, number }
-  write(ORDERS_KEY, { version: VERSION, orders })
+  list[number] = { ...record, number }
+  write(key, { version: VERSION, list })
   return number
 }
 
-/** Заказ по номеру. null — такого в этом браузере нет или хранилище недоступно. */
-export function loadOrder(number) {
-  const data = read(ORDERS_KEY)
-  if (data?.version !== VERSION || !data.orders) return null
-  return data.orders[number] || null
+function loadNumbered(key, number) {
+  const data = read(key)
+  if (data?.version !== VERSION || !data.list) return null
+  return data.list[number] || null
 }
+
+/** Кладёт заказ и возвращает присвоенный номер. */
+export const saveOrder = (order) => saveNumbered(ORDERS_KEY, FIRST_ORDER_NUMBER, order)
+
+/** Заказ по номеру. null — такого в этом браузере нет или хранилище недоступно. */
+export const loadOrder = (number) => loadNumbered(ORDERS_KEY, number)
+
+/** Кладёт заявку менеджеру и возвращает её номер. */
+export const saveRequest = (request) => saveNumbered(REQUESTS_KEY, FIRST_REQUEST_NUMBER, request)
+
+/** Заявка по номеру. null — из другого браузера или хранилище недоступно. */
+export const loadRequest = (number) => loadNumbered(REQUESTS_KEY, number)

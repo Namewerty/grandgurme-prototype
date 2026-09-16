@@ -286,6 +286,94 @@ textarea.field__input {
   opacity: .75;
 }
 
+/* ---- Выбор разделения: одной или двумя доставками ------------------------
+   Карточки-радиокнопки на основе .cap: две строки текста, мелкое
+   скругление карточки вместо капсулы — в капсулу две строки не ложатся.
+   На десктопе рядом, ниже 768 px одна под другой. Выбранная залита --fg,
+   как любая выбранная капсула.                                            */
+
+.split {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .6rem;
+}
+
+.cap--split { display: flex; }
+
+.cap--split .cap__face {
+  flex: 1;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: .25rem;
+  min-height: 4.25rem;
+  padding: .75rem 1rem;
+  border-radius: var(--radius-card-sm);
+  text-align: left;
+  white-space: normal;
+}
+
+.cap__label {
+  font-size: .9rem;
+  font-weight: 500;
+}
+
+.cap--split .cap__sub {
+  font-size: .78rem;
+  line-height: 1.4;
+  opacity: .8;
+}
+
+@media (max-width: 767px) {
+  .split { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Подблоки: одна отгрузка — лента дней и интервалы. Подблоки двух доставок
+   разделены волосяной линией и подписаны своим заголовком. */
+.co-panel[data-split-panel] {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.co-panel[data-split-panel][hidden] { display: none; }
+
+.co-sub {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--hairline);
+}
+
+.co-sub:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.co-sub__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 400;
+  line-height: var(--lh-h3);
+  color: var(--fg);
+}
+
+/* ---- Заявка менеджеру ---------------------------------------------------- */
+
+.co-request__lines { max-width: 40rem; }
+
+.co-request__edit { margin-top: -.35rem; }
+
+/* Подпись второго ряда кадров в сводке: «Заявка менеджеру». */
+.summary__label {
+  margin: -.25rem 0 .6rem;
+  font-size: .72rem;
+  letter-spacing: .06em;
+  color: var(--fg-mute);
+}
+
 /* ---- Самовывоз ----------------------------------------------------------- */
 
 .pickup {
@@ -315,7 +403,7 @@ textarea.field__input {
 .pickup__address { font-size: .88rem; color: var(--fg); }
 .pickup__hours { font-size: .8rem; color: var(--fg-mute); }
 
-/* ---- Оплата по запросу и согласие ---------------------------------------- */
+/* ---- Строка под оплатой и согласие -------------------------------------- */
 
 .co-note {
   max-width: 52ch;
@@ -412,6 +500,16 @@ textarea.field__input {
   flex-direction: column;
   gap: 1rem;
   margin-top: clamp(2rem, 5vh, 3rem);
+}
+
+/* Заявка вместе с заказом — отдельный блок ниже шагов и состава заказа:
+   свой заголовок в Prata, чтобы два номера на странице не слились. */
+.order-done__request { margin-top: clamp(2.5rem, 6vh, 3.75rem); }
+
+.order-done__subtitle {
+  margin: 0;
+  font-size: clamp(1.45rem, 2.6vw, 1.9rem);
+  line-height: var(--lh-h3);
 }
 
 .order-steps { border-top: 1px solid var(--hairline); }

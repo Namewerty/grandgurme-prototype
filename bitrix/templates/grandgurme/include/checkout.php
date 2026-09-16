@@ -14,6 +14,12 @@
  * нужно включать создание покупателя по телефону — это отдельное решение
  * со своей ценой (пароль, вход, персональные данные).
  *
+ * ТРИ РЕЖИМА (16.09.2026): только заказ, заказ и заявка, только заявка —
+ * по содержимому корзины (gg_cart_mode). Порядок отправки: сначала заказ;
+ * не создался — ошибка на форме, и заявка тоже не создаётся. Заказ создан,
+ * а заявка нет — страница успеха заказа со строкой «Заявку отправить не
+ * удалось, позвоните нам». Заявка — include/requests.php.
+ *
  * ОПЛАТА В ЗАКАЗ НЕ ПИШЕТСЯ. На стенде стоят демонстрационные платёжные
  * системы «1С-Битрикс» (ЮMoney, Терминалы, Наложенный платёж) — ни одна
  * из них не та, что подключена у компании. Выбранный способ уезжает
@@ -23,6 +29,7 @@
 if (!defined('B_PROLOG_INCLUDED') || B_PROLOG_INCLUDED !== true) die();
 
 require_once __DIR__ . '/cart.php';
+require_once __DIR__ . '/requests.php';
 
 /** Лента дней на оформлении: две недели вперёд, включая сегодня. */
 const GG_DAYS_AHEAD = 14;
@@ -114,13 +121,64 @@ function gg_phone_format(string $digits): string
 }
 
 /* -------------------------------------------------------------------------
+   Режим страницы — от содержимого корзины (checkout-page.js прототипа).
+   ------------------------------------------------------------------------- */
+
+/** Тексты режимов — src/data/checkout-copy.js → modes. */
+function gg_checkout_modes(): array
+{
+    return [
+        'order' => [
+            'title' => 'Оформление заказа',
+            'lead' => 'Без регистрации: нужны только контакты и адрес.',
+            'submit' => 'Подтвердить заказ',
+        ],
+        'both' => [
+            'title' => 'Заказ и заявка',
+            'lead' => 'Контакты общие. Заказ оплачиваете на сайте, по заявке менеджер свяжется отдельно.',
+            'submit' => 'Подтвердить заказ и отправить заявку',
+        ],
+        'request' => [
+            'title' => 'Заявка менеджеру',
+            'lead' => 'Оставьте контакты: менеджер уточнит цену и срок поставки и свяжется с вами.',
+            'submit' => 'Отправить заявку',
+        ],
+    ];
+}
+
+/** Что лежит в корзине — от этого зависит состав страницы. */
+function gg_checkout_plan(array $state): array
+{
+    $totals = $state['totals'];
+    $mode = gg_cart_mode($totals);
+    return [
+        'mode' => $mode,
+        'hasOrder' => $mode !== 'request',
+        'hasRequest' => $mode !== 'order',
+        'canSplit' => $totals['order']['hasStock'] && $totals['order']['hasPreorder'],
+        'orderLines' => $state['orderLines'],
+        'requestLines' => $state['requestLines'],
+        'stockLines' => array_values(array_filter($state['orderLines'], static fn($l) => $l['kind'] === 'stock')),
+        'preorderLines' => array_values(array_filter($state['orderLines'], static fn($l) => $l['kind'] === 'preorder')),
+        'readyAt' => (int)$totals['order']['readyAt'],
+        'today' => gg_day_start(),
+        'totals' => $totals,
+    ];
+}
+
+/** Выбрано ли разделение на две доставки. */
+function gg_checkout_split(array $post, array $plan): string
+{
+    return ($plan['canSplit'] && ($post['split'] ?? '') === 'two') ? 'two' : 'one';
+}
+
+/* -------------------------------------------------------------------------
    Проверка полей. Тексты ошибок — из src/data/checkout-copy.js.
    ------------------------------------------------------------------------- */
 
-function gg_checkout_validate(array $post, int $readyAt): array
+function gg_checkout_validate(array $post, array $plan): array
 {
     $errors = [];
-    $method = ($post['method'] ?? 'delivery') === 'pickup' ? 'pickup' : 'delivery';
 
     if (trim((string)($post['name'] ?? '')) === '') {
         $errors['name'] = 'Как к вам обращаться?';
@@ -133,27 +191,55 @@ function gg_checkout_validate(array $post, int $readyAt): array
         $errors['phone'] = 'В номере должно быть десять цифр после +7';
     }
 
+    /* Email обязателен, когда есть заказ: туда уходит подтверждение.
+       У одной заявки поле необязательное, но введённое должно быть адресом. */
     $email = trim((string)($post['email'] ?? ''));
     if ($email === '') {
-        $errors['email'] = 'Укажите почту — туда придёт подтверждение';
+        if ($plan['hasOrder']) {
+            $errors['email'] = 'Укажите почту — туда придёт подтверждение';
+        }
     } elseif (!preg_match('/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/u', $email)) {
         $errors['email'] = 'Проверьте адрес: в нём должны быть @ и домен';
     }
 
-    /* Улица нужна только доставке: при самовывозе поле не проверяется. */
-    if ($method === 'delivery' && trim((string)($post['street'] ?? '')) === '') {
-        $errors['street'] = 'Укажите улицу и номер дома';
-    }
+    if ($plan['hasOrder']) {
+        $method = ($post['method'] ?? 'delivery') === 'pickup' ? 'pickup' : 'delivery';
+        /* Улица нужна только доставке: при самовывозе поле не проверяется. */
+        if ($method === 'delivery' && trim((string)($post['street'] ?? '')) === '') {
+            $errors['street'] = 'Укажите улицу и номер дома';
+        }
 
-    if (!in_array((string)($post['interval'] ?? ''), gg_intervals(), true)) {
-        $errors['interval'] = 'Выберите удобный интервал';
-    }
+        $readyAt = $plan['readyAt'];
+        $today = $plan['today'];
+        $dateError = 'Выберите дату не раньше готовности заказа';
 
-    /* День раньше готовности заказа выбрать нельзя: капсула выключена,
-       но форму можно отправить и мимо неё. */
-    $day = gg_day_from_iso((string)($post['date'] ?? ''));
-    if ($day === null || $day < $readyAt) {
-        $errors['date'] = 'Выберите дату не раньше готовности заказа';
+        if (gg_checkout_split($post, $plan) === 'two') {
+            /* Две доставки: наличие — с сегодня до дня перед готовностью,
+               под заказ — от дня готовности. Проверяются только при «двумя». */
+            foreach (['stock', 'preorder'] as $key) {
+                if (!in_array((string)($post['interval_' . $key] ?? ''), gg_intervals(), true)) {
+                    $errors['interval_' . $key] = 'Выберите удобный интервал';
+                }
+            }
+            $stockDay = gg_day_from_iso((string)($post['date_stock'] ?? ''));
+            if ($stockDay === null || $stockDay < $today || $stockDay >= $readyAt) {
+                $errors['date_stock'] = 'Выберите дату до готовности заказа';
+            }
+            $preorderDay = gg_day_from_iso((string)($post['date_preorder'] ?? ''));
+            if ($preorderDay === null || $preorderDay < $readyAt) {
+                $errors['date_preorder'] = $dateError;
+            }
+        } else {
+            if (!in_array((string)($post['interval'] ?? ''), gg_intervals(), true)) {
+                $errors['interval'] = 'Выберите удобный интервал';
+            }
+            /* День раньше готовности заказа выбрать нельзя: капсула выключена,
+               но форму можно отправить и мимо неё. */
+            $day = gg_day_from_iso((string)($post['date'] ?? ''));
+            if ($day === null || $day < $readyAt) {
+                $errors['date'] = $dateError;
+            }
+        }
     }
 
     if (empty($post['consent'])) {
@@ -187,7 +273,54 @@ function gg_delivery_id(string $method): int
 }
 
 /**
+ * Отгрузки заказа по данным формы.
+ *
+ * @return array [['kind' => 'all'|'stock'|'preorder', 'label' => string, 'date' => iso, 'interval' => string, 'productIds' => int[]|null]]
+ */
+function gg_checkout_shipments(array $post, array $plan): array
+{
+    if (gg_checkout_split($post, $plan) === 'two') {
+        return [
+            [
+                'kind' => 'stock',
+                'label' => 'Товары в наличии',
+                'date' => (string)($post['date_stock'] ?? ''),
+                'interval' => (string)($post['interval_stock'] ?? ''),
+                'productIds' => array_column($plan['stockLines'], 'productId'),
+            ],
+            [
+                'kind' => 'preorder',
+                'label' => 'Товары под заказ',
+                'date' => (string)($post['date_preorder'] ?? ''),
+                'interval' => (string)($post['interval_preorder'] ?? ''),
+                'productIds' => array_column($plan['preorderLines'], 'productId'),
+            ],
+        ];
+    }
+    return [[
+        'kind' => 'all',
+        'label' => '',
+        'date' => (string)($post['date'] ?? ''),
+        'interval' => (string)($post['interval'] ?? ''),
+        'productIds' => null,
+    ]];
+}
+
+/** «23 сентября, 10:00–14:00». */
+function gg_shipment_when(array $shipment): string
+{
+    $day = gg_day_from_iso($shipment['date']);
+    return ($day ? gg_format_day_month($day) : $shipment['date']) . ', ' . $shipment['interval'];
+}
+
+/**
  * Создать заказ по данным формы.
+ *
+ * ДВЕ ОТГРУЗКИ — ДВЕ ЗАПИСИ В ShipmentCollection на ту же службу доставки:
+ * в первую позиции «в наличии», во вторую — «под заказ». В поле COMMENTS
+ * каждой отгрузки — её дата и интервал, в комментарии к заказу — обе строки.
+ * Стоимость второй доставки не считается: ⚠ ПОДТВЕРДИТЬ У ЗАКАЗЧИКА,
+ * пока её называет менеджер.
  *
  * @return array ['ok' => bool, 'number' => string, 'id' => int, 'error' => string]
  */
@@ -215,18 +348,29 @@ function gg_create_order(array $data): array
         }
         $order->setBasket($basket);
 
-        /* Отгрузка. Служба доставки берётся из существующих на стенде —
+        /* Отгрузки. Служба доставки берётся из существующих на стенде —
            новых мы не заводим: это решение заказчика. */
         $shipmentCollection = $order->getShipmentCollection();
-        $shipment = $shipmentCollection->createItem(
-            \Bitrix\Sale\Delivery\Services\Manager::getObjectById(gg_delivery_id($data['method']))
-        );
-        $shipmentItems = $shipment->getShipmentItemCollection();
-        foreach ($basket as $item) {
-            $shipmentItem = $shipmentItems->createItem($item);
-            $shipmentItem->setQuantity($item->getQuantity());
+        $service = \Bitrix\Sale\Delivery\Services\Manager::getObjectById(gg_delivery_id($data['method']));
+        $where = $data['method'] === 'pickup' ? 'Самовывоз' : 'Доставка';
+
+        foreach ($data['shipments'] as $plan) {
+            $shipment = $shipmentCollection->createItem($service);
+            $shipmentItems = $shipment->getShipmentItemCollection();
+            $wanted = $plan['productIds'] === null ? null : array_flip(array_map('intval', $plan['productIds']));
+            foreach ($basket as $item) {
+                if ($wanted !== null && !isset($wanted[(int)$item->getProductId()])) {
+                    continue;
+                }
+                $shipmentItem = $shipmentItems->createItem($item);
+                $shipmentItem->setQuantity($item->getQuantity());
+            }
+            $shipment->setField('CURRENCY', $order->getCurrency());
+            $shipment->setField(
+                'COMMENTS',
+                trim(($plan['label'] !== '' ? $plan['label'] . '. ' : '') . $where . ': ' . gg_shipment_when($plan))
+            );
         }
-        $shipment->setField('CURRENCY', $order->getCurrency());
 
         /* Свойства. Пишем ровно то, что человек дал; местоположение
            не трогаем — справочник местоположений на стенде не загружен,
@@ -270,15 +414,20 @@ function gg_create_order(array $data): array
  * Комментарий к заказу.
  *
  * Сюда уезжает всё, под что на стенде нет свойств заказа: квартира,
- * домофон, день и интервал, способ оплаты, промокод и слово покупателя.
- * Терять это нельзя, а заводить семь свойств до разговора с заказчиком —
- * значит решать за него.
+ * домофон, день и интервал (при двух доставках — обе строки), способ
+ * оплаты, промокод и слово покупателя. Строки «Позиций по запросу» больше
+ * нет: позиции без цены уходят заявкой, в заказ они не попадают.
  */
 function gg_order_comment(array $data): string
 {
     $rows = [];
-    $day = gg_day_from_iso($data['date']);
-    $rows[] = 'Когда: ' . ($day ? gg_format_day_month($day) : $data['date']) . ', ' . $data['interval'];
+    if (count($data['shipments']) > 1) {
+        foreach ($data['shipments'] as $shipment) {
+            $rows[] = $shipment['label'] . ': ' . gg_shipment_when($shipment);
+        }
+    } else {
+        $rows[] = 'Когда: ' . gg_shipment_when($data['shipments'][0]);
+    }
     $rows[] = $data['method'] === 'pickup'
         ? 'Самовывоз: ' . $data['pickup']
         : 'Доставка: Москва, ' . $data['street']
@@ -289,9 +438,6 @@ function gg_order_comment(array $data): string
     }
     if ($data['promo'] !== '') {
         $rows[] = 'Промокод: ' . $data['promo'];
-    }
-    if ($data['onRequest'] > 0) {
-        $rows[] = 'Позиций по запросу: ' . $data['onRequest'] . ' — сумму подтверждает менеджер';
     }
     if ($data['comment'] !== '') {
         $rows[] = 'Комментарий покупателя: ' . $data['comment'];

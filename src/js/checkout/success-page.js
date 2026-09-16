@@ -1,23 +1,30 @@
 /* ============================================================================
-   Страница /order-success?n=<номер>.
+   Страница /order-success?n=<номер заказа>&r=<номер заявки>.
 
-   Номер берётся из адреса, а не из памяти вкладки: страницу можно
+   Номера берутся из адреса, а не из памяти вкладки: страницу можно
    перезагрузить, открыть из письма или прислать ссылкой менеджеру.
-   Номера нет — показывается содержимое /404, как у карточки товара
+   Любого из параметров может не быть:
+     только n  — «Заказ №… принят», шаги заказа и состав;
+     n и r     — то же, а ниже отдельный блок «Заявка №… у менеджера»;
+     только r  — «Заявка №… отправлена», шаги заявки и её состав.
+   Нет ни того, ни другого — содержимое /404, как у карточки товара
    с несуществующим слагом: «Заказ № принят» без номера — это поломка.
 
-   Заказ из другого браузера (или номер, набранный руками) страница
+   Документ из другого браузера (или номер, набранный руками) страница
    тоже не роняет: показывает номер и шаги, но без состава, который ей
    неоткуда взять.
+
+   ⚠ ЧТО МЕНЕДЖЕР ДЕЛАЕТ С ЗАЯВКОЙ ДАЛЬШЕ, МЫ НЕ ЗНАЕМ. Поэтому у заявки
+   два шага — «свяжется» и «уточнит цену и срок», без обещаний про оплату.
    ============================================================================ */
 
 import { checkoutCopy } from '../../data/checkout-copy.js'
 import { contacts } from '../../data/nav.js'
 import { ROUTES, staticPages } from '../../data/routes.js'
 import { formatDayMonth, fromIsoDay, isSameDay } from '../../data/fulfillment.js'
-import { escapeHtml } from '../catalog/model.js'
-import { fillText, inStockFirst, lineSumLabel, summaryTexts } from '../cart/summary.js'
-import { getOrder } from './submit.js'
+import { escapeHtml, formatPrice } from '../catalog/model.js'
+import { fillText, lineSumLabel } from '../cart/summary.js'
+import { getOrder, getRequest } from './submit.js'
 
 const copy = checkoutCopy.success
 
@@ -40,8 +47,26 @@ function renderNotFound(mount) {
     </div>`
 }
 
-/** Шаги «что дальше». Шаг с оплатой — только если сумма уточняется. */
-function stepsOf(order) {
+const numberParam = (params, key) => {
+  const value = params.get(key)
+  return value && /^\d+$/.test(value) ? value : null
+}
+
+/** «По телефону», «в WhatsApp» — как способ связи пишется в тексте. */
+const wayText = (value) => checkoutCopy.request.contactWays.find((way) => way.value === value)?.how || ''
+
+const capitalize = (text) => (text ? text[0].toUpperCase() + text.slice(1) : text)
+
+/** «23 сентября, 10:00–14:00 · Тверская, 1». */
+function whenWhere(shipment, order) {
+  const date = fromIsoDay(shipment?.date)
+  const when = [date && formatDayMonth(date), shipment?.interval].filter(Boolean).join(', ')
+  const where = order.receive?.method === 'pickup' ? order.receive.point?.address : order.receive?.street
+  return [when, where].filter(Boolean).join(' · ')
+}
+
+/** Шаги заказа. Две отгрузки — два шага доставки, у каждой свои дата и адрес. */
+function orderSteps(order) {
   const s = copy.steps
   const list = [{ title: s.confirm.title, text: s.confirm.text }]
 
@@ -57,86 +82,142 @@ function stepsOf(order) {
     text: isSameDay(ready, created) ? s.assemble.today : fillText(s.assemble.later, { date: formatDayMonth(ready) }),
   })
 
-  if (order.totals.onRequestCount) list.push({ title: s.payment.title, text: s.payment.text })
+  const pickup = order.receive?.method === 'pickup'
+  const shipments = order.shipments || []
 
-  const date = fromIsoDay(order.when?.date)
-  const when = [date && formatDayMonth(date), order.when?.interval].filter(Boolean).join(', ')
-
-  if (order.receive?.method === 'pickup') {
-    list.push({ title: s.pickup.title, text: [when, order.receive.point?.address].filter(Boolean).join(' · ') })
+  if (shipments.length === 2) {
+    const [stock, preorder] = shipments
+    list.push(
+      { title: (pickup ? s.pickupStock : s.deliveryStock).title, text: whenWhere(stock, order) },
+      { title: (pickup ? s.pickupPreorder : s.deliveryPreorder).title, text: whenWhere(preorder, order) },
+    )
   } else {
-    list.push({ title: s.delivery.title, text: [when, order.receive?.street].filter(Boolean).join(' · ') })
+    list.push({ title: (pickup ? s.pickup : s.delivery).title, text: whenWhere(shipments[0], order) })
   }
 
   return list
 }
 
-function itemsBlock(order) {
+/** Шаги заявки: без обещаний про оплату — порядок работы не подтверждён. */
+function requestSteps(request) {
+  const r = copy.request
+  const way = wayText(request?.contactWay)
+  return [
+    { title: r.contact.title, text: way ? fillText(r.contact.text, { Way: capitalize(way) }) : '' },
+    { title: r.clarify.title },
+  ]
+}
+
+const stepsList = (steps) => `
+  <ol class="order-steps">
+    ${steps
+      .map(
+        ({ title, text }, i) => `
+      <li class="order-steps__item">
+        <span class="order-steps__num" aria-hidden="true">${i + 1}</span>
+        <span class="order-steps__body">
+          <span class="order-steps__title">${title}</span>
+          ${text ? `<span class="order-steps__text">${escapeHtml(text)}</span>` : ''}
+        </span>
+      </li>`,
+      )
+      .join('')}
+  </ol>`
+
+const linesList = (items, { sums }) => `
+  <ul class="order-lines">
+    ${items
+      .map(
+        (line) => `
+      <li class="order-lines__row">
+        <span class="order-lines__name">${escapeHtml(line.name)}
+          <span class="order-lines__note">${escapeHtml([line.note, `× ${line.qty}`].filter(Boolean).join(' '))}</span>
+        </span>
+        ${sums ? `<span class="order-lines__sum">${lineSumLabel(line)}</span>` : ''}
+      </li>`,
+      )
+      .join('')}
+  </ul>`
+
+function orderItemsBlock(order) {
   if (!order?.items?.length) return ''
-
-  const totals = { ...order.totals, readyAt: fromIsoDay(order.totals.readyAt) }
-  const t = summaryTexts(totals)
-
   return `
     <section class="order-done__block" aria-labelledby="order-items">
       <h2 class="co-label" id="order-items">${copy.itemsTitle}</h2>
-      <ul class="order-lines">
-        ${inStockFirst(order.items)
-          .map(
-            (line) => `
-          <li class="order-lines__row">
-            <span class="order-lines__name">${escapeHtml(line.name)}
-              <span class="order-lines__note">${escapeHtml(line.note)} × ${line.qty}</span>
-            </span>
-            <span class="order-lines__sum">${lineSumLabel(line)}</span>
-          </li>`,
-          )
-          .join('')}
-      </ul>
-      <p class="order-lines__total"><span>${copy.total}</span><span>${t.total}</span></p>
-      ${t.note ? `<p class="summary__note">${t.note}</p>` : ''}
+      ${linesList(order.items, { sums: true })}
+      <p class="order-lines__total"><span>${copy.total}</span><span>${formatPrice(order.totals.sum)}</span></p>
+    </section>`
+}
+
+function requestItemsBlock(request) {
+  if (!request?.items?.length) return ''
+  return `
+    <section class="order-done__block" aria-labelledby="request-items">
+      <h2 class="co-label" id="request-items">${copy.request.itemsTitle}</h2>
+      ${linesList(request.items, { sums: false })}
     </section>`
 }
 
 export function initOrderSuccess(mount) {
   if (!mount) return
 
-  const number = new URLSearchParams(location.search).get('n')
-  if (!number || !/^\d+$/.test(number)) {
+  const params = new URLSearchParams(location.search)
+  const n = numberParam(params, 'n')
+  const r = numberParam(params, 'r')
+
+  if (!n && !r) {
     renderNotFound(mount)
     return
   }
 
-  const order = getOrder(number)
-  const title = fillText(copy.title, { n: number })
+  const order = n ? getOrder(n) : null
+  const request = r ? getRequest(r) : null
+
+  const title = n ? fillText(copy.title, { n }) : fillText(copy.request.title, { r })
   document.title = `${title} — №1 Гранд Гурмэ`
+
+  // Подводка: у заказа — про подтверждение, у одной заявки — способ связи.
+  // Способ неизвестен (заявка из другого браузера) — подводки нет, чем
+  // писать «свяжется с вами:» с пустым хвостом.
+  const way = wayText(request?.contactWay)
+  const lead = n ? copy.lead : way ? fillText(copy.request.lead, { way }) : ''
+
+  const orderPart = n
+    ? `
+      <section class="order-done__block" aria-labelledby="order-next">
+        <h2 class="co-label" id="order-next">${copy.nextTitle}</h2>
+        ${stepsList(orderSteps(order))}
+      </section>
+      ${orderItemsBlock(order)}`
+    : ''
+
+  // Заявка вместе с заказом — отдельный блок со своим заголовком; одна
+  // заявка — те же шаги под общим «Что дальше».
+  const requestPart = r
+    ? n
+      ? `
+      <section class="order-done__block order-done__request" aria-labelledby="request-next">
+        <h2 class="order-done__subtitle" id="request-next">${fillText(copy.request.blockTitle, { r })}</h2>
+        ${stepsList(requestSteps(request))}
+      </section>
+      ${requestItemsBlock(request)}`
+      : `
+      <section class="order-done__block" aria-labelledby="request-next">
+        <h2 class="co-label" id="request-next">${copy.nextTitle}</h2>
+        ${stepsList(requestSteps(request))}
+      </section>
+      ${requestItemsBlock(request)}`
+    : ''
 
   mount.className = 'page-order'
   mount.innerHTML = `
     <div class="container">
       <div class="order-done">
         <h1 class="order-done__title">${title}</h1>
-        <p class="order-done__lead">${copy.lead}</p>
+        ${lead ? `<p class="order-done__lead">${escapeHtml(lead)}</p>` : ''}
 
-        <section class="order-done__block" aria-labelledby="order-next">
-          <h2 class="co-label" id="order-next">${copy.nextTitle}</h2>
-          <ol class="order-steps">
-            ${stepsOf(order)
-              .map(
-                ({ title: stepTitle, text }, i) => `
-              <li class="order-steps__item">
-                <span class="order-steps__num" aria-hidden="true">${i + 1}</span>
-                <span class="order-steps__body">
-                  <span class="order-steps__title">${stepTitle}</span>
-                  ${text ? `<span class="order-steps__text">${escapeHtml(text)}</span>` : ''}
-                </span>
-              </li>`,
-              )
-              .join('')}
-          </ol>
-        </section>
-
-        ${itemsBlock(order)}
+        ${orderPart}
+        ${requestPart}
 
         <section class="order-done__block" aria-labelledby="order-contacts">
           <h2 class="co-label" id="order-contacts">${copy.contactsTitle}</h2>
@@ -149,7 +230,7 @@ export function initOrderSuccess(mount) {
 
         <div class="order-done__actions">
           <a class="btn btn--solid" href="${copy.actions.catalog.href}">${copy.actions.catalog.label}</a>
-          <a class="btn" href="${copy.actions.account.href}">${copy.actions.account.label}</a>
+          ${n ? `<a class="btn" href="${copy.actions.account.href}">${copy.actions.account.label}</a>` : ''}
         </div>
       </div>
     </div>`

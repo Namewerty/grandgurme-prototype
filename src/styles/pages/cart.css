@@ -5,6 +5,10 @@
    рассказывает, а работает. Строки состава разделены волосяной линией,
    без рамок и заливок; карточка с заливкой одна — сводка (summary.css).
 
+   Позиции разложены группами по виду: «В наличии», «Под заказ», «Заявка
+   менеджеру» (src/data/fulfillment.js). Заголовок группы — Prata, как
+   заголовки карточек; строка под ним со знаком вида — обещание по срокам.
+
    Раскладка: на десктопе две колонки, список слева и липкая сводка справа.
    Ниже 1024 px одна колонка: сводка уезжает под список, а итог с кнопкой
    встают липкой полосой у нижнего края экрана — под большой палец, как
@@ -41,6 +45,79 @@
   margin-top: clamp(1.25rem, 3vh, 2rem);
 }
 
+/* Уведомления о переносе позиции между заказом и заявкой — только на
+   Битриксе: там вид считается по живому остатку при каждой отрисовке. */
+.cart__notices {
+  display: flex;
+  flex-direction: column;
+  gap: .35rem;
+  margin-top: 1rem;
+  font-size: .85rem;
+}
+
+/* ---- Группы -------------------------------------------------------------- */
+
+.cart__groups {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(2rem, 4.5vh, 2.75rem);
+  min-width: 0;
+}
+
+.cart-group[hidden] { display: none; }
+
+.cart-group__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.cart-group__title {
+  margin: 0;
+  font-size: 1.35rem;
+  line-height: var(--lh-h3);
+}
+
+.cart-group__count {
+  flex: none;
+  font-size: .85rem;
+  color: var(--fg-mute);
+  font-variant-numeric: tabular-nums;
+}
+
+.cart-group__lead {
+  display: flex;
+  align-items: flex-start;
+  gap: .5rem;
+  margin: .45rem 0 .9rem;
+  font-size: .85rem;
+  line-height: 1.5;
+  color: var(--fg);
+  text-wrap: pretty;
+}
+
+.cart-group__icon {
+  display: inline-flex;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-top: .1rem;
+  color: var(--caspian-fg);
+}
+
+.cart-group__lead--request .cart-group__icon { color: var(--gold-fg); }
+
+.cart-group__icon svg {
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 /* ---- Строки состава ------------------------------------------------------ */
 
 .cart-list { border-top: 1px solid var(--hairline); }
@@ -61,9 +138,6 @@
   overflow: hidden;
   background: var(--surface);
 }
-
-/* Под заказ: кадр гаснет, как у приглушённой карточки каталога. */
-.cart-line.is-preorder .cart-line__photo { opacity: .55; }
 
 .cart-line__body {
   display: grid;
@@ -92,6 +166,7 @@
 .cart-line__remove {
   grid-area: remove;
   align-self: start;
+  justify-self: end;
   margin: -.65rem -.65rem 0 0;
   color: var(--fg-mute);
 }
@@ -105,6 +180,8 @@
   line-height: 1.45;
   color: var(--fg-mute);
 }
+
+.cart-line__note[hidden] { display: none; }
 
 .cart-line__qty {
   grid-area: qty;
@@ -130,9 +207,45 @@
   color: var(--fg-mute);
 }
 
+/* Позиция заявки с известной ценой: сумма написана, но в итог не входит. */
+.cart-line__sum.is-estimate {
+  font-weight: 400;
+  color: var(--fg-mute);
+}
+
 /* ---- Сводка -------------------------------------------------------------- */
 
-.cart__ready { margin-bottom: 1rem; }
+.summary__order[hidden],
+.summary__request[hidden],
+.cart__promo[hidden] { display: none; }
+
+.summary__hint {
+  margin-top: .9rem;
+  font-size: .82rem;
+}
+
+/* Блок заявки под блоком заказа — через волосяную линию, как строки. */
+.summary__request {
+  margin-top: 1.1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--hairline);
+}
+
+.summary__request.is-alone {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.summary__subtitle {
+  margin: 0;
+  font-size: 1.05rem;
+  line-height: var(--lh-h3);
+}
+
+.summary__request.is-alone .summary__subtitle { font-size: 1.25rem; }
+
+.summary__request .summary__note { margin-top: .4rem; }
 
 .cart__promo {
   margin-top: 1rem;
@@ -264,6 +377,27 @@
     padding-inline: 1.25rem;
     letter-spacing: .12em;
     text-align: center;
+  }
+
+  .cart-bar__short { display: none; }
+}
+
+/* Ниже 480 px «Оформить заказ и заявку» в полосу не входит. Видна короткая
+   подпись, а длинная остаётся в дереве для скринридера — спрятана тем же
+   приёмом, что .visually-hidden, а не display: none. */
+@media (max-width: 479px) {
+  .cart-bar .btn { padding-inline: 1.1rem; }
+
+  .cart-bar__short { display: inline; }
+
+  .cart-bar__long {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 }
 
