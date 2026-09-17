@@ -493,7 +493,7 @@ $shots = static function (array $lines, string $label): string {
         $html .= '<li class="summary__item">'
             . '<span class="summary__item-shot">' . gg_product_shot(['CODE' => $line['code']], $line['name'], 'media--compact') . '</span>'
             . '<span class="summary__qty" aria-hidden="true">' . (int)$line['qty'] . '</span>'
-            . '<span class="visually-hidden">' . gg_e($line['name'] . ', ' . $line['note'] . ' — ' . $line['qty'] . ' шт.') . '</span>'
+            . '<span class="visually-hidden">' . gg_e($line['name'] . ($line['note'] !== '' ? ', ' . $line['note'] : '') . ' — ' . $line['qty'] . ' шт.') . '</span>'
             . '</li>';
     }
     return $html . '</ul>';

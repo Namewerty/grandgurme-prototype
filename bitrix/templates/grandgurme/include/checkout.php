@@ -225,8 +225,10 @@ function gg_checkout_validate(array $post, array $plan): array
             if ($stockDay === null || $stockDay < $today || $stockDay >= $readyAt) {
                 $errors['date_stock'] = 'Выберите дату до готовности заказа';
             }
+            /* Верхняя граница — последний день ленты: от готовности на
+               GG_DAYS_AHEAD дней. Дату за лентой можно прислать только мимо формы. */
             $preorderDay = gg_day_from_iso((string)($post['date_preorder'] ?? ''));
-            if ($preorderDay === null || $preorderDay < $readyAt) {
+            if ($preorderDay === null || $preorderDay < $readyAt || $preorderDay > gg_add_days($readyAt, GG_DAYS_AHEAD - 1)) {
                 $errors['date_preorder'] = $dateError;
             }
         } else {
@@ -236,7 +238,7 @@ function gg_checkout_validate(array $post, array $plan): array
             /* День раньше готовности заказа выбрать нельзя: капсула выключена,
                но форму можно отправить и мимо неё. */
             $day = gg_day_from_iso((string)($post['date'] ?? ''));
-            if ($day === null || $day < $readyAt) {
+            if ($day === null || $day < $readyAt || $day > gg_add_days($today, GG_DAYS_AHEAD - 1)) {
                 $errors['date'] = $dateError;
             }
         }
@@ -264,6 +266,31 @@ function gg_checkout_validate(array $post, array $plan): array
 function gg_order_props_map(): array
 {
     return ['FIO' => 1, 'EMAIL' => 2, 'PHONE' => 3, 'ZIP' => 4, 'CITY' => 5, 'LOCATION' => 6, 'ADDRESS' => 7];
+}
+
+/**
+ * Код местоположения «Москва» из справочника магазина. Справочник на стенде
+ * загружен (≈ 4 300 записей, 17.09.2026), город ищется по названию: коды
+ * местоположений между установками Битрикса не совпадают. '' — не нашли.
+ */
+function gg_moscow_location_code(): string
+{
+    static $code = null;
+    if ($code !== null) {
+        return $code;
+    }
+    $code = '';
+    try {
+        $row = \Bitrix\Sale\Location\LocationTable::getList([
+            'filter' => ['=NAME.NAME' => 'Москва', '=NAME.LANGUAGE_ID' => 'ru', '=TYPE.CODE' => 'CITY'],
+            'select' => ['CODE'],
+            'limit' => 1,
+        ])->fetch();
+        $code = $row ? (string)$row['CODE'] : '';
+    } catch (\Throwable $e) {
+        $code = '';
+    }
+    return $code;
 }
 
 /** Службы доставки стенда: 2 — курьером, 3 — самовывоз. */
@@ -366,15 +393,27 @@ function gg_create_order(array $data): array
                 $shipmentItem->setQuantity($item->getQuantity());
             }
             $shipment->setField('CURRENCY', $order->getCurrency());
+            /* Стоимость доставки в заказ не считается (17.09.2026). У службы
+               «Доставка курьером» на стенде демонстрационная цена 500 ₽ за
+               отгрузку: заказ с двумя доставками получал бы +1 000 ₽ к сумме,
+               которую человек видел в корзине и на оформлении («Доставка —
+               рассчитаем при оформлении»). Пока зон и цен нет, сумма заказа
+               равна сумме товаров, доставку добавляет менеджер.
+               ⚠ ПОДТВЕРДИТЬ У ЗАКАЗЧИКА: зоны и стоимость доставки — тогда
+               эту строку убрать и завести цены в службе доставки. */
+            /* Именно так: setBasePriceDelivery(0, true) на sale 26 цену не
+               фиксирует — пересчёт возвращает 500 ₽ (проверено на стенде). */
+            $shipment->setFields(['CUSTOM_PRICE_DELIVERY' => 'Y', 'BASE_PRICE_DELIVERY' => 0, 'PRICE_DELIVERY' => 0]);
             $shipment->setField(
                 'COMMENTS',
                 trim(($plan['label'] !== '' ? $plan['label'] . '. ' : '') . $where . ': ' . gg_shipment_when($plan))
             );
         }
 
-        /* Свойства. Пишем ровно то, что человек дал; местоположение
-           не трогаем — справочник местоположений на стенде не загружен,
-           и подставлять туда выдуманный код нельзя. */
+        /* Свойства. Пишем ровно то, что человек дал. Местоположение —
+           Москва из справочника магазина: сайт возит только по Москве, а без
+           местоположения заказ в админке не проходит проверку ограничений
+           служб доставки. Индекс не пишем: его человек не вводил. */
         $props = $order->getPropertyCollection();
         $map = gg_order_props_map();
         $values = [
@@ -382,13 +421,14 @@ function gg_create_order(array $data): array
             'EMAIL' => $data['email'],
             'PHONE' => $data['phone'],
             'CITY' => 'Москва',
+            'LOCATION' => gg_moscow_location_code(),
             'ADDRESS' => $data['method'] === 'pickup'
                 ? ('Самовывоз: ' . $data['pickup'])
                 : trim($data['street'] . ($data['apartment'] !== '' ? ', ' . $data['apartment'] : '')),
         ];
         foreach ($values as $code => $value) {
             $item = $props->getItemByOrderPropertyId($map[$code]);
-            if ($item) {
+            if ($item && $value !== '') {
                 $item->setValue($value);
             }
         }
