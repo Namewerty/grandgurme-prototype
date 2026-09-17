@@ -1,0 +1,62 @@
+/* ============================================================================
+   Метка статуса заказа, отгрузки и заявки (.status-tag). Разметка —
+   statusTagHtml в src/js/account/order-row.js, словарь —
+   accountCopy.statuses в src/data/account-copy.js.
+
+   ТОГО ЖЕ ВИДА, ЧТО .stock-tag: строка со знаком 14px, без рамки, nowrap.
+   Геометрия и толщина линии знака взяты оттуда же — на 14px линия 1.25
+   из сетки 24 рассыпается, поэтому 1.75.
+
+   Цвета повторяют логику .stock-tag:
+     срок, на который стоит обратить внимание («Ждём поставку») — текст
+       и знак --caspian-fg;
+     обычный ход заказа — текст --fg, знак --caspian-fg;
+     всё, что связано с менеджером (заявка) — знак --gold-fg;
+     завершённое и отменённое — --fg-mute.
+   Текст и знак задаются отдельными классами: tone-* и mark-*.
+   ============================================================================ */
+
+.status-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  max-width: 100%;
+  font-family: var(--font-body);
+  font-size: .78rem;
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: nowrap;
+  color: var(--fg);
+}
+
+.status-tag__icon {
+  display: inline-flex;
+  flex: none;
+  width: 14px;
+  height: 14px;
+  color: var(--caspian-fg);
+}
+
+.status-tag__icon svg {
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.status-tag__text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.status-tag--tone-caspian { color: var(--caspian-fg); }
+.status-tag--tone-mute { color: var(--fg-mute); }
+
+.status-tag--mark-gold .status-tag__icon { color: var(--gold-fg); }
+.status-tag--mark-mute .status-tag__icon { color: var(--fg-mute); }

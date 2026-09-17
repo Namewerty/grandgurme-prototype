@@ -44,6 +44,13 @@ export const ROUTES = {
   checkout: '/checkout',
   orderSuccess: '/order-success',
   account: '/account',
+  accountLogin: '/account/login',
+  accountOrders: '/account/orders',
+  accountOrder: (n) => `/account/order?n=${encodeURIComponent(n)}`,
+  accountRequest: (r) => `/account/request?r=${encodeURIComponent(r)}`,
+  accountAddresses: '/account/addresses',
+  accountProfile: '/account/profile',
+  favorites: '/favorites',
   search: '/search',
 
   about: '/about',
@@ -165,9 +172,53 @@ export const staticPages = [
     path: ROUTES.account,
     group: 'shop',
     title: 'Личный кабинет',
-    lead:
-      'Заказы и их статусы, сохранённые адреса и получатели, избранное, ' +
-      'подписки на уведомления о поступлении.',
+    lead: 'Заказы в работе, избранное и переход к разделам кабинета.',
+  },
+  /* Вход, кабинет и избранное (17.09.2026). Все восемь адресов собирает одна
+     точка входа /src/account.js, страница выбирается по location.pathname.
+     У заказа и заявки номер идёт параметром (?n=, ?r=), поэтому путь здесь
+     без него — ссылки строят ROUTES.accountOrder(n) и ROUTES.accountRequest(r). */
+  {
+    path: ROUTES.accountLogin,
+    group: 'shop',
+    title: 'Вход',
+    lead: 'Вход и регистрация по номеру телефона с кодом из СМС.',
+  },
+  {
+    path: ROUTES.accountOrders,
+    group: 'shop',
+    title: 'Заказы и заявки',
+    lead: 'Все заказы и заявки менеджеру со статусами.',
+  },
+  {
+    path: '/account/order',
+    group: 'shop',
+    title: 'Заказ',
+    lead: 'Статус, состав, получение и оплата заказа, повтор заказа.',
+  },
+  {
+    path: '/account/request',
+    group: 'shop',
+    title: 'Заявка',
+    lead: 'Состав заявки менеджеру и её статус.',
+  },
+  {
+    path: ROUTES.accountAddresses,
+    group: 'shop',
+    title: 'Адреса доставки',
+    lead: 'Сохранённые адреса, которые подставляются при оформлении.',
+  },
+  {
+    path: ROUTES.accountProfile,
+    group: 'shop',
+    title: 'Личные данные',
+    lead: 'Имя, почта, номер телефона и уведомления.',
+  },
+  {
+    path: ROUTES.favorites,
+    group: 'shop',
+    title: 'Избранное',
+    lead: 'Отмеченные товары; без входа хранятся в браузере.',
   },
   {
     path: ROUTES.certificates,

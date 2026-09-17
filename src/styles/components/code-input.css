@@ -1,0 +1,97 @@
+/* ============================================================================
+   Поле одноразового кода (.code-input) и шаг с кодом (.code-step).
+   Разметка — src/js/account/code-input.js.
+
+   Настоящее поле одно; оно лежит поверх ячеек прозрачным текстом и держит
+   фокус, вставку из буфера и подстановку кода системой. Ячейки под ним —
+   только вид (aria-hidden): 1px --hairline, --radius-card-sm. Ячейка под
+   курсором — --caspian: это состояние фокуса, бирюзовый здесь интерактив.
+   ============================================================================ */
+
+.code-input {
+  --code-cell: 3rem;
+  --code-gap: .5rem;
+  position: relative;
+  width: calc(var(--code-length) * var(--code-cell) + (var(--code-length) - 1) * var(--code-gap));
+  max-width: 100%;
+}
+
+.code-input__cells {
+  display: grid;
+  grid-template-columns: repeat(var(--code-length), minmax(0, 1fr));
+  gap: var(--code-gap);
+}
+
+.code-input__cell {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 5 / 6;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-card-sm);
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  line-height: 1;
+  color: var(--fg);
+  font-variant-numeric: tabular-nums;
+  transition: border-color var(--dur-line) var(--ease-out);
+}
+
+.code-input__cell.is-active { border-color: var(--caspian); }
+
+.code-input.is-invalid .code-input__cell { border-color: var(--gold); }
+.code-input.is-invalid .code-input__cell.is-active { border-color: var(--caspian); }
+
+.code-input.is-disabled .code-input__cell { opacity: .45; }
+
+/* Поле поверх ячеек. Текст и каретка прозрачные: цифры рисуют ячейки.
+   Общий :focus-visible снят — фокус показывает ячейка под курсором. */
+.code-input__field {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  font-size: 1rem;      /* меньше 16px iOS увеличивает страницу при фокусе */
+  color: transparent;
+  caret-color: transparent;
+  letter-spacing: 0;
+  cursor: text;
+}
+
+.code-input__field:focus,
+.code-input__field:focus-visible { outline: none; }
+
+.code-input__field:disabled { cursor: not-allowed; }
+
+/* ---- Шаг с кодом ---------------------------------------------------------- */
+
+.code-step {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: .9rem;
+}
+
+.code-step__submit { width: 100%; }
+
+.code-step__resend {
+  min-height: 1.4em;
+  font-size: .85rem;
+  line-height: 1.4;
+  color: var(--fg-mute);
+  font-variant-numeric: tabular-nums;
+}
+
+.code-step__resend .link-btn { font-size: .85rem; }
+
+/* Строка прототипа: СМС не отправляется. На Битриксе её нет. */
+.code-step__prototype {
+  font-size: .8rem;
+  line-height: 1.4;
+  color: var(--fg-mute);
+}
+
+@media (max-width: 400px) {
+  .code-input { --code-cell: 2.6rem; --code-gap: .4rem; }
+}

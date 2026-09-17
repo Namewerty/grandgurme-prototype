@@ -35,6 +35,7 @@ import { formatDayMonth, kindOf, preorderDate } from '../../data/fulfillment.js'
 import { addWithToast } from '../cart/add.js'
 import { fillText } from '../cart/summary.js'
 import { createProductCard } from '../components/product-card.js'
+import { createHeartButton, favoriteFor } from '../favorites/toggle.js'
 import { stockTagHtml } from '../components/stock-tag.js'
 import { createQtyStepper } from '../components/qty-stepper.js'
 import { createImage } from '../media.js'
@@ -212,6 +213,7 @@ function buyColumn(product) {
         <button type="button" class="btn" data-ask-expert>
           ${product.price == null ? copy.buy.askPrice : copy.buy.expert}
         </button>
+        <span data-fav-slot></span>
       </div>
 
       <ul class="pbuy__promises">
@@ -339,6 +341,7 @@ function cardFor(product, categorySlug) {
     href: ROUTES.product(product.slug),
     price: priceLabel(product),
     image: { src: product.photo, ratio: '1:1' },
+    favorite: favoriteFor(item),
     add: {
       label: cartCopy.addLabel[kind],
       onAdd: () => addWithToast(item),
@@ -537,6 +540,9 @@ export function initProductPage(mount) {
   mount.querySelector('[data-add-to-cart]')?.addEventListener('click', () => {
     addWithToast(product, qty.value)
   })
+
+  // Сердце — после кнопок; состояние общее с сердцами в лентах ниже.
+  mount.querySelector('[data-fav-slot]')?.replaceWith(createHeartButton(product, 'pbuy__fav'))
 
   // Кнопка не заводит вторую форму на странице, а поднимает угловой виджет:
   // одна форма на сайте — одна точка приёма заявок. У позиции без цены

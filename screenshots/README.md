@@ -163,3 +163,20 @@ Lenis не поднимается, reveal сразу в конечном сос�
 (Data Saver), `alt-*` — отдельные прогоны. `report.json` — зона логотипа,
 пересечения, контраст и непрозрачность затемнения над логотипом по каждому
 размеру; та же таблица — в README, «Первый экран: ролик бренда».
+
+---
+
+## Вход, личный кабинет и избранное — папка `account/`
+
+17.09.2026, headless Chrome по CDP на дев-сервере. Имя файла:
+`<экран>-<ширина>-<тема>.png`, ширины 375 / 768 / 1024 / 1440, темы light и dark.
+Экраны: `login-phone`, `login-code`, `login-code-error`, `login-profile`,
+`overview`, `orders`, `order-two-shipments`, `order-pickup`, `order-canceled`,
+`order-not-found`, `request`, `addresses`, `addresses-form`, `addresses-confirm`,
+`profile`, `profile-phone-code`, `profile-remove-dialog`, `favorites-account`,
+`favorites-guest`, `favorites-empty`, `checkout-account` (адреса карточками),
+`checkout-guest` (строка входа), `success-account`, `success-guest` (блок входа),
+`catalog-hearts`, `product-heart`, `mobile-menu-account|guest` (только 375).
+Наполнение — `?demo=account` (данные вымышленные). `report.json` — переполнение
+и ошибки консоли по каждому кадру. Сценарные проверки (155 штук) описаны
+в README, «Личный кабинет, вход и избранное → Проверка».

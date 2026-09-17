@@ -112,12 +112,14 @@ findGenerated(ROOT).forEach((file) => {
 /**
  * Точка входа страницы.
  *
- * Шесть входов вместо одного:
+ * Семь входов вместо одного:
  *   /src/category.js       раздел с выгрузкой товаров: фильтры, сетка, боттом-шит;
  *   /src/product.js        карточка товара: галерея, фасовки, ленты;
  *   /src/cart.js           корзина;
  *   /src/checkout.js       оформление заказа;
  *   /src/order-success.js  «Заказ принят»;
+ *   /src/account.js        вход, личный кабинет и избранное — восемь адресов,
+ *                          страница выбирается внутри по location.pathname;
  *   /src/page.js           всё остальное — общий каркас заглушек.
  *
  * Раздел без товаров тоже остаётся на заглушке: пустой каталог с нулём
@@ -127,6 +129,14 @@ const ENTRY_BY_PATH = {
   '/cart': '/src/cart.js',
   '/checkout': '/src/checkout.js',
   '/order-success': '/src/order-success.js',
+  '/account': '/src/account.js',
+  '/account/login': '/src/account.js',
+  '/account/orders': '/src/account.js',
+  '/account/order': '/src/account.js',
+  '/account/request': '/src/account.js',
+  '/account/addresses': '/src/account.js',
+  '/account/profile': '/src/account.js',
+  '/favorites': '/src/account.js',
 }
 
 function entryFor(page) {

@@ -44,6 +44,7 @@ import { cartCopy } from '../../data/cart-copy.js'
 import { kindOf } from '../../data/fulfillment.js'
 import { addWithToast } from '../cart/add.js'
 import { createProductCard } from '../components/product-card.js'
+import { favoriteFor } from '../favorites/toggle.js'
 import { icons } from '../icons.js'
 import { getLenis } from '../scroll.js'
 import {
@@ -220,7 +221,6 @@ function createContext(category, mount) {
     schema,
     index,
     els,
-    favorites: new Set(),
     lenis: getLenis(),
     state: null,
   }
@@ -298,11 +298,7 @@ function buildCard(ctx, product) {
     oldPrice: product.oldPrice ? formatPrice(product.oldPrice) : null,
     image: { src: product.photo, ratio: '1:1' },
     badge: badgeFor(product),
-    favorite: {
-      active: ctx.favorites.has(product.id),
-      label: copy.card.fav,
-      onToggle: (on) => (on ? ctx.favorites.add(product.id) : ctx.favorites.delete(product.id)),
-    },
+    favorite: favoriteFor(item),
     add: {
       label: cartCopy.addLabel[kind],
       onAdd: () => addWithToast(item),

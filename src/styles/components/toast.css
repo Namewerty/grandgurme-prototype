@@ -56,6 +56,15 @@
   color: var(--gold);
 }
 
+/* Действие-кнопка («Вернуть» в избранное): у <button> браузер сбрасывает
+   разрядку и регистр, возвращаем их от тоста. */
+button.toast__link {
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+
 /* Кольцо прогресса — в левом нижнем углу, виджет эксперта — в правом,
    тост встаёт над виджетом. Все трое не пересекаются. */
 @media (max-width: 767px) {

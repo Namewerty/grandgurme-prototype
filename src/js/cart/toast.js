@@ -47,8 +47,13 @@ function scheduleHide() {
 }
 
 /**
+ * Действие справа от текста — ссылка ({ label, href }: «Перейти» в корзину
+ * или в избранное) либо кнопка ({ label, onClick }: «Вернуть» позицию
+ * в избранное). После нажатия кнопки тост гаснет сразу: действие выполнено,
+ * и держать его на экране незачем.
+ *
  * @param {string} text
- * @param {{ label: string, href: string }} [action] ссылка справа от текста
+ * @param {{ label: string, href: string } | { label: string, onClick: () => void }} [action]
  */
 export function showToast(text, action) {
   const el = ensureToast()
@@ -58,7 +63,18 @@ export function showToast(text, action) {
   message.textContent = text
   el.appendChild(message)
 
-  if (action) {
+  if (action?.onClick) {
+    const button = document.createElement('button')
+    button.type = 'button'
+    button.className = 'toast__link'
+    button.textContent = action.label
+    button.addEventListener('click', () => {
+      clearTimeout(hideTimer)
+      el.classList.remove('is-visible')
+      action.onClick()
+    })
+    el.appendChild(button)
+  } else if (action) {
     const link = document.createElement('a')
     link.className = 'toast__link'
     link.href = action.href

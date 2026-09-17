@@ -23,13 +23,22 @@
    fulfillment, и «под заказ» у помеченной так позиции уезжало в заявку.
    На Битриксе вид считается при каждой отрисовке по живому остатку и цене,
    и позиция переезжает между корзиной и заявкой сама.
+
+   КОРЗИНА ПО ПОЛЬЗОВАТЕЛЮ (17.09.2026). Какой ключ читать, решает storage.js.
+   Стор перечитывает состояние по событию account:change (вход, выход — в этой
+   вкладке или в соседней) и рассылает cart:change. Внешнее изменение корзины
+   (событие storage) только обновляет состояние и рассылает cart:change,
+   ОБРАТНО В ХРАНИЛИЩЕ НЕ ПИШЕТ: при входе в соседней вкладке корзина кабинета
+   иначе могла бы записаться в чужой ключ. Оформление просит стор не следить
+   за сменой входа (holdAccount): там корзину под человеком менять нельзя.
    ============================================================================ */
 
 import { ROUTES } from '../../data/routes.js'
 import { KINDS, isOrderKind, kindOf, readyDateFor } from '../../data/fulfillment.js'
-import { loadCart, onExternalCartChange, saveCart } from './storage.js'
+import { currentUserId } from '../account/session.js'
+import { MAX_QTY, loadCart, onExternalCartChange, saveCart } from './storage.js'
 
-export const MAX_QTY = 99
+export { MAX_QTY }
 
 const clampQty = (qty) => Math.max(0, Math.min(MAX_QTY, Math.round(Number(qty) || 0)))
 
@@ -72,17 +81,46 @@ function sanitize({ items, promo }) {
   }
 }
 
-function commit() {
-  saveCart(state)
+function announce() {
   document.dispatchEvent(
     new CustomEvent('cart:change', { detail: { items: getItems(), totals: getTotals() } }),
   )
 }
 
+function commit() {
+  saveCart(state)
+  announce()
+}
+
+/** Оформление держит корзину того, кто его открыл (см. holdAccount). */
+let held = false
+let heldUserId = null
+
+/** Вход сменился под удерживаемой страницей — чужую корзину не подставляем. */
+const switchedUnderHold = () => held && currentUserId() !== heldUserId
+
 onExternalCartChange((next) => {
+  if (switchedUnderHold()) return
   state = sanitize(next)
-  commit()
+  announce()
 })
+
+// Вход или выход: у корзины другой ключ — перечитываем, в хранилище не пишем.
+document.addEventListener('account:change', () => {
+  if (held) return
+  state = sanitize(loadCart())
+  announce()
+})
+
+/**
+ * Не переключать корзину при смене входа в соседней вкладке. Нужно оформлению:
+ * подменить состав под заполненной формой нельзя, страница просит обновиться.
+ * Пока вход прежний, состав по-прежнему следует за соседней вкладкой.
+ */
+export function holdAccount() {
+  held = true
+  heldUserId = currentUserId()
+}
 
 /* -------------------------------------------------------------------- API */
 

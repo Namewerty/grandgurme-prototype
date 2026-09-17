@@ -56,6 +56,9 @@ import { hasPanel, panelRegistry } from '../nav/panels.js'
 import { initMegamenu } from '../nav/megamenu.js'
 import { initSearch } from '../nav/search.js'
 import { getTotals, subscribe as onCartChange } from '../cart/store.js'
+import { accountCopy } from '../../data/account-copy.js'
+import { currentUser, onChange as onAccountChange } from '../account/session.js'
+import * as favorites from '../favorites/store.js'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -319,6 +322,96 @@ function watchCartBadge(header) {
   })
 }
 
+/* ---------------------------------------------- вход и избранное в шапке */
+
+const fillCopy = (template, values) => String(template).replace(/\{(\w+)\}/g, (_, key) => values[key] ?? '')
+
+/**
+ * Состояние входа и счётчик избранного. ТОЛЬКО ПРОТОТИП: при
+ * initHeader({ ssr: true }) функция не вызывается вовсе — на Битриксе то же
+ * самое отдаёт сервер (записка PERENOS-kabinet-i-izbrannoe.md).
+ *
+ * Ссылки находятся по адресу, а не по классу: серверная шапка рисует их
+ * из тех же navActions без классов. Каждое обращение к узлу защищено от его
+ * отсутствия — на /alt, например, сердца в шапке нет.
+ *
+ *   сердце   счётчик того же вида, что у корзины, скрыт при нуле;
+ *   человек  гость — ссылка на вход, подпись «Войти»; вошедший — /account,
+ *            подпись «Личный кабинет, {имя}»; с именем вместо иконки круг
+ *            с первой буквой, без имени — обычная иконка;
+ *   меню     две ссылки в .nav-panel__meta меняют текст по состоянию,
+ *            новых строк нет.
+ */
+function watchAccountState(header, panel) {
+  const copy = accountCopy.header
+  const actions = header.querySelector('.header__actions')
+  const heart = actions?.querySelector('a[href^="/favorites"]')
+  const person = actions?.querySelector('a[href^="/account"]')
+  const meta = panel?.querySelector('.nav-panel__meta')
+  const menuHeart = meta?.querySelector('a[href^="/favorites"]')
+  const menuPerson = meta?.querySelector('a[href^="/account"]')
+
+  let badge = null
+  if (heart) {
+    heart.classList.add('fav-btn')
+    badge = document.createElement('span')
+    badge.className = 'fav-btn__count'
+    badge.setAttribute('aria-hidden', 'true')
+    heart.insertBefore(badge, heart.querySelector('.visually-hidden'))
+  }
+  const personIcon = person?.querySelector('svg')?.outerHTML || icons.user
+
+  function paintFavorites() {
+    const n = favorites.count()
+    if (badge) {
+      badge.textContent = String(n)
+      badge.dataset.count = String(n)
+    }
+    const label = heart?.querySelector('.visually-hidden')
+    if (label) label.textContent = n ? fillCopy(copy.favoritesLabel, { n }) : copy.menuFavorites
+    if (menuHeart) menuHeart.textContent = n ? fillCopy(copy.menuFavoritesCount, { n }) : copy.menuFavorites
+  }
+
+  function paintAccount() {
+    const user = currentUser()
+    const name = user?.name?.trim() || ''
+    const href = user ? ROUTES.account : ROUTES.accountLogin
+
+    if (person) {
+      person.setAttribute('href', href)
+      person.classList.toggle('is-user', Boolean(name))
+      person.querySelector('svg, .user-initial')?.remove()
+      if (name) {
+        const initial = document.createElement('span')
+        initial.className = 'user-initial'
+        initial.setAttribute('aria-hidden', 'true')
+        initial.textContent = [...name][0].toUpperCase()
+        person.prepend(initial)
+      } else {
+        person.insertAdjacentHTML('afterbegin', personIcon)
+      }
+      const label = person.querySelector('.visually-hidden')
+      if (label) {
+        label.textContent = !user ? copy.login : name ? fillCopy(copy.account, { name }) : copy.accountNoName
+      }
+    }
+
+    if (menuPerson) {
+      menuPerson.setAttribute('href', href)
+      menuPerson.textContent = !user
+        ? copy.login
+        : name
+          ? fillCopy(copy.menuAccount, { name })
+          : copy.menuAccountNoName
+    }
+  }
+
+  paintFavorites()
+  paintAccount()
+  favorites.subscribe(paintFavorites)
+  onAccountChange(paintAccount)
+}
+
 /* ------------------------------------------- состояние «после hero» */
 
 function watchHeaderState(header) {
@@ -549,6 +642,9 @@ export function initHeader({ ssr = false } = {}) {
   wireNavPanel(header, panel)
   watchHeaderState(header)
   watchCartBadge(header)
+  // На Битриксе состояние входа и счётчик избранного отдаст сервер:
+  // в режиме ssr шапка их не трогает вовсе.
+  if (!ssr) watchAccountState(header, panel)
 
   /* Поиск и выпадающие панели гасят друг друга: строка поиска занимает место
      содержимого шапки, и оставшаяся под ней раскрытая панель висела бы

@@ -21,6 +21,7 @@ import './styles/components/footer.css'
 import './styles/components/buttons.css'
 import './styles/components/crumbs.css'
 import './styles/components/summary.css'
+import './styles/components/form.css'
 import './styles/pages/checkout.css'
 
 import { initHeader } from './js/sections/header.js'

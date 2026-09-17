@@ -1,0 +1,248 @@
+/* ============================================================================
+   Общие элементы форм: поля (.fields, .field*), капсулы-радиокнопки (.group,
+   .caps, .cap*) и чекбокс (.check*).
+
+   Вынесены 17.09.2026 из src/styles/pages/checkout.css без единой правки
+   правил: с появлением входа и личного кабинета формами пользуются три
+   страницы, и копия разошлась бы с оригиналом на первой же правке.
+
+   Подключается в src/checkout.js, src/account.js и src/bitrix/main.js строкой
+   ПЕРЕД pages/checkout.css — корзина и оформление на стенде без этого
+   останутся без стилей полей. То, что нужно только оформлению (лента дней,
+   карточки выбора разделения, самовывоз), осталось в checkout.css.
+
+   Поля — капсулы на волосяной линии, как поле виджета эксперта. Бирюзовый —
+   только фокус; выбранная капсула залита --fg, как активная капсула в каталоге.
+   ============================================================================ */
+
+/* ---- Поля ---------------------------------------------------------------- */
+
+.fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+  gap: 1rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: .35rem;
+  min-width: 0;
+}
+
+.field--wide { grid-column: 1 / -1; }
+
+.field__label {
+  padding: 0;
+  font-size: .72rem;
+  letter-spacing: .06em;
+  color: var(--fg-mute);
+}
+
+.field__optional { opacity: .8; }
+
+.field__input {
+  width: 100%;
+  min-height: 48px;
+  padding: .6rem 1.1rem;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  font-family: var(--font-body);
+  font-size: .9rem;
+  line-height: 1.4;
+  color: var(--fg);
+  transition: border-color var(--dur-line) var(--ease-out);
+}
+
+/* Мягкое скругление у многострочного поля: капсула на трёх строках —
+   это пузырь, а не поле. */
+textarea.field__input {
+  min-height: 6.5rem;
+  padding: .8rem 1.1rem;
+  border-radius: var(--radius-card-sm);
+  resize: vertical;
+}
+
+.field__input::placeholder { color: var(--fg-mute); opacity: .8; }
+.field__input:hover { border-color: var(--gold); }
+
+/* Фокус поля — бирюзовая рамка самой капсулы. Кольцо поверх неё второй
+   линией было бы уже шумом. */
+.field__input:focus,
+.field__input:focus-visible {
+  outline: none;
+  border-color: var(--caspian);
+}
+
+.field__input[aria-invalid='true'] { border-color: var(--gold); }
+
+/* Ошибка текстом под полем, а не всплывающая: всплывающую не перечитать. */
+.field__error {
+  font-size: .75rem;
+  line-height: 1.4;
+  color: var(--gold-fg);
+}
+
+.field__error[hidden] { display: none; }
+
+.field__hint {
+  font-size: .78rem;
+  line-height: 1.5;
+  color: var(--fg-mute);
+  text-wrap: pretty;
+}
+
+.field__hint a,
+.check a {
+  color: var(--fg);
+  border-bottom: 1px solid var(--caspian);
+  transition: color var(--dur-line) var(--ease-out);
+}
+
+.field__hint a:hover,
+.check a:hover { color: var(--caspian-fg); }
+
+.field__static {
+  display: flex;
+  align-items: center;
+  min-height: 48px;
+  font-size: .95rem;
+  color: var(--fg);
+}
+
+/* ---- Капсулы-радиокнопки ------------------------------------------------- */
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: .55rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.group legend { margin-bottom: .55rem; }
+
+.caps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+}
+
+.cap { position: relative; display: inline-flex; }
+
+/* Родная радиокнопка не прячется через display: none — она остаётся
+   в табуляции и отвечает на стрелки; лежит под нарисованной капсулой. */
+.cap input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.cap__face {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: .5rem 1.15rem;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+  font-family: var(--font-body);
+  font-size: .82rem;
+  line-height: 1.2;
+  color: var(--fg);
+  white-space: nowrap;
+  transition: border-color var(--dur-line) var(--ease-out),
+              background-color var(--dur-line) var(--ease-out),
+              color var(--dur-line) var(--ease-out);
+}
+
+.cap:hover .cap__face { border-color: var(--gold); }
+
+.cap input:checked + .cap__face {
+  background: var(--fg);
+  border-color: var(--fg);
+  color: var(--bg);
+}
+
+.cap input:focus-visible + .cap__face {
+  outline: 2px solid var(--caspian);
+  outline-offset: 3px;
+}
+
+.cap input[aria-invalid='true'] + .cap__face { border-color: var(--gold); }
+
+.cap input:disabled { cursor: not-allowed; }
+
+.cap input:disabled + .cap__face {
+  color: var(--fg-mute);
+  opacity: .45;
+}
+
+.cap:hover input:disabled + .cap__face { border-color: var(--hairline); }
+
+/* ---- Чекбокс -------------------------------------------------------------- */
+
+.check {
+  position: relative;
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  align-items: start;
+  gap: .75rem;
+  min-height: 44px;
+  font-size: .85rem;
+  line-height: 1.5;
+  color: var(--fg-mute);
+  cursor: pointer;
+}
+
+.check input {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  opacity: 0;
+}
+
+/* Радиуса у квадрата нет: 20 px — не капсула и не карточка, а ступеней
+   вне шкалы в проекте нет. Тот же приём, что у согласия в виджете. */
+.check__box {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+  border: 1px solid var(--hairline);
+  color: transparent;
+  transition: border-color var(--dur-line) var(--ease-out), color var(--dur-line) var(--ease-out);
+}
+
+.check__box svg {
+  width: 13px;
+  height: 13px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.check input:checked ~ .check__box {
+  border-color: var(--caspian);
+  color: var(--caspian-fg);
+}
+
+.check input:focus-visible ~ .check__box {
+  outline: 2px solid var(--caspian);
+  outline-offset: 3px;
+}
+
+.check input[aria-invalid='true'] ~ .check__box { border-color: var(--gold); }

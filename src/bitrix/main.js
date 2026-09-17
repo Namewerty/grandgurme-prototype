@@ -54,6 +54,7 @@ import '../styles/pages/page.css'
 import '../styles/pages/category.css'
 import '../styles/pages/product.css'
 import '../styles/pages/cart.css'
+import '../styles/components/form.css'
 import '../styles/pages/checkout.css'
 import '../styles/pages/search.css'
 

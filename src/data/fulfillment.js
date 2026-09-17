@@ -103,6 +103,13 @@ const WEEKDAY = new Intl.DateTimeFormat('ru-RU', { weekday: 'short' })
 /** «23 сентября». */
 export const formatDayMonth = (date) => DAY_MONTH.format(date)
 
+/**
+ * «17 сентября 2026» — дата оформления в кабинете. Год нужен: в истории
+ * заказов лежат записи прошлых лет, а formatDayMonth его не пишет.
+ * Собирается вручную: Intl для ru-RU дописывает « г.».
+ */
+export const formatDate = (date) => `${DAY_MONTH.format(date)} ${date.getFullYear()}`
+
 /** «к 23 сентября» — так дата готовности пишется везде на сайте. */
 export const formatReadyDate = (date) => `к ${formatDayMonth(date)}`
 

@@ -18,23 +18,53 @@
    ============================================================================ */
 
 import { ROUTES } from '../../data/routes.js'
-import { loadOrder, loadRequest, saveOrder, saveRequest } from '../cart/storage.js'
+import { loadOrder, loadRequest, saveOrder, saveRequest, updateOrder } from '../cart/storage.js'
 import { clear } from '../cart/store.js'
+import { saveAddress } from '../account/api.js'
 
 /**
+ * КАБИНЕТ (17.09.2026). Заказ и заявка вошедшего сохраняются с его userId;
+ * у гостя userId пустой — при входе с номером из контактов api.js привяжет
+ * запись сам. Новый заказ получает статус 'accepted', каждая его отгрузка —
+ * 'accepted', заявка — 'new'; если заявка ушла вместе с заказом, её номер
+ * пишется в заказ (requestNumber). Отмеченный новый адрес сохраняется
+ * в кабинет через saveAddress; повтор сохранённого адреса и одиннадцатый
+ * адрес api.js молча не сохраняет — оформлению это не мешает.
+ *
  * @param {object} payload { mode, contact, order|null, request|null } —
- *   см. collectPayload в checkout-page.js. У заказа shipments: одна или две
- *   отгрузки, у каждой items (id позиций), date, interval.
+ *   см. collectPayload в checkout-page.js. contact.userId — вошедший или null.
+ *   У заказа shipments: одна или две отгрузки, у каждой items (id позиций),
+ *   date, interval; addressId — выбранный сохранённый адрес либо null
+ *   и saveAddress — сохранить ли введённый.
  * @returns {Promise<{ order: number|null, request: number|null }>}
  */
 export async function submitCheckout(payload) {
   const createdAt = new Date().toISOString()
-  const { contact } = payload
+  const { userId = null, ...contact } = payload.contact
 
-  const order = payload.order ? saveOrder({ ...payload.order, contact, createdAt }) : null
+  let order = null
+  if (payload.order) {
+    const { saveAddress: wantsSave, ...data } = payload.order
+    order = saveOrder({
+      ...data,
+      shipments: data.shipments.map((shipment) => ({ ...shipment, status: 'accepted' })),
+      contact,
+      createdAt,
+      userId,
+      status: 'accepted',
+      requestNumber: null,
+    })
+
+    if (userId && wantsSave && data.receive?.method === 'delivery') {
+      const { street, apartment, intercom } = data.receive
+      await saveAddress({ street, apartment, intercom })
+    }
+  }
+
   const request = payload.request
-    ? saveRequest({ ...payload.request, contact, orderNumber: order, createdAt })
+    ? saveRequest({ ...payload.request, contact, orderNumber: order, createdAt, userId, status: 'new' })
     : null
+  if (order && request) updateOrder(order, { requestNumber: request })
 
   clear()
 

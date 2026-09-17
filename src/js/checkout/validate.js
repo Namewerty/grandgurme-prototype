@@ -75,3 +75,9 @@ export const rules = {
 
   street: (value) => (value.trim() ? '' : copy.receive.street.error),
 }
+
+/**
+ * Почта там, где она необязательна (вход, профиль, заявка без заказа):
+ * пустое поле ошибок не даёт, заполненное проверяется тем же правилом.
+ */
+export const optionalEmail = (value) => (String(value || '').trim() ? rules.email(String(value)) : '')

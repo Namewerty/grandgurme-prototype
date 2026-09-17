@@ -1,0 +1,48 @@
+/* ============================================================================
+   Диалог подтверждения (<dialog class="dialog">). Сейчас один — удаление
+   личного кабинета (src/js/account/pages/profile.js).
+
+   Открывается showModal(): фокус внутри окна и Esc держит сам браузер.
+   Вид — как у тоста и панели виджета: --radius-card, волосяная рамка,
+   теней нет. Затемнение страницы — --void с прозрачностью через color-mix,
+   сырых цветов нет.
+   ============================================================================ */
+
+.dialog {
+  width: min(30rem, calc(100vw - 2 * var(--gutter)));
+  margin: auto;
+  padding: clamp(1.5rem, 4vw, 2.25rem);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-card);
+  background: var(--bg);
+  color: var(--fg);
+}
+
+.dialog::backdrop {
+  background: color-mix(in srgb, var(--void) 62%, transparent);
+}
+
+.dialog__title {
+  margin: 0;
+  font-size: 1.5rem;
+  line-height: var(--lh-h3);
+}
+
+.dialog__text {
+  margin-top: .9rem;
+  font-size: .92rem;
+  line-height: 1.6;
+  color: var(--fg-mute);
+  text-wrap: pretty;
+}
+
+.dialog__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .6rem;
+  margin-top: 1.5rem;
+}
+
+@media (max-width: 479px) {
+  .dialog__actions .btn { flex: 1 1 100%; }
+}

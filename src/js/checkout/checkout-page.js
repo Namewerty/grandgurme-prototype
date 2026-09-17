@@ -25,6 +25,14 @@
    не появляется; исправленное поле ошибку снимает сразу. При отправке фокус
    уезжает на первое поле с ошибкой. Ни всплывающих окон, ни alert.
 
+   КАБИНЕТ (17.09.2026). Оформление без входа остаётся. Гостю вход предлагается
+   одной строкой над первым шагом и ничего не блокирует. Вошедшему контакты
+   подставлены из кабинета (остаются редактируемыми), сохранённые адреса стоят
+   карточками-радиокнопками, последняя — «Другой адрес»; под полями нового
+   адреса — чекбокс «Сохранить адрес в кабинете». В payload уходят
+   contact.userId и order.addressId либо новый адрес. Вход сменился в соседней
+   вкладке — корзина не переключается, страница просит обновиться.
+
    Отправка — одна функция submitCheckout (submit.js), на Битриксе она
    заменяется целиком. Хранилища эта страница не знает.
    ============================================================================ */
@@ -49,8 +57,15 @@ import * as cart from '../cart/store.js'
 import { fillText, kindOrder, modeOf, positionsLabel } from '../cart/summary.js'
 import { formatPhone, maskPhone, phoneDigits, rules } from './validate.js'
 import { submitCheckout } from './submit.js'
+import { accountCopy } from '../../data/account-copy.js'
+import { MAX_ADDRESSES, getAddresses } from '../account/api.js'
+import { currentUser, onChange as onAccountChange } from '../account/session.js'
 
 const copy = checkoutCopy
+const accCopy = accountCopy.checkout
+
+/** Значение радиокнопки «Другой адрес». */
+const NEW_ADDRESS = 'new'
 const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
 /** Лента дней: две недели вперёд, включая первый день. */
@@ -192,8 +207,62 @@ function pickupPanel() {
     </div>`
 }
 
-function receiveStep(n) {
+/**
+ * Сохранённые адреса вошедшего — карточки-радиокнопки на основе .cap:
+ * название или улица первой строкой, остальное второй; выбран основной.
+ * Последняя карточка — «Другой адрес», она открывает обычные поля.
+ */
+function addressCards(addresses) {
+  const details = (a) =>
+    [
+      a.label ? a.street : '',
+      a.apartment && fillText(accountCopy.addresses.apartment, { value: a.apartment }),
+      a.intercom && fillText(accountCopy.addresses.intercom, { value: a.intercom }),
+    ]
+      .filter(Boolean)
+      .join(', ')
+
+  const card = ({ value, label, sub, checked }) => `
+    <label class="cap cap--split">
+      <input type="radio" name="address" value="${escapeHtml(value)}"${checked ? ' checked' : ''}>
+      <span class="cap__face">
+        <span class="cap__label">${escapeHtml(label)}</span>
+        ${sub ? `<span class="cap__sub">${escapeHtml(sub)}</span>` : ''}
+      </span>
+    </label>`
+
+  const chosen = addresses.find((a) => a.isDefault) || addresses[0]
+  return `
+    <fieldset class="group">
+      <legend class="field__label">${accCopy.addressLegend}</legend>
+      <div class="split">
+        ${addresses
+          .map((a) => card({ value: a.id, label: a.label || a.street, sub: details(a), checked: a.id === chosen.id }))
+          .join('')}
+        ${card({ value: NEW_ADDRESS, label: accCopy.otherAddress, sub: accCopy.otherAddressSub })}
+      </div>
+    </fieldset>`
+}
+
+/** Под полями нового адреса у вошедшего: чекбокс сохранения или строка о лимите. */
+function saveAddressRow(account) {
+  if (!account.user) return ''
+  if (account.addresses.length >= MAX_ADDRESSES) {
+    return `<p class="field__hint field--wide">${accCopy.addressLimit}</p>`
+  }
+  return `
+    <div class="field field--wide">
+      <label class="check" for="co-save-address">
+        <input type="checkbox" id="co-save-address" name="save_address" checked>
+        <span class="check__box" aria-hidden="true">${icons.check}</span>
+        <span>${accCopy.saveAddress}</span>
+      </label>
+    </div>`
+}
+
+function receiveStep(n, account) {
   const r = copy.receive
+  const hasSaved = account.addresses.length > 0
   return step(
     n,
     'co-receive',
@@ -207,7 +276,8 @@ function receiveStep(n) {
     </fieldset>
 
     <div class="co-panel" data-panel="delivery">
-      <div class="fields">
+      ${hasSaved ? addressCards(account.addresses) : ''}
+      <div class="fields" data-new-address${hasSaved ? ' hidden' : ''}>
         <div class="field field--wide">
           <span class="field__label">${r.city.label}</span>
           <p class="field__static">${r.city.value}</p>
@@ -222,6 +292,7 @@ function receiveStep(n) {
           optional: true,
         })}
         ${field({ id: 'co-intercom', name: 'intercom', label: r.intercom.label, optional: true })}
+        ${saveAddressRow(account)}
       </div>
     </div>
 
@@ -498,13 +569,28 @@ function summaryMarkup(plan) {
     </aside>`
 }
 
-function markup(plan) {
+function markup(plan, account) {
   const mode = copy.modes[plan.mode]
+
+  // Вошедший: подводка режима «только заказ» говорит, что подставлено
+  // из кабинета. Подводки двух других режимов не меняются.
+  const lead =
+    account.user && plan.mode === 'order'
+      ? account.addresses.length
+        ? accCopy.leadWithAddress
+        : accCopy.leadContacts
+      : mode.lead
+
+  // Гость: вход предлагается одной строкой и ничего не блокирует.
+  const loginHref = `${ROUTES.accountLogin}?${new URLSearchParams({ back: ROUTES.checkout })}`
+  const guestLine = account.user
+    ? ''
+    : `<p class="checkout__login">${accCopy.guestBefore} <a href="${loginHref}">${accCopy.guestLink}</a> ${accCopy.guestAfter}</p>`
 
   // Состав шагов — по режиму; номера сквозные по тем, что показаны.
   const steps = [
     (n) => contactsStep(n, plan),
-    plan.hasOrder && ((n) => receiveStep(n)),
+    plan.hasOrder && ((n) => receiveStep(n, account)),
     plan.hasOrder && ((n) => whenStep(n, plan)),
     plan.hasOrder && ((n) => paymentStep(n, plan)),
     plan.hasRequest && ((n) => requestStep(n, plan)),
@@ -524,11 +610,16 @@ function markup(plan) {
 
       <div class="checkout__head">
         <h1 class="checkout__title">${mode.title}</h1>
-        <p class="checkout__lead">${mode.lead}</p>
+        <p class="checkout__lead">${lead}</p>
       </div>
 
       <div class="checkout__layout">
         <form class="checkout__form" id="checkout-form" novalidate>
+          <div class="checkout__notice" data-session-notice role="alert" hidden>
+            <p>${accCopy.sessionChanged}</p>
+            <button type="button" class="btn" data-session-reload>${accCopy.reload}</button>
+          </div>
+          ${guestLine}
           ${steps.map((build, i) => build(i + 1)).join('')}
         </form>
 
@@ -556,7 +647,7 @@ function summaryItem(line) {
 
 /* -------------------------------------------------------------- страница */
 
-export function initCheckoutPage(mount) {
+export async function initCheckoutPage(mount) {
   if (!mount) return
 
   // Оформлять нечего — возвращаем в корзину: там пустое состояние с выходами.
@@ -565,16 +656,37 @@ export function initCheckoutPage(mount) {
     return
   }
 
+  // Корзину под заполненной формой не подменяем: вход сменился в соседней
+  // вкладке — страница просит обновиться (см. watchSession ниже).
+  cart.holdAccount()
+
+  // Вошедший: контакты и адреса из кабинета. Оформление без входа остаётся.
+  const user = currentUser()
+  const account = { user, addresses: user ? await getAddresses() : [] }
+
   const plan = planOf(cart.getItems(), cart.getTotals())
   const signature = signatureOf(plan)
 
   document.title = `${copy.modes[plan.mode].title} — №1 Гранд Гурмэ`
   mount.className = 'page-checkout'
-  mount.innerHTML = markup(plan)
+  mount.innerHTML = markup(plan, account)
 
   const form = mount.querySelector('#checkout-form')
   const f = form.elements
   const submit = mount.querySelector('[data-submit]')
+
+  // Подставленное из кабинета остаётся редактируемым.
+  if (user) {
+    f.name.value = [user.name, user.lastName].filter(Boolean).join(' ')
+    f.phone.value = formatPhone(user.phone).trim()
+    f.email.value = user.email || ''
+  }
+
+  /** Выбран сохранённый адрес, а не «Другой адрес» и не обычные поля. */
+  const savedAddress = () => {
+    const id = account.addresses.length ? f.address?.value : null
+    return id && id !== NEW_ADDRESS ? account.addresses.find((a) => a.id === id) || null : null
+  }
   const panels = [...mount.querySelectorAll('[data-panel]')]
   const splitPanels = [...mount.querySelectorAll('[data-split-panel]')]
 
@@ -637,8 +749,9 @@ export function initCheckoutPage(mount) {
   const TEXT_FIELDS = plan.hasOrder ? ['name', 'phone', 'email', 'street'] : ['name', 'phone', 'email']
   const touched = new Set()
 
-  /** Улица нужна только доставке: при самовывозе поле скрыто и не проверяется. */
-  const isActive = (name) => name !== 'street' || method() === 'delivery'
+  /** Улица нужна только доставке на новый адрес: при самовывозе и при
+      выбранном сохранённом адресе поле скрыто и не проверяется. */
+  const isActive = (name) => name !== 'street' || (method() === 'delivery' && !savedAddress())
 
   /** Email без заказа необязателен, но если введён — должен быть адресом. */
   const ruleFor = (name) =>
@@ -707,6 +820,7 @@ export function initCheckoutPage(mount) {
     if (name === 'consent' && f.consent.checked) showError(f.consent, '')
     if (name === 'method') switchMethod(value)
     if (name === 'split') switchSplit(value)
+    if (name === 'address') switchAddress(value)
   })
 
   /* ---- способ получения и разделение ----------------------------------- */
@@ -736,6 +850,20 @@ export function initCheckoutPage(mount) {
     paintSummary()
   }
 
+  /** «Другой адрес» открывает обычные поля; сохранённый — прячет их. */
+  function switchAddress(value) {
+    const fields = mount.querySelector('[data-new-address]')
+    if (!fields) return
+    const on = value === NEW_ADDRESS
+    fields.hidden = !on
+    if (on) {
+      reveal(fields)
+      f.street.focus({ preventScroll: true })
+    } else {
+      showError(f.street, '')
+    }
+  }
+
   function switchSplit(value) {
     splitPanels.forEach((panel) => {
       const on = panel.dataset.splitPanel === value
@@ -763,19 +891,28 @@ export function initCheckoutPage(mount) {
     const now = planOf(items, cart.getTotals())
     const value = (name) => (f[name]?.value ?? '').trim()
 
-    const contact = { name: value('name'), phone: formatPhone(phoneDigits(f.phone.value)), email: value('email') }
+    const contact = {
+      name: value('name'),
+      phone: formatPhone(phoneDigits(f.phone.value)),
+      email: value('email'),
+      // Заказ и заявка вошедшего сохраняются с его userId; у гостя — null.
+      userId: user?.id || null,
+    }
 
     let order = null
     if (now.hasOrder) {
       const pickupId = f.pickup?.value || pickupPoints[0]?.id
+      // Сохранённый адрес уходит в заказ целиком: запись заказа читается
+      // и без кабинета. Рядом — addressId; у нового адреса он null.
+      const saved = savedAddress()
       const receive =
         method() === 'delivery'
           ? {
               method: 'delivery',
               city: copy.receive.city.value,
-              street: value('street'),
-              apartment: value('apartment'),
-              intercom: value('intercom'),
+              street: saved ? saved.street : value('street'),
+              apartment: saved ? saved.apartment : value('apartment'),
+              intercom: saved ? saved.intercom : value('intercom'),
             }
           : { method: 'pickup', point: pickupPoints.find((p) => p.id === pickupId) || null }
 
@@ -795,6 +932,9 @@ export function initCheckoutPage(mount) {
 
       order = {
         receive,
+        addressId: method() === 'delivery' ? saved?.id || null : null,
+        // Новый адрес с отмеченным чекбоксом сохранит submitCheckout.
+        saveAddress: Boolean(user && method() === 'delivery' && !saved && f.save_address?.checked),
         shipments,
         payment: f.payment.value,
         comment: value('comment'),
@@ -847,4 +987,16 @@ export function initCheckoutPage(mount) {
   // Состав поменяли в соседней вкладке — сводка следует за ним. Ленту дней
   // и блок оплаты не перестраиваем: введённое в форму терять нельзя.
   cart.subscribe(paintSummary)
+
+  /* Вход сменился в соседней вкладке (вошли, вышли или вошёл другой). Корзину
+     не переключаем: над формой строка с кнопкой «Обновить», отправка
+     выключена — иначе заказ ушёл бы с корзиной и контактами прежнего входа. */
+  const notice = mount.querySelector('[data-session-notice]')
+  notice.querySelector('[data-session-reload]').addEventListener('click', () => location.reload())
+  onAccountChange(({ user: next }) => {
+    if ((next?.id || null) === (user?.id || null)) return
+    notice.hidden = false
+    submit.disabled = true
+    notice.scrollIntoView({ block: 'center', behavior: REDUCED ? 'auto' : 'smooth' })
+  })
 }

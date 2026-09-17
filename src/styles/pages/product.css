@@ -179,6 +179,38 @@
   margin-top: 1.75rem;
 }
 
+/* Сердце — после кнопок: круглая кнопка 48px на волосяной линии. Активное
+   состояние то же, что у сердца в сетке (.product__fav.is-active). */
+.pbuy__fav {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 48px;
+  height: 48px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+  color: var(--fg);
+  transition: color var(--dur-line) var(--ease-out), border-color var(--dur-line) var(--ease-out);
+}
+
+.pbuy__fav svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.25;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.pbuy__fav:hover {
+  border-color: var(--caspian);
+  color: var(--caspian);
+}
+
+.pbuy__fav.is-active { color: var(--caspian); }
+.pbuy__fav.is-active svg { fill: currentColor; }
+
 /* ---- Три обещания -------------------------------------------------------- */
 
 .pbuy__promises {
@@ -390,9 +422,13 @@
 
   .pbuy__actions { width: 100%; }
   /* Степпер своей ширины не отдаёт, кнопка «В корзину» встаёт рядом
-     и забирает остаток строки; «Спросить эксперта» уходит строкой ниже. */
+     и забирает остаток строки; «Спросить эксперта» уходит строкой ниже
+     и делит её с сердцем избранного. */
   .pbuy__actions .btn { flex: 1 1 10rem; }
   .pbuy__actions .btn:last-child { flex-basis: 100%; }
+  /* В прототипе после кнопок стоит сердце: вторая кнопка делит строку с ним.
+     На стенде сердца пока нет — там работает правило выше. */
+  .pbuy__actions .btn:has(+ .pbuy__fav) { flex-basis: calc(100% - 48px - .6rem); }
 
   .post--wide {
     grid-template-columns: minmax(0, 1fr);

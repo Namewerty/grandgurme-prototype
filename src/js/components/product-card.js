@@ -34,7 +34,10 @@ import { stockTagHtml } from './stock-tag.js'
  * @param {string} [data.oldPrice] старая цена, если есть скидка
  * @param {object} data.image     { src, alt, ratio }
  * @param {object} [data.badge]   { kind: 'new'|'sale'|'discount', label }
- * @param {object} [data.favorite] { active: boolean, label, onToggle(next) }
+ * @param {object} [data.favorite] { id, active, label(active, name), onToggle() } —
+ *                                собирает favoriteFor из src/js/favorites/toggle.js.
+ *                                Кнопка получает data-fav-id: по нему toggle.js
+ *                                держит все сердца страницы в одном состоянии
  * @param {object} data.add       { label, onAdd() }
  * @param {string} [data.kind]    'preorder' | 'request' — метка под ценой.
  *                                У 'stock' метки в сетке нет: наличие здесь
@@ -89,14 +92,13 @@ export function createProductCard({
     fav.type = 'button'
     fav.className = `product__fav${favorite.active ? ' is-active' : ''}`
     fav.innerHTML = icons.heart
+    fav.dataset.favId = favorite.id
+    fav.dataset.favName = name
     fav.setAttribute('aria-pressed', String(favorite.active))
-    fav.setAttribute('aria-label', `${favorite.label}: ${name}`)
-    fav.addEventListener('click', () => {
-      const next = !fav.classList.contains('is-active')
-      fav.classList.toggle('is-active', next)
-      fav.setAttribute('aria-pressed', String(next))
-      favorite.onToggle?.(next)
-    })
+    fav.setAttribute('aria-label', favorite.label(favorite.active, name))
+    // Состояние кнопки не переключается здесь: его ведёт стор избранного,
+    // и сердце перекрашивается по событию favorites:change вместе с остальными.
+    fav.addEventListener('click', () => favorite.onToggle?.())
     frame.appendChild(fav)
   }
 

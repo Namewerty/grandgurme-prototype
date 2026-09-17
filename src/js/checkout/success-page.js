@@ -25,8 +25,42 @@ import { formatDayMonth, fromIsoDay, isSameDay } from '../../data/fulfillment.js
 import { escapeHtml, formatPrice } from '../catalog/model.js'
 import { fillText, lineSumLabel } from '../cart/summary.js'
 import { getOrder, getRequest } from './submit.js'
+import { accountCopy } from '../../data/account-copy.js'
+import { currentUser } from '../account/session.js'
 
 const copy = checkoutCopy.success
+const accCopy = accountCopy.success
+
+/**
+ * Кабинет на странице «Заказ принят» (17.09.2026).
+ *   Вошедший — кнопка «Мои заказы» ведёт на этот заказ в кабинете, при одной
+ *   заявке — на заявку.
+ *   Гость — кнопки нет; под шагами блок «Следите за заказом в кабинете»
+ *   со входом: номер из заказа подставится в поле, после входа заказ
+ *   привяжется к кабинету по этому номеру и откроется (back).
+ */
+function accountBlock({ n, r, order, request }) {
+  const isOrder = Boolean(n)
+  const record = isOrder ? order : request
+  const phone = record?.contact?.phone || ''
+  const back = isOrder ? ROUTES.accountOrder(n) : ROUTES.accountRequest(r)
+  const params = new URLSearchParams(isOrder ? { from: 'order', n, back } : { from: 'request', r, back })
+
+  const text = isOrder
+    ? phone
+      ? fillText(accCopy.orderText, { phone })
+      : accCopy.orderTextNoPhone
+    : phone
+      ? fillText(accCopy.requestText, { phone })
+      : accCopy.requestTextNoPhone
+
+  return `
+    <section class="order-done__block order-done__account" aria-labelledby="order-account">
+      <h2 class="co-label" id="order-account">${isOrder ? accCopy.orderTitle : accCopy.requestTitle}</h2>
+      <p class="order-done__account-text">${escapeHtml(text)}</p>
+      <a class="btn" href="${ROUTES.accountLogin}?${params}">${accCopy.login}</a>
+    </section>`
+}
 
 function renderNotFound(mount) {
   const page = staticPages.find((item) => item.path === ROUTES.notFound)
@@ -209,6 +243,10 @@ export function initOrderSuccess(mount) {
       ${requestItemsBlock(request)}`
     : ''
 
+  // Вошедший: «Мои заказы» ведёт прямо на этот заказ, при одной заявке — на неё.
+  const loggedIn = Boolean(currentUser())
+  const accountHref = n ? ROUTES.accountOrder(n) : ROUTES.accountRequest(r)
+
   mount.className = 'page-order'
   mount.innerHTML = `
     <div class="container">
@@ -218,6 +256,7 @@ export function initOrderSuccess(mount) {
 
         ${orderPart}
         ${requestPart}
+        ${loggedIn ? '' : accountBlock({ n, r, order, request })}
 
         <section class="order-done__block" aria-labelledby="order-contacts">
           <h2 class="co-label" id="order-contacts">${copy.contactsTitle}</h2>
@@ -230,7 +269,7 @@ export function initOrderSuccess(mount) {
 
         <div class="order-done__actions">
           <a class="btn btn--solid" href="${copy.actions.catalog.href}">${copy.actions.catalog.label}</a>
-          ${n ? `<a class="btn" href="${copy.actions.account.href}">${copy.actions.account.label}</a>` : ''}
+          ${loggedIn ? `<a class="btn" href="${accountHref}">${accCopy.account}</a>` : ''}
         </div>
       </div>
     </div>`

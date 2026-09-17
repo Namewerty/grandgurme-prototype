@@ -161,6 +161,24 @@ small,
   color: var(--caspian-fg);
 }
 
+/* Выключенная кнопка: «Сохранить» без изменений, шаг входа в ожидании ответа,
+   отправка оформления после смены входа. До кабинета таких кнопок не было. */
+.btn:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+
+.btn:disabled:hover {
+  border-color: var(--hairline);
+  color: var(--fg);
+}
+
+.btn--solid:disabled:hover {
+  background: var(--fg);
+  border-color: var(--fg);
+  color: var(--bg);
+}
+
 .btn--solid {
   background: var(--fg);
   border-color: var(--fg);
