@@ -14,7 +14,8 @@
     "preview": "vite preview",
     "postbuild": "node scripts/after-build.mjs",
     "bitrix:data": "node scripts/build-bitrix-data.mjs",
-    "bitrix": "node scripts/build-bitrix-data.mjs && vite build --config vite.bitrix.config.js"
+    "bitrix": "node scripts/build-bitrix-data.mjs && vite build --config vite.bitrix.config.js",
+    "stand": "npm run bitrix && node scripts/stand-pack.mjs"
   },
   "dependencies": {
     "gsap": "^3.13.0",

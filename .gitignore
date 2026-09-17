@@ -36,3 +36,8 @@ bitrix/templates/grandgurme/assets/
 bitrix/templates/grandgurme/include/generated.php
 grandgurme-bitrix-build*.zip
 grandgurme-bitrix-rollback*.zip
+grandgurme-stand-*.zip
+
+# Патчи от агентов без доступа к GitHub (Cowork, Claude in Chrome): лежат в папке,
+# пока их не применят git am. Порядок — CLAUDE.md.
+_patches/

@@ -88,7 +88,9 @@ const php = `<?php
 /**
  * СГЕНЕРИРОВАННЫЙ ФАЙЛ. Не редактировать.
  * Источник — src/data/*.js прототипа, сборка: npm run bitrix:data
- * Дата сборки: ${new Date().toISOString()}
+ * Даты сборки здесь нет намеренно: одинаковые исходники дают одинаковый файл,
+ * и сверка стенда по md5 (npm run stand) не видит ложных расхождений.
+ * Коммит и время сборки — в stand-manifest.json архива.
  */
 if (!defined('B_PROLOG_INCLUDED') || B_PROLOG_INCLUDED !== true) die();
 
