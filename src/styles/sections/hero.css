@@ -1,103 +1,107 @@
 /* ============================================================================
-   #hero — первый экран.
+   #hero — первый экран с роликом бренда (17.09.2026).
 
-   Высота 88svh, а не 100svh: снизу намеренно выглядывает край #trust — так
-   видно, что страница продолжается. Контент прижат к низу, справа чистое видео.
-   Секция уходит под прозрачную шапку отрицательным margin.
+   В финале ролика по центру кадра стоит золотой логотип. ЗОНА ЛОГОТИПА —
+   28–72 % ширины и 35–63 % высоты исходного кадра 16:9 (логотип с запасом 3 %);
+   текст и кнопки в неё не заходят ни в одной раскладке. Пересчёт зоны под
+   обрезку кадра — в README, «Первый экран: ролик бренда».
+
+   Раскладок две.
+
+   УЗКАЯ (правила вне медиазапроса): портрет любой ширины и низкий
+   горизонтальный экран. Видео стоит кадром сверху — 4:5 на телефоне,
+   1:1 на планшете в портрете, 16:9 на повёрнутом телефоне, — текст под ним
+   на --void и заходит на кадр на 2.5rem. Высота секции — по содержимому.
+
+   ШИРОКАЯ (WIDE ниже, то же условие в hero.js): горизонтальный экран
+   от 768×600. Видео во всю секцию, высота 88svh — снизу намеренно выглядывает
+   край #trust, так видно, что страница продолжается. Центр кадра свободен,
+   текст собран в полосу у нижнего края.
+
+   Секция уходит под прозрачную шапку отрицательным margin в обеих раскладках.
    ============================================================================ */
 
 .hero {
   --hero-h: 88svh;
-  /* Контент прижат к низу, поэтому сверху нужен только зазор под шапку.
-     Полный --section-pad здесь раздувал бы секцию выше 88svh на узких
-     экранах — и край #trust уходил бы за сгиб. */
-  --section-pad-top: calc(var(--header-h) + clamp(1.5rem, 4vh, 5rem));
-  --section-pad-bottom: clamp(4rem, 12vh, 8rem);
+  /* Пропорция кадра узкой раскладки. Одна переменная на кадр и затемнение:
+     затемнение лежит ровно по кадру, а не по секции. */
+  --hero-frame: 4 / 5;
+  --section-pad-top: 0px;
+  --section-pad-bottom: clamp(2.5rem, 9vw, 4rem);
   margin-top: calc(-1 * var(--header-h));
 }
 
-/* Перебивает min-height: 100svh из layout.css — специфичность та же,
-   hero.css подключается позже. */
+@media (orientation: portrait) and (min-width: 768px) {
+  .hero { --hero-frame: 1 / 1; }
+}
+
+@media (orientation: landscape) {
+  .hero { --hero-frame: 16 / 9; }
+}
+
+/* Перебивает flex и min-height: 100svh из layout.css — специфичность та же,
+   hero.css подключается позже. В узкой раскладке слой — обычный блок:
+   кадр, под ним текст. */
 .hero > .section__layer {
-  align-items: flex-end;
-  min-height: var(--hero-h);
+  display: block;
+  min-height: 0;
 }
 
 /* ---- Видео --------------------------------------------------------------- */
 
+/* Узкая раскладка: кадр — блок во всю ширину, видео лежит в нём ровно
+   (inset: 0 и object-fit: cover из media.css), запаса под параллакс нет. */
 .hero__media {
-  position: absolute;
-  inset: 0;
+  position: relative;
   z-index: 0;
+  width: 100%;
+  aspect-ratio: var(--hero-frame);
   overflow: hidden;
 }
 
-/* Запас по вертикали под параллакс: сам кадр выше секции, при сдвиге на 12%
-   верхний край не обнажается. Двигаем видео, а не обёртку .media, — иначе
-   уезжает и подпись заглушки, пока файла ещё нет.
-
-   height: 140%, а не auto. С auto высота кадра считалась от его собственной
-   пропорции, и пока файла не было — заглушка растягивалась как надо, а первое
-   же настоящее видео 3:2 давало снизу полосу фона --void: при ширине 1440
-   кадр получался 960px высотой и не доставал до низа секции (88svh ≈ 790).
-   Фиксированные 140% — это ровно inset -20%/-20%, то есть тот самый запас
-   под параллакс, а обрезку берёт на себя object-fit: cover из media.css.
-   Так работает любой исходник, хоть горизонтальный, хоть вертикальный. */
-.hero__media .media > video,
-.hero__media .media > img {
-  position: absolute;
-  inset: -20% 0;
-  width: 100%;
-  height: 140%;
-  object-fit: cover;
-}
-
-/* Градиент сверху вниз плюс еле заметная виньетка по краям. */
+/* Затемнение узкой раскладки лежит по кадру: сверху под шапку — от .55
+   до прозрачного на 30 % высоты кадра, нижние 22 % кадра уходят в --void,
+   на котором стоит текст. */
 .hero__scrim {
   position: absolute;
-  inset: 0;
+  top: 0;
+  inset-inline: 0;
   z-index: 1;
+  aspect-ratio: var(--hero-frame);
   pointer-events: none;
   background:
-    radial-gradient(120% 90% at 50% 45%, rgba(10, 13, 17, 0) 55%, rgba(10, 13, 17, .34) 100%),
-    linear-gradient(to bottom, rgba(10, 13, 17, .35) 0%, rgba(10, 13, 17, .72) 100%);
+    linear-gradient(to bottom, rgba(10, 13, 17, .55) 0%, rgba(10, 13, 17, 0) 30%),
+    linear-gradient(to bottom, rgba(10, 13, 17, 0) 78%, var(--void) 100%);
 }
 
 /* ---- Композиция ---------------------------------------------------------- */
 
+/* Текст заходит на кадр на 2.5rem, чтобы кадр и текст читались одним экраном.
+   Низ зоны логотипа — 63 % высоты кадра, до текста остаётся больше четверти
+   кадра. */
 .hero .container {
   position: relative;
   z-index: 2;
+  margin-top: -2.5rem;
 }
 
 .hero__content {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 1.5rem;
+  gap: 1.75rem;
 }
 
-/* Десктоп — сплит: контент в левых 6 колонках из 12, правая половина чистая. */
-@media (min-width: 1024px) {
-  .hero__inner {
-    display: grid;
-    grid-template-columns: repeat(12, minmax(0, 1fr));
-    gap: var(--gap);
-  }
-
-  .hero__content {
-    grid-column: 1 / span 6;
-    gap: 1.75rem;
-  }
-
-  .hero__title { font-size: clamp(2.4rem, 3.3vw, 3rem); }
+.hero__heading {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1.25rem;
+  max-width: 100%;
 }
 
 /* ---- Заголовок ----------------------------------------------------------- */
 
-/* Размер меньше --fs-h1: заголовок живёт в 6 колонках из 12, а не во всю
-   ширину. Верхняя граница подобрана так, чтобы длинная строка держалась
-   в одну строку до самых широких экранов. */
 .hero__title {
   margin: 0;
   font-size: clamp(2.05rem, 5.2vw, 2.6rem);
@@ -125,69 +129,40 @@
   will-change: clip-path;
 }
 
-.hero__eyebrow { will-change: clip-path; }
-
-.hero__lead {
-  max-width: 46ch;
-  font-size: 1.05rem;
-  line-height: 1.6;
-  color: rgba(237, 238, 234, .78);
-  text-wrap: pretty;
+/* Надзаголовок в hero — --on-dark, а не золотой, как остальные .eyebrow.
+   Золотой текст набирает 4.5:1 только на почти чёрном фоне: на светлых планах
+   ролика он давал около 3:1 и в широкой раскладке (под плотной частью
+   затемнения), и в узкой (строка стоит на стыке кадра и --void). Затемнение,
+   при котором золото проходит, гасит логотип. Золотой остаётся линия перед
+   текстом — она из .eyebrow::before. */
+.hero__eyebrow {
+  color: var(--on-dark);
+  line-height: 1.5; /* на телефоне строка переносится, с 1 строки слипаются */
+  will-change: clip-path;
 }
 
 /* ---- Кнопки -------------------------------------------------------------- */
 
+/* Уже 480px — во всю ширину, одна под другой; шире — в ряд. */
 .hero__actions {
   display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  margin-top: .5rem;
-}
-
-/* ---- Маркер прокрутки ---------------------------------------------------- */
-
-.hero__scroll {
-  position: absolute;
-  left: 50%;
-  bottom: clamp(1.25rem, 3vh, 2rem);
-  z-index: 2;
-  display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   gap: .75rem;
-  transform: translateX(-50%);
-  pointer-events: none;
+  width: 100%;
 }
 
-.hero__scroll-line {
-  position: relative;
-  display: block;
-  width: 1px;
-  height: 48px;
-  overflow: hidden;
-  background: rgba(169, 135, 72, .55);
+@media (min-width: 480px) {
+  .hero__actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem;
+    width: auto;
+  }
 }
 
-/* Светлый сегмент бежит сверху вниз, цикл 2.2s. */
-.hero__scroll-line::after {
-  content: '';
-  position: absolute;
-  inset-inline: 0;
-  top: 0;
-  height: 14px;
-  background: var(--on-dark);
-  animation: hero-scroll-run 2.2s var(--ease-io) infinite;
-}
-
-@keyframes hero-scroll-run {
-  0%   { transform: translateY(-14px); opacity: 0; }
-  15%  { opacity: 1; }
-  85%  { opacity: 1; }
-  100% { transform: translateY(48px); opacity: 0; }
-}
-
-/* Контент прижат к низу, поэтому подпись заглушки уводим наверх — иначе она
-   садится на кнопки и на маркер прокрутки. */
+/* Подпись заглушки уводим наверх, под шапку: внизу кадра стоит текст. */
 .hero__media .media.is-missing { align-items: start; }
 
 .hero__media .media.is-missing .media__note {
@@ -195,23 +170,159 @@
   padding-bottom: 0;
 }
 
-.hero__scroll-label {
-  font-size: .65rem;
-  font-weight: 500;
-  line-height: 1;
-  letter-spacing: .2em;
-  text-transform: uppercase;
-  color: rgba(237, 238, 234, .6);
+/* ============================================================================
+   ШИРОКАЯ РАСКЛАДКА
+   ============================================================================ */
+
+@media (orientation: landscape) and (min-width: 768px) and (min-height: 600px) {
+  .hero {
+    /* Контент прижат к низу, сверху нужен только зазор под шапку. */
+    --section-pad-top: calc(var(--header-h) + 1.5rem);
+    --section-pad-bottom: clamp(2.5rem, 7vh, 4.5rem);
+  }
+
+  .hero > .section__layer {
+    display: flex;
+    align-items: flex-end;
+    min-height: var(--hero-h);
+  }
+
+  .hero__media {
+    position: absolute;
+    inset: 0;
+    width: auto;
+    aspect-ratio: auto;
+  }
+
+  /* Запас по вертикали под параллакс: кадр выше секции на 12 % сверху и снизу,
+     при уходе видео сдвигается на 8 % своей высоты (около 10 % высоты секции),
+     и верхний край не обнажается. Было 140 % и сдвиг 12 %: при таком запасе
+     кадр увеличивался в 1,4 раза, и у ролика бренда срезались края упаковки
+     и логотипа. Двигаем видео, а не обёртку .media, — иначе уезжает и подпись
+     заглушки, пока файла нет.
+
+     Высота задана числом, а не auto: с auto она считалась бы от пропорции
+     самого файла и не доставала бы до низа секции; обрезку берёт на себя
+     object-fit: cover из media.css. */
+  .hero__media .media > video,
+  .hero__media .media > img {
+    position: absolute;
+    inset: -12% 0;
+    width: 100%;
+    height: 124%;
+    object-fit: cover;
+  }
+
+  /* Три слоя:
+       1. сверху под шапку — .55 у края, прозрачный на 22 % высоты;
+       2. снизу под текст — плотная часть заканчивается между надзаголовком
+          и низом логотипа (на 1440×900 это 25 % и 38 % высоты от низа);
+       3. ровный слой на весь кадр — гасит самые светлые планы.
+     Над самим логотипом в сумме не больше .2, иначе золото гаснет.
+     Значения подобраны проверкой контраста, см. README. */
+  .hero__scrim {
+    inset: 0;
+    aspect-ratio: auto;
+    background:
+      linear-gradient(to bottom, rgba(10, 13, 17, .55) 0%, rgba(10, 13, 17, 0) 22%),
+      linear-gradient(
+        to top,
+        rgba(10, 13, 17, .9) 0%,
+        rgba(10, 13, 17, .8) 20%,
+        rgba(10, 13, 17, .55) 27%,
+        rgba(10, 13, 17, 0) 36%
+      ),
+      linear-gradient(rgba(10, 13, 17, .12), rgba(10, 13, 17, .12));
+  }
+
+  .hero .container { margin-top: 0; }
+
+  .hero__inner {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: var(--gap);
+  }
+
+  /* Сетка, а не display: contents: createExit двигает и гасит .hero__content
+     целиком, ему нужен настоящий бокс. */
+  .hero__content {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    column-gap: var(--gap);
+    row-gap: 1.5rem;
+    align-items: end;
+  }
+
+  .hero__heading {
+    grid-column: 1 / span 8;
+    gap: 1.5rem;
+  }
+
+  /* Уже 1280px кнопки стоят под заголовком слева. */
+  .hero__actions {
+    grid-column: 1 / -1;
+    flex-wrap: nowrap;
+  }
+
+  .hero__title { font-size: clamp(2.2rem, 2.9vw, 2.75rem); }
+
+  /* Каждая из двух строк держится в одну строку. */
+  .hero__line { white-space: nowrap; }
 }
 
-/* Маркер садится под контент — на узком экране контенту нужен запас снизу. */
-@media (max-width: 1023px) {
-  .hero { --section-pad-bottom: clamp(5.5rem, 14vh, 8rem); }
+/* НЕВЫСОКИЕ ШИРОКИЕ ЭКРАНЫ. Низ зоны логотипа лежит на 34 % высоты секции
+   от нижнего края, а плотная часть затемнения — ниже 27 %: выше она гасила бы
+   логотип. Значит, блок текста вместе с нижним отступом обязан уложиться
+   примерно в четверть высоты секции. Пока кнопки стоят под заголовком (уже
+   1280px), три ряда в обычных размерах укладываются только на экранах выше
+   950px — ниже сжимаем H1, зазоры и нижний отступ, в две ступени. Прятать
+   текст или поднимать его к центру нельзя. Проверено на 1180×820, 1024×768
+   и 800×600. */
+@media (orientation: landscape) and (min-width: 768px) and (max-width: 1279px) and (min-height: 600px) and (max-height: 950px) {
+  .hero { --section-pad-bottom: 1.5rem; }
+  .hero__content { row-gap: .875rem; }
+  .hero__heading { gap: .875rem; }
+  .hero__title { font-size: 2rem; }
+  .hero__actions .btn { padding-block: .8rem; }
+
+  /* Текст здесь начинается выше, чем на остальных широких экранах, поэтому
+     плотная часть нижнего слоя поднята; прозрачным он становится там же,
+     на 36 %, — ниже логотипа. */
+  .hero__scrim {
+    background:
+      linear-gradient(to bottom, rgba(10, 13, 17, .55) 0%, rgba(10, 13, 17, 0) 22%),
+      linear-gradient(
+        to top,
+        rgba(10, 13, 17, .9) 0%,
+        rgba(10, 13, 17, .84) 24%,
+        rgba(10, 13, 17, .66) 29%,
+        rgba(10, 13, 17, 0) 36%
+      ),
+      linear-gradient(rgba(10, 13, 17, .12), rgba(10, 13, 17, .12));
+  }
 }
 
-/* ---- prefers-reduced-motion ---------------------------------------------
-   JS не поднимает ни интро, ни параллакс (см. hero.js). Здесь гасим бегунок. */
+@media (orientation: landscape) and (min-width: 768px) and (max-width: 1279px) and (min-height: 600px) and (max-height: 740px) {
+  .hero { --section-pad-bottom: 1rem; }
+  .hero__content { row-gap: .625rem; }
+  .hero__heading { gap: .625rem; }
+  .hero__title { font-size: 1.6rem; }
+}
 
-@media (prefers-reduced-motion: reduce) {
-  .hero__scroll-line::after { animation: none; opacity: .8; }
+/* От 1280px блок ниже на ряд кнопок, и сжатие нужно только совсем низкому
+   экрану (1280×600, 1366×640). */
+@media (orientation: landscape) and (min-width: 1280px) and (min-height: 600px) and (max-height: 700px) {
+  .hero { --section-pad-bottom: 1.5rem; }
+  .hero__heading { gap: 1rem; }
+}
+
+/* От 1280px кнопки — справа, на нижней линии H1. */
+@media (orientation: landscape) and (min-width: 1280px) and (min-height: 600px) {
+  .hero__actions {
+    grid-column: 9 / -1;
+    justify-self: end;
+    align-self: end;
+    width: max-content;
+  }
 }

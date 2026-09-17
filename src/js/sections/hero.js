@@ -1,15 +1,27 @@
 /* ============================================================================
-   #hero — первый экран.
+   #hero — первый экран с роликом бренда (17.09.2026).
 
-   Высота 88svh, не 100svh: снизу должен выглядывать край #trust, чтобы читалось
-   продолжение страницы.
+   Ролик — нарезка производства, в финале золотой логотип по центру кадра.
+   Поэтому текст и кнопки нигде не заходят в ЗОНУ ЛОГОТИПА (таблица —
+   в README, «Первый экран: ролик бренда», и в src/data/media.js).
+
+   Раскладок две, граница — в hero.css и в WIDE ниже:
+     широкая  — горизонтальный экран от 768×600: видео во всю секцию 88svh,
+                центр кадра свободен, текст полосой у нижнего края;
+     узкая    — портрет любой ширины и низкий горизонтальный экран: видео
+                кадром сверху (4:5, 1:1 или 16:9), текст под ним на --void.
+
+   Подзаголовка и маркера «ПРОЛИСТАЙТЕ» нет: сняты 17.09 по решению Дениса,
+   тексты лежат в истории коммитов.
 
    Анимаций две и они не пересекаются:
-     1. Вход при загрузке — единая оркестрованная таймлиния 1.6 с.
+     1. Вход при загрузке — единая оркестрованная таймлиния.
         Поэтому у секции НЕТ data-reveal-section / data-reveal: общий reveal
         из scroll.js её не трогает.
      2. Уход при скролле — «первая смена слайда»: слой уводится вверх и гаснет,
-        видео идёт с параллаксом в другую сторону.
+        контент уезжает вперёд слоя. Видео идёт с параллаксом в другую сторону
+        только в широкой раскладке: в узкой кадр стоит блоком без запаса
+        по высоте, двигать его некуда.
    ============================================================================ */
 
 import gsap from 'gsap'
@@ -22,6 +34,10 @@ import { markMoving } from '../scroll.js'
 gsap.registerPlugin(ScrollTrigger)
 
 const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+/* Те же условия, что у раскладок в hero.css. */
+const WIDE = '(orientation: landscape) and (min-width: 768px) and (min-height: 600px)'
+const PORTRAIT_FILE = '(max-width: 767px) and (orientation: portrait)'
 
 const actionClass = (variant) =>
   variant === 'primary' ? 'btn btn--wide btn--pearl' : 'btn btn--wide btn--outline-light'
@@ -44,14 +60,14 @@ export function buildHero(item) {
       <div class="container">
         <div class="hero__inner">
           <div class="hero__content">
-            <p class="eyebrow hero__eyebrow" data-hero-eyebrow>${hero.eyebrow}</p>
+            <div class="hero__heading">
+              <p class="eyebrow hero__eyebrow" data-hero-eyebrow>${hero.eyebrow}</p>
 
-            <h1 id="${item.id}-title" class="hero__title">
-              <span class="hero__line" data-hero-line>${first}</span><br>
-              <span class="hero__line" data-hero-line>${second}</span>
-            </h1>
-
-            <p class="hero__lead" data-hero-fade>${hero.lead}</p>
+              <h1 id="${item.id}-title" class="hero__title">
+                <span class="hero__line" data-hero-line>${first}</span><br>
+                <span class="hero__line" data-hero-line>${second}</span>
+              </h1>
+            </div>
 
             <div class="hero__actions">
               ${hero.actions
@@ -63,11 +79,6 @@ export function buildHero(item) {
             </div>
           </div>
         </div>
-      </div>
-
-      <div class="hero__scroll" data-hero-scroll>
-        <span class="hero__scroll-line" aria-hidden="true"></span>
-        <span class="hero__scroll-label">${hero.scrollHint}</span>
       </div>
     </div>
   `
@@ -81,19 +92,19 @@ export function buildHero(item) {
     title,
   )
 
-  /* Ролик у первого экрана в двух кадрировках: горизонт и вертикаль.
-     Исходник заказчика вертикальный, а hero на десктопе горизонтальный —
-     одним файлом оба формата не закрыть, подробности в src/data/media.js.
+  /* Ролик в двух кадрировках: горизонтальный 16:9 и центральный кадр 4:5.
+     Вертикальный файл получает только телефон в портрете — там кадр 4:5,
+     и горизонтальный файл обрезался бы до трети ширины вместе с логотипом.
+     Повёрнутый телефон (кадр 16:9) и планшет в портрете (кадр 1:1) берут
+     горизонтальный файл. Подробности — в src/data/media.js.
 
      Вариант выбирается ОДИН РАЗ, при сборке разметки: <video> не умеет
      переключать <source> по медиазапросу (атрибут media у source браузеры
      не поддерживают), а менять источник на лету значило бы перезапускать
-     ролик посреди просмотра при каждом повороте экрана. Порог тот же, что
-     у мобильной раскладки шапки. */
+     ролик посреди просмотра при каждом повороте экрана. */
   const config = video[item.media]
   if (config) {
-    const portrait =
-      config.mobileSources && window.matchMedia('(max-width: 767px)').matches
+    const portrait = config.mobileSources && window.matchMedia(PORTRAIT_FILE).matches
 
     const media = createVideo({
       sources: portrait ? config.mobileSources : config.sources,
@@ -111,7 +122,7 @@ export function buildHero(item) {
 /* -------------------------------------------------- вход при загрузке (1) */
 
 /**
- * Одна таймлиния на весь экран, 1.6 с от первого кадра видео до маркера.
+ * Одна таймлиния на весь экран, от первого кадра видео до кнопок.
  * fromTo выставляет начальные значения синхронно при создании — до первой
  * отрисовки, поэтому контент не успевает мелькнуть.
  */
@@ -120,7 +131,6 @@ function playIntro(section) {
   const eyebrow = section.querySelector('[data-hero-eyebrow]')
   const lines = section.querySelectorAll('[data-hero-line]')
   const fades = section.querySelectorAll('[data-hero-fade]')
-  const marker = section.querySelector('[data-hero-scroll]')
 
   const tl = gsap.timeline({ delay: 0.1, defaults: { ease: 'power3.out' } })
 
@@ -143,7 +153,7 @@ function playIntro(section) {
     0.3,
   )
 
-  // 4. Подзаголовок и кнопки.
+  // 4. Кнопки.
   tl.fromTo(
     fades,
     { y: 22, opacity: 0 },
@@ -151,34 +161,15 @@ function playIntro(section) {
     0.78,
   )
 
-  // 5. Маркер прокрутки — последним.
-  tl.fromTo(marker, { opacity: 0 }, { opacity: 1, duration: 0.45 }, 1.15)
-
   return tl
-}
-
-/** Маркер живёт до первой прокрутки и больше не возвращается. */
-function watchScrollHint(section) {
-  const marker = section.querySelector('[data-hero-scroll]')
-  if (!marker) return
-
-  const hide = () => {
-    if (window.scrollY < 8) return
-    window.removeEventListener('scroll', hide)
-    // Гасим через GSAP, а не классом: интро могло ещё не доиграть и оставить
-    // свой inline-opacity — killTweensOf снимает спор.
-    gsap.killTweensOf(marker)
-    gsap.to(marker, { opacity: 0, y: 10, duration: 0.4, ease: 'power2.out' })
-  }
-
-  window.addEventListener('scroll', hide, { passive: true })
 }
 
 /* ------------------------------------------------- уход при скролле (2) */
 
 /**
- * Уход первого экрана: слой поднимается и гаснет, видео идёт вниз, контент
- * уезжает вперёд слоя. Расхождение скоростей и читается как смена слайда.
+ * Уход первого экрана: слой поднимается и гаснет, контент уезжает вперёд
+ * слоя, в широкой раскладке видео идёт вниз. Расхождение скоростей
+ * и читается как смена слайда.
  *
  * Отсчёт от 'top top', а не от 'bottom bottom': hero ниже экрана (88svh),
  * и его низ доходит до низа кадра ещё при нулевой прокрутке — секция
@@ -191,30 +182,27 @@ function createExit(section) {
   const media = section.querySelector('.hero__media .media > video, .hero__media .media > img')
   const content = section.querySelector('.hero__content')
 
-  const scrollTrigger = {
+  // У каждого твина свой ScrollTrigger с одними границами. will-change
+  // держим только пока уход идёт; колбэк идемпотентный.
+  const triggerFor = (target) => ({
     trigger: section,
     start: 'top top',
     end: 'bottom top',
     scrub: true,
-    // will-change держим только пока уход идёт. Колбэк сработает трижды —
-    // по разу на твин, — но он идемпотентный.
-    onToggle: (self) => markMoving([layer, media, content], self.isActive),
-  }
+    onToggle: (self) => markMoving([target], self.isActive),
+  })
 
   if (layer) {
     gsap.fromTo(
       layer,
       { yPercent: 0, opacity: 1 },
-      { yPercent: -6, opacity: 0.55, ease: 'none', immediateRender: false, scrollTrigger },
-    )
-  }
-
-  // Видео идёт вниз, слой вверх — расхождение и читается как смена слайда.
-  if (media) {
-    gsap.fromTo(
-      media,
-      { yPercent: 0 },
-      { yPercent: 12, ease: 'none', immediateRender: false, scrollTrigger },
+      {
+        yPercent: -6,
+        opacity: 0.55,
+        ease: 'none',
+        immediateRender: false,
+        scrollTrigger: triggerFor(layer),
+      },
     )
   }
 
@@ -222,8 +210,33 @@ function createExit(section) {
     gsap.fromTo(
       content,
       { yPercent: 0, opacity: 1 },
-      { yPercent: -18, opacity: 0, ease: 'none', immediateRender: false, scrollTrigger },
+      {
+        yPercent: -18,
+        opacity: 0,
+        ease: 'none',
+        immediateRender: false,
+        scrollTrigger: triggerFor(content),
+      },
     )
+  }
+
+  /* Видео идёт вниз, слой вверх — только в широкой раскладке. Сдвиг 8% при
+     запасе кадра 12% сверху (hero.css): верхний край не обнажается. В узкой
+     раскладке кадр стоит блоком ровно по своей высоте; matchMedia снимает
+     твин вместе с inline-transform, когда экран перестаёт быть широким. */
+  if (media) {
+    gsap.matchMedia().add(WIDE, () => {
+      gsap.fromTo(
+        media,
+        { yPercent: 0 },
+        {
+          yPercent: 8,
+          ease: 'none',
+          immediateRender: false,
+          scrollTrigger: triggerFor(media),
+        },
+      )
+    })
   }
 }
 
@@ -236,6 +249,5 @@ export function initHero() {
   if (REDUCED) return
 
   playIntro(section)
-  watchScrollHint(section)
   createExit(section)
 }

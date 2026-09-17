@@ -36,10 +36,6 @@ const MEDIA_DIR = path.join(ROOT, 'public/media')
  * кадра так и останется постер или заглушка.
  */
 export const NOT_ON_SERVER = [
-  '/media/video/hero-caviar.webm',
-  '/media/video/hero-caviar.mp4',
-  '/media/video/hero-caviar-portrait.webm',
-  '/media/video/hero-caviar-portrait.mp4',
   '/media/video/production.mp4',
 ]
 
