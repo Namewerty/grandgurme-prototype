@@ -16,6 +16,7 @@
 | 21.09.2026 | `/upload/gg-stand/` — папка для архивов заливки | командная PHP-строка | туда кладётся архив `npm run stand` для `stand-deploy.php` |
 | 21.09.2026 | `/media/video/hero-brand-poster.jpg`, `hero-brand-portrait-poster.jpg` | Файлы и папки | постеры первого экрана; ролики не залиты — лимит nginx ≈ 1 МБ |
 | 21.09.2026 | таблицы `gg_auth_code`, `gg_favorite`, `gg_address`, `gg_order_meta`; поле `UF_GG_MARKETING`; свойство `USER_ID` у `gg_requests` | скрипт `bitrix/install/gg-account-install.php` | вход, избранное, адреса и заказы кабинета |
+| 21.09.2026 | `/var/www/bitrix.1grandgourmet.ru/gg-stand-archive/` — архивы заливки вне корня сайта | командная PHP-строка | из `/upload/gg-stand/` архив скачивается без входа; после заливки он переезжает сюда. Там же части ролика `hero-brand.webm.00/.01` |
 
 ## Как стенд настроен сейчас (снято 17.09.2026, сами не меняли)
 

@@ -57,7 +57,9 @@ git push --follow-tags
    `bitrix/install/stand-deploy.php` с `$mode = 'check'`, приложив архив
    (или положив его в `/upload/gg-stand/`). Скрипт покажет, что обновится,
    и остановится, если файлы на стенде правили руками.
-3. Если чисто — тот же скрипт с `$mode = 'deploy'`.
+3. Если чисто — тот же скрипт с `$mode = 'deploy'`. После заливки архив
+   переносится из `/upload/gg-stand/` в `/var/www/bitrix.1grandgourmet.ru/gg-stand-archive/`,
+   на уровень выше корня сайта: `/upload/` nginx отдаёт любому без входа.
 4. `git tag stand-<дата> <коммит> && git push --tags`.
 
 Таблицы md5 в промптах руками больше не пишутся: суммы несёт сам архив,
