@@ -7,9 +7,11 @@
 
      1. Сердце не перезагружает страницу: форма уходит запросом с
         gg_fav_ajax=Y, сервер отвечает JSON, и все сердца этого товара на
-        странице, счётчик в шапке и строка мобильного меню обновляются разом.
-        Тост — тот же, что в прототипе: «Добавили в избранное · Перейти»
-        и «Убрали из избранного · Вернуть».
+        странице, счётчик в шапке, строка мобильного меню и число в меню
+        кабинета обновляются разом. Тост — тот же, что в прототипе:
+        «Добавили в избранное · Перейти» и «Убрали из избранного · Вернуть».
+        На /favorites/ убранная карточка сворачивается и уходит из сетки,
+        последняя — сменяется пустым состоянием; «Вернуть» ставит её обратно.
      2. Поле кода: цифры в ячейках, автоотправка, когда введены все, таймер
         повторной отправки идёт, по нулю появляется кнопка.
      3. Оформление: поля нового адреса видны, только когда выбран «Другой адрес».
@@ -19,12 +21,14 @@
    ============================================================================ */
 
 import { accountCopy } from '../data/account-copy.js'
+import { plural } from '../js/catalog/model.js'
 import { showToast } from '../js/cart/toast.js'
 
 const favCopy = accountCopy.favorites
 const headerCopy = accountCopy.header
 
 const fill = (template, values) => String(template).replace(/\{(\w+)\}/g, (_, key) => values[key] ?? '')
+const goodsLabel = (n) => `${n} ${plural(n, ...accountCopy.plurals.goods)}`
 const clock = (seconds) => `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`
 
 /* ------------------------------------------------------------ избранное */
@@ -59,6 +63,81 @@ function paintCount(n) {
 
   const menu = document.querySelector('.nav-panel__meta a[href^="/favorites"]')
   if (menu) menu.textContent = n ? fill(headerCopy.menuFavoritesCount, { n }) : headerCopy.menuFavorites
+
+  // Кабинет: число у пункта «Избранное» в боковом меню и в строках обзора.
+  document.querySelectorAll('.acc__link[href^="/favorites"] .acc__count, .acc-rows__row[href^="/favorites"] .acc-rows__count').forEach((count) => {
+    count.textContent = n > 0 ? String(n) : ''
+  })
+}
+
+/* ---------------------------------------------- страница /favorites/ */
+
+const COLLAPSE_MS = 250
+const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+/** Пустое состояние — та же разметка, что отдаёт deploy-src/favorites/index.php. */
+function favEmpty() {
+  const box = document.createElement('div')
+  box.className = 'acc-empty'
+  box.dataset.favEmpty = ''
+  const icon = document.createElement('span')
+  icon.className = 'acc-empty__icon'
+  icon.setAttribute('aria-hidden', 'true')
+  const heart = document.querySelector('.header__actions .fav-btn svg')
+  if (heart) icon.appendChild(heart.cloneNode(true))
+  const title = document.createElement('h2')
+  title.className = 'acc-empty__title'
+  title.textContent = favCopy.empty.title
+  const text = document.createElement('p')
+  text.className = 'acc-empty__text'
+  text.textContent = favCopy.empty.text
+  const link = document.createElement('a')
+  link.className = 'btn btn--solid'
+  link.href = favCopy.empty.action.href
+  link.textContent = favCopy.empty.action.label
+  box.append(icon, title, text, link)
+  return box
+}
+
+/** Подпись «n товаров», плашка гостя, капсулы и пустое состояние — по числу. */
+function paintFavPage(page, n) {
+  const grid = page.querySelector('.fav__grid')
+  const sub = page.querySelector('.acc-sub')
+  if (sub) {
+    sub.textContent = goodsLabel(n)
+    sub.style.display = n ? '' : 'none'
+  }
+  page.querySelectorAll('.fav__guest, .fav__caps').forEach((node) => {
+    node.style.display = n ? '' : 'none'
+  })
+  let empty = page.querySelector('[data-fav-empty]')
+  if (n) {
+    empty?.remove()
+    if (grid) grid.style.display = ''
+    return
+  }
+  if (grid) grid.style.display = 'none'
+  if (!empty) {
+    empty = favEmpty()
+    ;(grid || page.lastElementChild).after(empty)
+  }
+}
+
+/** Убрали сердцем на /favorites/: карточка сворачивается и уходит из сетки. */
+function leaveCard(card, page, n) {
+  card.classList.add('is-leaving')
+  setTimeout(() => {
+    if (!card.classList.contains('is-leaving')) return
+    card.style.display = 'none'
+    paintFavPage(page, n)
+  }, REDUCED ? 0 : COLLAPSE_MS)
+}
+
+/** «Вернуть»: карточка на прежнем месте. */
+function returnCard(card, page, n) {
+  card.classList.remove('is-leaving')
+  card.style.display = ''
+  paintFavPage(page, n)
 }
 
 async function sendFavorite(form, action, index) {
@@ -84,14 +163,21 @@ function hydrateFavorites(root) {
     event.preventDefault()
 
     const action = form.querySelector('input[name="gg_fav_action"]')?.value || 'add'
+    // Сердце в сетке /favorites/: у кнопки может быть атрибут form, поэтому
+    // карточку ищем от самой кнопки, а не от формы.
+    const heart = form.querySelector('[data-fav-id]') || document.querySelector(`[form="${CSS.escape(form.id)}"][data-fav-id]`)
+    const card = heart?.closest('.fav__grid .product') || null
+    const page = card?.closest('.fav') || null
     try {
       const result = await sendFavorite(form, action)
       syncHearts(result.id, result.active)
       paintCount(result.count)
 
       if (result.active) {
+        if (card) returnCard(card, page, result.count)
         showToast(favCopy.toastAdded, { label: favCopy.toastAddedAction.label, href: '/favorites/' })
       } else {
+        if (card) leaveCard(card, page, result.count)
         const undoIndex = result.undoIndex
         showToast(favCopy.toastRemoved, {
           label: favCopy.toastUndo,
@@ -99,6 +185,7 @@ function hydrateFavorites(root) {
             const back = await sendFavorite(form, 'restore', Math.max(0, undoIndex))
             syncHearts(back.id, back.active)
             paintCount(back.count)
+            if (card && back.active) returnCard(card, page, back.count)
           },
         })
       }
