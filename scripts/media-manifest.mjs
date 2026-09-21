@@ -37,14 +37,6 @@ const MEDIA_DIR = path.join(ROOT, 'public/media')
  */
 export const NOT_ON_SERVER = [
   '/media/video/production.mp4',
-  /* Ролики первого экрана (21.09.2026): 1,2–3,4 МБ, лимит nginx стенда —
-     около 1 МБ, через админку не проходят. Постеры на стенде есть, поэтому
-     первый экран показывает постер. Поднимут client_max_body_size и зальют
-     ролики — эти четыре строки убрать и пересобрать архив. */
-  '/media/video/hero-brand.webm',
-  '/media/video/hero-brand.mp4',
-  '/media/video/hero-brand-portrait.webm',
-  '/media/video/hero-brand-portrait.mp4',
 ]
 
 /** Служебные файлы папки — не медиа, на сайте не используются. */

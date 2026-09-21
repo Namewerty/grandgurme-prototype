@@ -14,7 +14,8 @@
 | 17.09.2026 | тип почтового события `GG_MANAGER_REQUEST` и шаблон ID 89, получатель `sale@bitrix.grandgurme.ru` | тот же скрипт | письмо менеджеру о заявке; ⚠ адрес менеджера не подтверждён |
 | 17.09.2026 | `/local/gg-stand/manifest.json` — манифест последней заливки | `bitrix/install/stand-deploy.php` | сверка стенда с репозиторием |
 | 21.09.2026 | `/upload/gg-stand/` — папка для архивов заливки | командная PHP-строка | туда кладётся архив `npm run stand` для `stand-deploy.php` |
-| 21.09.2026 | `/media/video/hero-brand-poster.jpg`, `hero-brand-portrait-poster.jpg` | Файлы и папки | постеры первого экрана; ролики не залиты — лимит nginx ≈ 1 МБ |
+| 21.09.2026 | `/media/video/hero-brand-poster.jpg`, `hero-brand-portrait-poster.jpg` | Файлы и папки | постеры первого экрана |
+| 21.09.2026 | `/media/video/hero-brand.webm`, `.mp4`, `hero-brand-portrait.webm`, `.mp4` | файловый менеджер частями + командная PHP-строка | ролики первого экрана; лимит nginx 1 МБ не поднят, части лежат в `gg-stand-archive/` |
 | 21.09.2026 | таблицы `gg_auth_code`, `gg_favorite`, `gg_address`, `gg_order_meta`; поле `UF_GG_MARKETING`; свойство `USER_ID` у `gg_requests` | скрипт `bitrix/install/gg-account-install.php` | вход, избранное, адреса и заказы кабинета |
 | 21.09.2026 | `/var/www/bitrix.1grandgourmet.ru/gg-stand-archive/` — архивы заливки вне корня сайта | командная PHP-строка | из `/upload/gg-stand/` архив скачивается без входа; после заливки он переезжает сюда. Там же части ролика `hero-brand.webm.00/.01` |
 
