@@ -1054,6 +1054,15 @@ function gg_format_day_month(int $ts): string
     return (int)date('j', $ts) . ' ' . $months[(int)date('n', $ts)];
 }
 
+/**
+ * «17 сентября 2026» — дата оформления в кабинете (formatDate прототипа).
+ * Год нужен: в истории заказов лежат записи прошлых лет.
+ */
+function gg_format_date(int $ts): string
+{
+    return gg_format_day_month($ts) . ' ' . date('Y', $ts);
+}
+
 /** «к 21 сентября» — так дата готовности пишется везде на сайте. */
 function gg_format_ready_date(int $ts): string
 {

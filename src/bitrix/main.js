@@ -57,6 +57,12 @@ import '../styles/pages/cart.css'
 import '../styles/components/form.css'
 import '../styles/pages/checkout.css'
 import '../styles/pages/search.css'
+// Кабинет и избранное (21.09.2026): страницы рисует сервер, стили — те же,
+// что у прототипа (src/account.js).
+import '../styles/pages/account.css'
+import '../styles/components/status-tag.css'
+import '../styles/components/code-input.css'
+import '../styles/components/dialog.css'
 
 import { initHeader } from '../js/sections/header.js'
 import { initFooter } from '../js/sections/footer.js'
@@ -67,6 +73,7 @@ import { hydrateMedia } from '../js/media.js'
 import { maskPhone } from '../js/checkout/validate.js'
 import { hydrateQtySteppers } from './qty-hydrate.js'
 import { hydrateCartBar, hydrateReceiveMethod, hydrateServerToast } from './purchase-hydrate.js'
+import { hydrateAccount } from './account-hydrate.js'
 
 function boot() {
   const main = document.querySelector('#main')
@@ -88,6 +95,7 @@ function boot() {
   hydrateCartBar(document)
   hydrateReceiveMethod(document)
   hydrateServerToast(document)
+  hydrateAccount(document)
 
   initScroll()
 

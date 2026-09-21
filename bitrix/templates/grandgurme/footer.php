@@ -10,6 +10,10 @@ if (!defined('B_PROLOG_INCLUDED') || B_PROLOG_INCLUDED !== true) die();
 ?>
 </main>
 
+<?php /* Тост после формы без скрипта (сердце, повтор заказа, профиль).
+         Страница могла уже вывести его сама — тогда здесь пусто. */ ?>
+<?php require_once __DIR__ . '/include/requests.php'; echo gg_flash_toast(); ?>
+
 <footer id="site-footer" class="footer section--dark">
   <?php gg_footer(); ?>
 </footer>

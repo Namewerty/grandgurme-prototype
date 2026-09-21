@@ -236,9 +236,14 @@ function gg_request_lines(): array
    скрипт шаблона прячет его через несколько секунд (purchase-hydrate.js).
    ------------------------------------------------------------------------- */
 
-function gg_flash_toast_set(string $text): void
+/**
+ * Тост на следующую отрисовку. Ссылка по умолчанию ведёт в корзину — так
+ * было с первого захода; кабинету и избранному нужна другая ссылка или
+ * никакой (21.09.2026): пустой $href — тост без ссылки.
+ */
+function gg_flash_toast_set(string $text, string $href = '/cart/', string $label = 'Перейти'): void
 {
-    $_SESSION['GG_TOAST'] = ['text' => $text, 'href' => '/cart/'];
+    $_SESSION['GG_TOAST'] = ['text' => $text, 'href' => $href, 'label' => $label];
 }
 
 function gg_flash_toast(): string
@@ -248,9 +253,15 @@ function gg_flash_toast(): string
     if (!is_array($toast) || empty($toast['text'])) {
         return '';
     }
+    $href = (string)($toast['href'] ?? '');
+    if ($href === '') {
+        return '<div class="toast is-visible" role="status" aria-live="polite" data-server-toast>'
+            . '<span>' . gg_e($toast['text']) . '</span>'
+            . '</div>';
+    }
     return '<div class="toast has-action is-visible" role="status" aria-live="polite" data-server-toast>'
         . '<span>' . gg_e($toast['text']) . '</span>'
-        . '<a class="toast__link" href="' . gg_e($toast['href']) . '">Перейти</a>'
+        . '<a class="toast__link" href="' . gg_e($href) . '">' . gg_e((string)($toast['label'] ?? 'Перейти')) . '</a>'
         . '</div>';
 }
 

@@ -50,6 +50,38 @@ $post = ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' ? $_POST : [];
 $errors = [];
 $formError = '';
 
+/* Кабинет (21.09.2026). Вошедшему контакты подставлены из профиля, адрес —
+   из сохранённых: выбранная карточка адреса заполняет поля до проверки,
+   поэтому проверка и заказ о кабинете ничего не знают. Гостю — строка
+   «Покупали у нас раньше? Войдите». Тексты — src/data/account-copy.js → checkout. */
+$ggUser = gg_account_user();
+$ggAddresses = $ggUser ? gg_address_list() : [];
+$ggAddressChoice = 'new';
+if ($ggAddresses) {
+    $ggAddressChoice = (string)$ggAddresses[0]['id'];
+    foreach ($ggAddresses as $a) {
+        if ($a['isDefault']) {
+            $ggAddressChoice = (string)$a['id'];
+        }
+    }
+}
+if ($post && $ggUser && isset($post['address'])) {
+    $ggAddressChoice = (string)$post['address'];
+    $saved = $ggAddressChoice !== 'new' ? gg_address_by_id((int)$ggAddressChoice) : null;
+    if ($saved) {
+        $post['street'] = $saved['street'];
+        $post['apartment'] = $saved['apartment'];
+        $post['intercom'] = $saved['intercom'];
+    } else {
+        $ggAddressChoice = 'new';
+    }
+}
+$ggPrefill = $ggUser ? [
+    'name' => trim($ggUser['name'] . ' ' . $ggUser['lastName']),
+    'phone' => gg_phone_format($ggUser['phone']),
+    'email' => $ggUser['email'],
+] : [];
+
 if ($post) {
     if (!check_bitrix_sessid()) {
         LocalRedirect('/checkout/');
@@ -133,6 +165,44 @@ if ($post) {
         }
 
         if ($formError === '') {
+            /* Кабинет: получение заказа и телефон цифрами — по ним заказ
+               найдёт покупателя при входе (include/account.php). */
+            if ($plan['hasOrder'] && $orderId > 0) {
+                gg_order_meta_save($orderId, gg_phone_digits($phone), [
+                    'method' => $method,
+                    'receive' => $method === 'pickup'
+                        ? ['point' => ['name' => $points[0]['name'], 'address' => $pickup]]
+                        : [
+                            'city' => 'Москва',
+                            'street' => trim((string)($post['street'] ?? '')),
+                            'apartment' => trim((string)($post['apartment'] ?? '')),
+                            'intercom' => trim((string)($post['intercom'] ?? '')),
+                        ],
+                    'shipments' => array_map(static fn($s) => [
+                        'kind' => $s['kind'],
+                        'label' => $s['label'],
+                        'date' => $s['date'],
+                        'interval' => $s['interval'],
+                        'items' => $s['productIds'] ?? [],
+                    ], $shipments),
+                    'payment' => $paymentLabel ?? '',
+                    'comment' => trim((string)($post['comment'] ?? '')),
+                    'requestNumber' => $requestNumber,
+                ]);
+            }
+            if ($ggUser && $requestNumber !== '' && CModule::IncludeModule('iblock')) {
+                CIBlockElement::SetPropertyValuesEx((int)$requestNumber, gg_request_iblock_id(), ['USER_ID' => $ggUser['id']]);
+            }
+            if ($ggUser && $plan['hasOrder'] && $method === 'delivery' && $ggAddressChoice === 'new'
+                && !empty($post['save_address'])) {
+                // Повтор и одиннадцатый адрес молча не сохраняются — как в прототипе.
+                gg_address_save([
+                    'street' => trim((string)($post['street'] ?? '')),
+                    'apartment' => trim((string)($post['apartment'] ?? '')),
+                    'intercom' => trim((string)($post['intercom'] ?? '')),
+                ]);
+            }
+
             $query = [];
             if ($plan['hasOrder']) {
                 gg_remember_order($orderNumber, [
@@ -160,8 +230,11 @@ if ($post) {
 }
 
 /** Значение поля: то, что человек ввёл, или пусто. */
-$v = static function (string $name, string $default = '') use ($post): string {
-    return isset($post[$name]) ? trim((string)$post[$name]) : $default;
+$v = static function (string $name, string $default = '') use ($post, $ggPrefill): string {
+    if (isset($post[$name])) {
+        return trim((string)$post[$name]);
+    }
+    return (string)($ggPrefill[$name] ?? $default);
 };
 $method = ($post['method'] ?? 'delivery') === 'pickup' ? 'pickup' : 'delivery';
 $split = gg_checkout_split($post, $plan);
@@ -264,7 +337,13 @@ $splitTexts = [
 
   <div class="checkout__head">
     <h1 class="checkout__title"><?= gg_e($mode['title']) ?></h1>
-    <p class="checkout__lead"><?= gg_e($mode['lead']) ?></p>
+<?php
+    $ggLead = $mode['lead'];
+    if ($ggUser && $plan['mode'] === 'order') {
+        $ggLead = $ggAddresses ? 'Контакты и адрес подставили из кабинета.' : 'Контакты подставили из кабинета.';
+    }
+?>
+    <p class="checkout__lead"><?= gg_e($ggLead) ?></p>
   </div>
 
   <div class="checkout__layout">
@@ -277,6 +356,10 @@ $splitTexts = [
 
 <?php if ($formError !== ''): ?>
       <p class="field__error" role="alert"><?= gg_e($formError) ?></p>
+<?php endif; ?>
+
+<?php if (!$ggUser): ?>
+      <p class="checkout__login">Покупали у нас раньше? <a href="/account/login/?back=%2Fcheckout%2F">Войдите</a> — подставим контакты и адреса.</p>
 <?php endif; ?>
 
       <section class="co-step" aria-labelledby="co-contacts">
@@ -314,7 +397,35 @@ $splitTexts = [
           </fieldset>
 
           <div class="co-panel" data-panel="delivery">
-            <div class="fields">
+<?php if ($ggAddresses): ?>
+            <fieldset class="group">
+              <legend class="field__label">Адрес доставки</legend>
+              <div class="split">
+<?php foreach ($ggAddresses as $a):
+        $line = implode(', ', array_filter([
+            $a['label'] !== '' ? $a['street'] : '',
+            $a['apartment'] !== '' ? 'кв. ' . $a['apartment'] : '',
+            $a['intercom'] !== '' ? 'домофон ' . $a['intercom'] : '',
+        ])); ?>
+                <label class="cap cap--split">
+                  <input type="radio" name="address" value="<?= (int)$a['id'] ?>"<?= $ggAddressChoice === (string)$a['id'] ? ' checked' : '' ?>>
+                  <span class="cap__face">
+                    <span class="cap__label"><?= gg_e($a['label'] !== '' ? $a['label'] : $a['street']) ?></span>
+                    <?php if ($line !== ''): ?><span class="cap__sub"><?= gg_e($line) ?></span><?php endif; ?>
+                  </span>
+                </label>
+<?php endforeach; ?>
+                <label class="cap cap--split">
+                  <input type="radio" name="address" value="new"<?= $ggAddressChoice === 'new' ? ' checked' : '' ?>>
+                  <span class="cap__face">
+                    <span class="cap__label">Другой адрес</span>
+                    <span class="cap__sub">Ввести новый</span>
+                  </span>
+                </label>
+              </div>
+            </fieldset>
+<?php endif; ?>
+            <div class="fields" data-new-address>
               <div class="field field--wide">
                 <span class="field__label">Город</span>
                 <p class="field__static">Москва</p>
@@ -325,6 +436,19 @@ $splitTexts = [
               <?= $field(['id' => 'co-apartment', 'name' => 'apartment', 'label' => 'Квартира или офис',
                           'autocomplete' => 'address-line2', 'optional' => true]) ?>
               <?= $field(['id' => 'co-intercom', 'name' => 'intercom', 'label' => 'Домофон', 'optional' => true]) ?>
+<?php if ($ggUser): ?>
+<?php   if (count($ggAddresses) >= GG_ADDRESS_MAX): ?>
+              <p class="field__hint field--wide">В кабинете уже 10 адресов, этот не сохраним</p>
+<?php   else: ?>
+              <div class="field field--wide">
+                <label class="check" for="co-save-address">
+                  <input type="checkbox" id="co-save-address" name="save_address" value="Y"<?= !$post || !empty($post['save_address']) ? ' checked' : '' ?>>
+                  <span class="check__box" aria-hidden="true"><?= gg_icon('check') ?></span>
+                  <span>Сохранить адрес в кабинете</span>
+                </label>
+              </div>
+<?php   endif; ?>
+<?php endif; ?>
             </div>
           </div>
 

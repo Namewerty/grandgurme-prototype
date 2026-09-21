@@ -281,10 +281,84 @@ function gg_action_link(array $item): string
             . '</button>';
     }
 
+    if (($item['key'] ?? '') === 'heart') {
+        return gg_header_favorites_link($item);
+    }
+    if (($item['key'] ?? '') === 'user') {
+        return gg_header_account_link($item);
+    }
+
     return '<a class="icon-btn" href="' . gg_e($item['href']) . '">'
         . gg_icon($item['key'])
         . '<span class="visually-hidden">' . gg_e($item['label']) . '</span>'
         . '</a>';
+}
+
+/**
+ * Сердце в шапке: счётчик того же вида, что у корзины, скрыт при нуле.
+ * Разметка — из записки PERENOS-kabinet-i-izbrannoe.md, раздел 6: скрипт
+ * в режиме ssr её не трогает, число считает сервер.
+ */
+function gg_header_favorites_link(array $item): string
+{
+    require_once __DIR__ . '/favorites.php';
+    $n = gg_fav_count();
+    $label = $n ? 'Избранное, товаров: ' . $n : 'Избранное';
+    return '<a class="icon-btn fav-btn" href="/favorites/">'
+        . gg_icon('heart')
+        . '<span class="fav-btn__count" data-count="' . $n . '" aria-hidden="true">' . $n . '</span>'
+        . '<span class="visually-hidden">' . gg_e($label) . '</span>'
+        . '</a>';
+}
+
+/**
+ * Человек в шапке. Гость — «Войти» на /account/login/. Вошедший — «Личный
+ * кабинет», а если у него есть имя, вместо иконки круг с первой буквой.
+ */
+function gg_header_account_link(array $item): string
+{
+    require_once __DIR__ . '/account.php';
+    $user = gg_account_user();
+    if (!$user) {
+        $request = \Bitrix\Main\Context::getCurrent()->getRequest();
+        $path = (string)parse_url((string)$request->getRequestUri(), PHP_URL_PATH);
+        // С самой страницы входа возврат не нужен; с остальных — на них же.
+        $href = strncmp($path, '/account/login', 14) === 0 ? '/account/login/' : gg_login_url();
+        return '<a class="icon-btn" href="' . gg_e($href) . '">'
+            . gg_icon('user')
+            . '<span class="visually-hidden">Войти</span>'
+            . '</a>';
+    }
+    $name = $user['name'];
+    if ($name === '') {
+        return '<a class="icon-btn" href="/account/">'
+            . gg_icon('user')
+            . '<span class="visually-hidden">Личный кабинет</span>'
+            . '</a>';
+    }
+    return '<a class="icon-btn is-user" href="/account/">'
+        . '<span class="user-initial" aria-hidden="true">' . gg_e(mb_strtoupper(mb_substr($name, 0, 1))) . '</span>'
+        . '<span class="visually-hidden">' . gg_e('Личный кабинет, ' . $name) . '</span>'
+        . '</a>';
+}
+
+/** Ссылки входа и избранного в мобильном меню: текст по состоянию. */
+function gg_nav_meta_item(array $item): array
+{
+    if (($item['key'] ?? '') === 'heart') {
+        require_once __DIR__ . '/favorites.php';
+        $n = gg_fav_count();
+        return ['href' => '/favorites/', 'label' => $n ? 'Избранное · ' . $n : 'Избранное'];
+    }
+    if (($item['key'] ?? '') === 'user') {
+        require_once __DIR__ . '/account.php';
+        $user = gg_account_user();
+        if (!$user) {
+            return ['href' => '/account/login/', 'label' => 'Войти'];
+        }
+        return ['href' => '/account/', 'label' => $user['name'] !== '' ? $user['name'] . ' · кабинет' : 'Личный кабинет'];
+    }
+    return $item;
 }
 
 /**
@@ -533,7 +607,7 @@ function gg_nav_panel(): void
     }
     foreach ($d['navActions'] as $i) {
         if (($i['action'] ?? '') !== 'search') {
-            $meta[] = $i;
+            $meta[] = gg_nav_meta_item($i);
         }
     }
     foreach ($d['topbar']['end'] as $i) {

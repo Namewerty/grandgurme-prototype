@@ -193,6 +193,37 @@ $requestItems = static function (?array $request): string {
     <?= $requestItems($ownRequest) ?>
 <?php endif; ?>
 
+<?php
+/* Кабинет (21.09.2026). Гостю — блок «Следите за заказом в кабинете» со входом:
+   номер из заказа подставится в поле, после входа заказ привяжется к кабинету
+   по этому номеру (gg_bind_guest_orders) и откроется. Вошедшему — кнопка
+   «Мои заказы» внизу. Тексты — src/data/account-copy.js → success. */
+$ggUser = gg_account_user();
+$ggIsOrder = $number !== '';
+$ggBack = $ggIsOrder ? '/account/order/?n=' . rawurlencode($number) : '/account/request/?r=' . rawurlencode($requestNumber);
+if (!$ggUser && ($number !== '' || $requestNumber !== '')):
+    $ggDigits = gg_login_record_phone($ggIsOrder ? 'order' : 'request', $number, $requestNumber);
+    $ggPhone = $ggDigits !== '' ? gg_phone_format($ggDigits) : '';
+    if ($ggIsOrder) {
+        $ggText = $ggPhone !== ''
+            ? 'Войдите по номеру ' . $ggPhone . ' — заказ появится в разделе «Заказы и заявки».'
+            : 'Войдите по номеру, который указали в заказе, — заказ появится в разделе «Заказы и заявки».';
+    } else {
+        $ggText = $ggPhone !== ''
+            ? 'Войдите по номеру ' . $ggPhone . ' — заявка появится в разделе «Заказы и заявки».'
+            : 'Войдите по номеру, который указали в заявке, — заявка появится в разделе «Заказы и заявки».';
+    }
+    $ggLogin = '/account/login/?' . http_build_query($ggIsOrder
+        ? ['from' => 'order', 'n' => $number, 'back' => $ggBack]
+        : ['from' => 'request', 'r' => $requestNumber, 'back' => $ggBack]);
+?>
+    <section class="order-done__block order-done__account" aria-labelledby="order-account">
+      <h2 class="co-label" id="order-account"><?= $ggIsOrder ? 'Следите за заказом в кабинете' : 'Следите за заявкой в кабинете' ?></h2>
+      <p class="order-done__account-text"><?= gg_e($ggText) ?></p>
+      <a class="btn" href="<?= gg_e($ggLogin) ?>">Войти</a>
+    </section>
+<?php endif; ?>
+
     <section class="order-done__block" aria-labelledby="order-contacts">
       <h2 class="co-label" id="order-contacts">Если нужно что-то поменять</h2>
       <p class="order-done__contacts">
@@ -202,9 +233,11 @@ $requestItems = static function (?array $request): string {
       </p>
     </section>
 
-    <?php /* Кнопки «Мои заказы» здесь нет: кабинета на стенде нет. */ ?>
     <div class="order-done__actions">
       <a class="btn btn--solid" href="/catalog">В каталог</a>
+<?php if ($ggUser && ($number !== '' || $requestNumber !== '')): ?>
+      <a class="btn" href="<?= gg_e($ggBack) ?>">Мои заказы</a>
+<?php endif; ?>
     </div>
   </div>
 </div>

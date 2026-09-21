@@ -16,6 +16,12 @@ if (!defined('B_PROLOG_INCLUDED') || B_PROLOG_INCLUDED !== true) die();
 
 require_once __DIR__ . '/include/fn.php';
 
+/* Сердце — обычная форма на любой странице с карточками: обработать её надо
+   до того, как пойдёт разметка (include/favorites.php). Ответ — редирект
+   на ту же страницу или JSON для скрипта. */
+require_once __DIR__ . '/include/favorites.php';
+gg_fav_handle_post();
+
 $ggHero = defined('GG_HERO') && GG_HERO === true;
 ?><!doctype html>
 <html lang="<?= LANGUAGE_ID ?>" data-theme="light">
@@ -38,6 +44,9 @@ $ggHero = defined('GG_HERO') && GG_HERO === true;
   <link rel="stylesheet" href="<?= gg_asset('/assets/css/app.css') ?>">
 
 <?php $APPLICATION->ShowHead(); ?>
+  <?php /* Поле кода без скрипта: цифры видны в самом поле, ячейки прячутся.
+           Со скриптом ячейки заполняет src/bitrix/account-hydrate.js. */ ?>
+  <noscript><style>.code-input__field{color:inherit;caret-color:auto}.code-input__cells{visibility:hidden}</style></noscript>
   <title><?php $APPLICATION->ShowTitle(); ?></title>
 
   <script>

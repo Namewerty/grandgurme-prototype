@@ -13,6 +13,9 @@
 | 17.09.2026 | тип инфоблоков `gg_service`, инфоблок `gg_requests` «Заявки менеджеру» (ID 6), свойства 223–231 | скрипт `bitrix/install/gg-requests-install.php` | хранение заявок менеджеру |
 | 17.09.2026 | тип почтового события `GG_MANAGER_REQUEST` и шаблон ID 89, получатель `sale@bitrix.grandgurme.ru` | тот же скрипт | письмо менеджеру о заявке; ⚠ адрес менеджера не подтверждён |
 | 17.09.2026 | `/local/gg-stand/manifest.json` — манифест последней заливки | `bitrix/install/stand-deploy.php` | сверка стенда с репозиторием |
+| 21.09.2026 | `/upload/gg-stand/` — папка для архивов заливки | командная PHP-строка | туда кладётся архив `npm run stand` для `stand-deploy.php` |
+| 21.09.2026 | `/media/video/hero-brand-poster.jpg`, `hero-brand-portrait-poster.jpg` | Файлы и папки | постеры первого экрана; ролики не залиты — лимит nginx ≈ 1 МБ |
+| 21.09.2026 | таблицы `gg_auth_code`, `gg_favorite`, `gg_address`, `gg_order_meta`; поле `UF_GG_MARKETING`; свойство `USER_ID` у `gg_requests` | скрипт `bitrix/install/gg-account-install.php` | вход, избранное, адреса и заказы кабинета |
 
 ## Как стенд настроен сейчас (снято 17.09.2026, сами не меняли)
 

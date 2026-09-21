@@ -32,6 +32,7 @@ if (!defined('B_PROLOG_INCLUDED') || B_PROLOG_INCLUDED !== true) die();
 /** @var CMain $APPLICATION */
 
 require_once $_SERVER['DOCUMENT_ROOT'] . SITE_TEMPLATE_PATH . '/include/catalog.php';
+require_once $_SERVER['DOCUMENT_ROOT'] . SITE_TEMPLATE_PATH . '/include/favorites.php';
 
 $cat = gg_catalog_category((string)($arParams['GG_CATEGORY_SLUG'] ?? ''));
 if (!$cat) {
@@ -281,6 +282,7 @@ if ($items && $page['ids']) {
       <article class="product">
         <div class="product__frame">
           <a class="product__shot" href="<?= gg_e($href) ?>" tabindex="-1" aria-hidden="true"><?= gg_product_shot($item, $alt) ?></a>
+          <?= gg_fav_button((int)$item['ID'], $title) ?>
         </div>
         <div class="product__body">
           <h3 class="product__name"><a href="<?= gg_e($href) ?>"><?= gg_e($title) ?></a></h3>

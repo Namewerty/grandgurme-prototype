@@ -32,6 +32,7 @@ if (!defined('B_PROLOG_INCLUDED') || B_PROLOG_INCLUDED !== true) die();
 /** @var CMain $APPLICATION */
 
 require_once $_SERVER['DOCUMENT_ROOT'] . SITE_TEMPLATE_PATH . '/include/catalog.php';
+require_once $_SERVER['DOCUMENT_ROOT'] . SITE_TEMPLATE_PATH . '/include/favorites.php';
 
 $cat = gg_catalog_category((string)($arParams['GG_CATEGORY_SLUG'] ?? ''));
 
@@ -116,7 +117,9 @@ $formAction = (string)parse_url((string)($_SERVER['REQUEST_URI'] ?? ''), PHP_URL
           </div>
           <button type="submit" class="btn btn--solid"><?= $kind === 'request' ? 'Добавить в заявку' : 'В корзину' ?></button>
           <a class="btn" href="/contacts"><?= gg_e($secondLabel) ?></a>
+          <?= gg_fav_button((int)$arResult['ID'], $goods['name'], 'pbuy__fav', 'fav-form-' . (int)$arResult['ID']) ?>
         </form>
+        <?= gg_fav_form((int)$arResult['ID'], 'fav-form-' . (int)$arResult['ID']) ?>
 
         <?php /* Обещания и их иконки — те же три, что в прототипе
                  (src/data/product-copy.js). Иконка обязательна: строка
