@@ -17,6 +17,11 @@
    каждое нажатие «+» сбрасывала бы фокус со степпера, и с клавиатуры
    прибавить три банки подряд было бы нельзя.
 
+   КОРОБКИ (src/data/boxes.js, с 23.09.2026 выбор в карточке и здесь).
+   У коробочной строки в наличии под названием выбранные веса и ссылка
+   «Выбрать другие» → окно выбора (box-dialog.js); «+» и «−» степпера
+   добавляют и снимают коробки сами (store.js → fitPacks), сумма точная.
+
    Хранилища страница не знает: только API store.js. Функции разметки
    принимают простой объект позиции.
    ============================================================================ */
@@ -30,8 +35,10 @@ import { createImage } from '../media.js'
 import { icons } from '../icons.js'
 import { createQtyStepper } from '../components/qty-stepper.js'
 import { kindIcon } from '../components/stock-tag.js'
+import { getFreePacks } from './boxes.js'
+import { openBoxDialog } from './box-dialog.js'
 import * as cart from './store.js'
-import { boxNote, groupLead, lineSum, lineSumLabel, positionsLabel, summaryTexts } from './summary.js'
+import { boxNote, fillText, groupLead, lineSum, lineSumLabel, positionsLabel, summaryTexts } from './summary.js'
 
 const copy = cartCopy
 const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -153,19 +160,26 @@ function emptyState() {
  * Строка позиции. Принимает простой объект позиции и обработчики —
  * о корзине не знает ничего.
  */
-function createLine(line, { onQty, onRemove }) {
+function createLine(line, { onQty, onRemove, onPick }) {
   const node = document.createElement('li')
   node.className = 'cart-line'
   node.dataset.id = line.id
 
   const name = escapeHtml(line.name)
+  // Ссылка «Выбрать другие» — только у коробок в наличии: под заказ выбирать не из чего.
+  const canPick = Boolean(line.boxes) && line.kind === 'stock'
   node.innerHTML = `
     <a class="cart-line__shot" href="${line.href}" tabindex="-1" aria-hidden="true"></a>
     <div class="cart-line__body">
       <h3 class="cart-line__name"><a href="${line.href}">${name}</a></h3>
       <button type="button" class="icon-btn cart-line__remove" data-remove
               aria-label="${copy.line.remove}: ${name}">${icons.close}</button>
-      <p class="cart-line__note" data-line-note></p>
+      <p class="cart-line__note"><span data-line-note></span>${
+        canPick
+          ? ` <button type="button" class="link-btn cart-line__pick" data-pick
+                      aria-label="${escapeHtml(fillText(copy.boxes.pickLabel, { name: line.name }))}"></button>`
+          : ''
+      }</p>
       <span data-line-qty></span>
       <p class="cart-line__sum" data-line-sum></p>
     </div>`
@@ -193,18 +207,22 @@ function createLine(line, { onQty, onRemove }) {
   node.querySelector('[data-line-qty]').replaceWith(stepper.node)
 
   node.querySelector('[data-remove]').addEventListener('click', () => onRemove(line.id))
+  node.querySelector('[data-pick]')?.addEventListener('click', () => onPick(line.id))
 
+  const noteRow = node.querySelector('.cart-line__note')
   const note = node.querySelector('[data-line-note]')
+  const pick = node.querySelector('[data-pick]')
   const sum = node.querySelector('[data-line-sum]')
 
   return {
     node,
     update(next) {
       // Приписки наличия в строке больше нет: срок сказан заголовком группы.
-      // У коробок подпись зависит от количества и выбора (boxNote).
+      // У коробок подпись — выбранные веса (boxNote), рядом «Выбрать другие».
       const text = boxNote(next) ?? next.note
       note.textContent = text
-      note.hidden = !text
+      noteRow.hidden = !text && !pick
+      if (pick) pick.textContent = next.qty === 1 ? copy.boxes.pickOne : copy.boxes.pick
       sum.textContent = lineSumLabel(next)
       sum.classList.toggle('is-request', next.price == null)
       // Сумма позиции заявки в итог не входит — пишется приглушённо.
@@ -239,6 +257,24 @@ export function initCartPage(mount) {
   const handlers = {
     onQty: (id, qty) => cart.setQty(id, qty),
     onRemove: (id) => removeLine(id),
+    onPick: (id) => pickBoxes(id),
+  }
+
+  /** «Выбрать другие»: окно со свободными коробками; фокус возвращается на ссылку. */
+  async function pickBoxes(id) {
+    const line = cart.getItems().find((item) => item.id === id)
+    if (!line?.boxes) return
+    const free = await getFreePacks(line.slug)
+    const ids = await openBoxDialog({
+      name: line.name,
+      pricePerKg: line.boxes.pricePerKg,
+      nominalG: line.boxes.nominalG,
+      n: line.qty,
+      free,
+      selected: line.boxes.packIds,
+    })
+    if (ids) cart.setPacks(id, ids)
+    rows.get(id)?.node.querySelector('[data-pick]')?.focus({ preventScroll: true })
   }
 
   function removeLine(id) {

@@ -30,11 +30,13 @@
    пока человек не перезагрузит всё. Заказы и заявки остаются на версии 2.
 
    ВЕРСИЯ 4 КОРЗИНЫ (22.09.2026): у позиции поле boxes — коробки с разным
-   весом (src/data/boxes.js): { nominalG, pricePerKg, packIds, picked } либо
-   null у обычной позиции. Версии 2 и 3 читаются: у позиции, которая
-   в каталоге стала коробочной, boxes, price и note берутся из каталога
-   по слагу — иначе у losos-hk-korobka-146 остались бы старые «1 шт, 146 г»
-   и 1 883 ₽; у остальных boxes: null.
+   весом (src/data/boxes.js): { nominalG, pricePerKg, packIds } либо null
+   у обычной позиции. Версии 2 и 3 читаются: у позиции, которая в каталоге
+   стала коробочной, boxes, price и note берутся из каталога по слагу —
+   иначе у losos-hk-korobka-146 остались бы старые «1 шт, 146 г» и 1 883 ₽;
+   у остальных boxes: null. Поле picked записей 22.09 (кто выбрал коробки)
+   с 23.09 не читается: выбранных коробок у строки всегда столько же, сколько
+   коробок, недостающие подбирает store.js при чтении.
 
    КОРЗИНА ПО ПОЛЬЗОВАТЕЛЮ (17.09.2026). Ключ корзины — gg-cart у гостя
    и gg-cart:<userId> у вошедшего. Текущий ключ определяется при КАЖДОМ чтении
@@ -142,7 +144,7 @@ function upgradeLine(line) {
     next = isBox(product)
       ? {
           ...next,
-          boxes: { nominalG: product.nominalG, pricePerKg: product.pricePerKg, packIds: [], picked: null },
+          boxes: { nominalG: product.nominalG, pricePerKg: product.pricePerKg, packIds: [] },
           price: product.price,
           note: product.weightLabel,
         }
@@ -151,15 +153,20 @@ function upgradeLine(line) {
   return next
 }
 
-/** Слияние корзин: у коробок в наличии количество не больше свободных коробок, выбор сброшен. */
-function mergeBoxLine(line) {
+/**
+ * Слияние корзин: у коробок в наличии количество не больше свободных
+ * коробок; выбранные коробки обеих корзин складываются, лишние и недостающие
+ * приводит в порядок store.js при чтении (fitPacks).
+ */
+function mergeBoxLine(line, other = null) {
   if (!line.boxes) return line
   const product = line.slug ? findProductBySlug(line.slug) : null
   const cap = isBox(product) && product.packs.length ? peekFreeCount(line.slug) : MAX_QTY
+  const packIds = [...new Set((line.boxes.packIds || []).concat(other?.boxes?.packIds || []))]
   return {
     ...line,
     qty: Math.max(1, Math.min(cap, Number(line.qty) || 1)),
-    boxes: { ...line.boxes, packIds: [], picked: null },
+    boxes: { ...line.boxes, packIds },
   }
 }
 
@@ -206,12 +213,19 @@ export function mergeGuestCart(userId) {
 
   const items = own.items.map((line) => ({ ...line }))
   guest.items.forEach((line) => {
-    const same = items.find((item) => item.id === line.id)
-    if (same) same.qty = Math.min(MAX_QTY, Math.max(Number(same.qty) || 0, Number(line.qty) || 0))
-    else items.push({ ...line, qty: Math.min(MAX_QTY, Number(line.qty) || 1) })
+    const at = items.findIndex((item) => item.id === line.id)
+    if (at >= 0) {
+      const same = items[at]
+      items[at] = mergeBoxLine(
+        { ...same, qty: Math.min(MAX_QTY, Math.max(Number(same.qty) || 0, Number(line.qty) || 0)) },
+        line,
+      )
+    } else {
+      items.push(mergeBoxLine({ ...line, qty: Math.min(MAX_QTY, Number(line.qty) || 1) }))
+    }
   })
 
-  write(cartKeyOf(userId), { version: CART_VERSION, items: items.map(mergeBoxLine), promo: own.promo || guest.promo })
+  write(cartKeyOf(userId), { version: CART_VERSION, items, promo: own.promo || guest.promo })
   drop(CART_KEY)
 }
 

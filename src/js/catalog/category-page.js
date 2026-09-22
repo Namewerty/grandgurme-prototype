@@ -297,7 +297,7 @@ function buildCard(ctx, product) {
     // (см. productPages в src/data/routes.js).
     href: ROUTES.product(product.slug),
     // Цены может не быть вовсе: в выгрузке 1С по чёрной икре её нет.
-    // У коробок она приблизительная — «≈ 2 580 ₽» (priceText).
+    // У коробок — цена коробки по умолчанию, без «≈» (priceText).
     price: priceText(product) ?? copy.card.priceOnRequest,
     oldPrice: product.oldPrice ? formatPrice(product.oldPrice) : null,
     image: { src: product.photo, ratio: '1:1' },

@@ -23,9 +23,10 @@ export const toastText = (kind, now = new Date()) =>
  * @param {object} product позиция каталога или снимок витрины; categorySlug
  *   обязателен у позиций каталога — от раздела зависит, под заказ это или заявка
  * @param {number} [qty]
+ * @param {{ packIds?: string[] }} [options] коробки, отмеченные в карточке
  */
-export function addWithToast(product, qty = 1) {
-  const { added, max } = add(product, qty)
+export function addWithToast(product, qty = 1, options = {}) {
+  const { added, max } = add(product, qty, options)
 
   // Коробки: упёрлись в число свободных на складе — вместо обычного тоста.
   if (isBox(product) && added < qty) {

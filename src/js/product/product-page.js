@@ -47,6 +47,7 @@ import { createImage } from '../media.js'
 import { approxLabel, escapeHtml, formatPrice, priceText } from '../catalog/model.js'
 import { isBox, packsWord, pricePer100 } from '../../data/boxes.js'
 import { getFreePacks, peekFreeCount } from '../cart/boxes.js'
+import { boxPriceMarkup, createBoxPicker } from './box-picker.js'
 import { MAX_QTY } from '../cart/store.js'
 import { icons } from '../icons.js'
 import { createArrow, createPager, initRail } from '../rail.js'
@@ -61,14 +62,22 @@ export function slugFromPath(pathname = location.pathname) {
   return clean.startsWith('/product/') ? clean.slice('/product/'.length) : null
 }
 
-/** Цена в лентах: у коробок «≈ 2 580 ₽», без цены — «Цена по запросу». */
+/** Цена в лентах: у коробок — коробка по умолчанию, без цены — «Цена по запросу». */
 const priceLabel = (product) => priceText(product) ?? copy.buy.priceOnRequest
 
-/** Цена в правой колонке: у коробок ещё и мелко «за коробку». */
-const priceMarkup = (product) =>
-  isBox(product)
-    ? `${approxLabel(product.price)} <span class="pbuy__price-unit">${copy.boxes.perBox}</span>`
-    : priceLabel(product)
+/**
+ * Цена в правой колонке. У коробки в наличии — точная цена коробки по
+ * умолчанию и «за коробку 202 г» (потом её перерисовывает ряд весов,
+ * см. wireBoxes); у коробки под заказ — «≈ 1 980 ₽» и «за коробку».
+ */
+function priceMarkup(product) {
+  if (!isBox(product)) return priceLabel(product)
+  if (!product.inStock || !product.defaultPack) {
+    return `${approxLabel(product.price)} <span class="pbuy__price-unit">${copy.boxes.perBoxApprox}</span>`
+  }
+  const first = product.defaultPack
+  return boxPriceMarkup({ count: 1, packs: [first], sum: product.price, weights: `${first.weightG} г` })
+}
 
 /** Позиции той же линейки: у икры это grade, у остальных — само название. */
 function lineOf(product) {
@@ -211,7 +220,7 @@ function buyColumn(product) {
     <div class="pbuy">
       <h1 class="pbuy__title">${escapeHtml(product.name)}</h1>
       ${line ? `<p class="pbuy__line">${escapeHtml(line)}</p>` : ''}
-      <p class="pbuy__price">${priceMarkup(product)}</p>
+      <p class="pbuy__price" data-price>${priceMarkup(product)}</p>
       ${isBox(product) ? '<p class="pbuy__boxes" data-boxes-line></p>' : ''}
       <div class="pbuy__kind">
         ${stockTagHtml(kind)}
@@ -219,6 +228,7 @@ function buyColumn(product) {
       </div>
 
       ${buyRows(product)}
+      ${isBox(product) && product.inStock ? '<div data-boxes-row></div>' : ''}
 
       <div class="pbuy__actions">
         <span data-qty></span>
@@ -254,9 +264,15 @@ function specs(product) {
     .filter((key) => product.attrs?.[key])
     .map((key) => ({ term: copy.specs.labels[key], value: product.attrs[key] }))
 
-  // У коробки вес номинальный: «Вес коробки — около 200 г».
+  // У коробки в наличии — разброс весов на складе, под заказ — «около 200 г».
   if (isBox(product)) {
-    rows.push({ term: copy.boxes.specWeight, value: fillText(copy.boxes.specWeightValue, { g: product.nominalG }) })
+    const range = product.weightRange
+    rows.push({
+      term: copy.boxes.specWeight,
+      value: range
+        ? fillText(copy.boxes.specWeightRange, range)
+        : fillText(copy.boxes.specWeightValue, { g: product.nominalG }),
+    })
   } else if (product.weightG) {
     rows.push({ term: copy.specs.weight, value: `${product.weightG} г` })
   }
@@ -494,27 +510,43 @@ function wireGallery(root, product) {
 /* ------------------------------------------------------------- коробки */
 
 /**
- * Строка под ценой у позиции в коробках (src/data/boxes.js): цена за 100 г
- * и что лежит на складе. Коробки берутся через границу cart/boxes.js —
- * список приходит асинхронно, строка заполняется, когда он пришёл.
- * Под заказ (коробок нет): вес узнают при фасовке.
+ * Позиция в коробках (src/data/boxes.js): строка под ценой про цену за 100 г
+ * и ряд весов (box-picker.js), связанный со степпером в обе стороны.
+ * Коробки берутся через границу cart/boxes.js — список приходит асинхронно,
+ * ряд появляется, когда он пришёл; до этого цена — коробки по умолчанию
+ * из данных, та же. Под заказ (коробок нет): только строка про фасовку.
+ * @param {{ onPick: (picked: object) => void }} o  ряд поменял число коробок — степперу
+ * @returns {Promise<{ ids: () => string[], setCount: (n: number) => void } | null>}
  */
-async function fillBoxesLine(root, product) {
-  const node = root.querySelector('[data-boxes-line]')
-  if (!node) return
+async function wireBoxes(root, product, { onPick }) {
+  const line = root.querySelector('[data-boxes-line]')
+  if (!line) return null
   const c = copy.boxes
   const per100 = formatPrice(pricePer100(product.pricePerKg))
 
   if (!product.inStock) {
-    node.textContent = fillText(c.preorderLine, { per100 })
-    return
+    line.textContent = fillText(c.preorderLine, { per100 })
+    return null
   }
-  const packs = await getFreePacks(product.slug)
-  const weights = packs.map((pack) => pack.weightG)
-  node.textContent =
-    packs.length === 1
-      ? fillText(c.stockOne, { per100, w: weights[0] })
-      : fillText(c.stockLine, { per100, min: Math.min(...weights), max: Math.max(...weights) })
+  line.textContent = fillText(c.stockLine, { per100 })
+
+  const free = await getFreePacks(product.slug)
+  const slot = root.querySelector('[data-boxes-row]')
+  const price = root.querySelector('[data-price]')
+  if (!free.length || !slot) return null
+
+  const picker = createBoxPicker({
+    free,
+    nominalG: product.nominalG,
+    pricePerKg: product.pricePerKg,
+    onChange: (picked) => {
+      price.innerHTML = boxPriceMarkup(picked)
+      onPick(picked)
+    },
+  })
+  slot.replaceWith(picker.node)
+  price.innerHTML = boxPriceMarkup(picker.state())
+  return { ids: () => picker.state().ids, setCount: picker.setCount }
 }
 
 /* ------------------------------------------------- сообщить о поступлении */
@@ -660,7 +692,8 @@ export function initProductPage(mount) {
 
   // Количество живёт в степпере до нажатия «В корзину»: карточка ничего
   // не пишет в корзину, пока человек не решил. У коробок в наличии
-  // максимум — число свободных коробок; упёрлись — подпись под кнопками.
+  // максимум — число свободных коробок; упёрлись — подпись под кнопками;
+  // степпер и ряд весов — одно состояние (wireBoxes).
   const boxMax = isBox(product) && product.inStock ? Math.min(MAX_QTY, peekFreeCount(product.slug)) : MAX_QTY
   const limitNote = mount.querySelector('[data-boxes-limit]')
   const paintLimit = (value) => {
@@ -668,20 +701,33 @@ export function initProductPage(mount) {
     limitNote.hidden = value < boxMax
     limitNote.textContent = fillText(copy.boxes.limit, { n: boxMax, word: packsWord(boxMax) })
   }
+  let boxes = null
   const qty = createQtyStepper({
     value: 1,
     max: boxMax,
     label: copy.buy.qty,
     decrease: copy.buy.decrease,
     increase: copy.buy.increase,
-    onChange: paintLimit,
+    onChange: (value) => {
+      paintLimit(value)
+      boxes?.setCount(value)
+    },
   })
   mount.querySelector('[data-qty]')?.replaceWith(qty.node)
   paintLimit(qty.value)
-  fillBoxesLine(mount, product)
+  wireBoxes(mount, product, {
+    // Отметили или сняли капсулу — степпер следует за рядом; set() без onChange.
+    onPick: (picked) => {
+      if (qty.value === picked.count) return
+      qty.set(picked.count)
+      paintLimit(picked.count)
+    },
+  }).then((picker) => {
+    boxes = picker
+  })
 
   mount.querySelector('[data-add-to-cart]')?.addEventListener('click', () => {
-    addWithToast(product, qty.value)
+    addWithToast(product, qty.value, { packIds: boxes ? boxes.ids() : [] })
   })
 
   // Сердце — после кнопок; состояние общее с сердцами в лентах ниже.

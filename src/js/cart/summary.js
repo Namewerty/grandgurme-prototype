@@ -5,16 +5,16 @@
    С 16.09.2026 в заказе нет позиций «по запросу» (src/data/fulfillment.js):
    всё без цены — заявка менеджеру, в итог она не входит.
 
-   КОРОБКИ (22.09.2026, src/data/boxes.js). Сумма строки бывает
-   приблизительной: у коробок без ручного выбора и у коробок под заказ это
-   price × qty с пометкой approx, у ручного выбора и у строки заказа
-   с выбранными коробками — сумма цен коробок, точно. Одна функция lineSum
-   на корзину, оформление, заказ и кабинет; всё, что показывает суммы,
-   берёт её. Сводка с approx пишет «≈ 11 780 ₽».
+   КОРОБКИ (22.09.2026, src/data/boxes.js). Коробки выбираются в карточке,
+   и у строки корзины в наличии выбранных всегда столько же, сколько коробок
+   (store.js → fitPacks): её сумма — сумма цен коробок, точно. Приблизительной
+   (price × qty с пометкой approx) остаётся только коробка под заказ, которой
+   на складе нет. Одна функция lineSum на корзину, оформление, заказ и кабинет;
+   всё, что показывает суммы, берёт её. Сводка с approx пишет «≈ 11 780 ₽».
    ============================================================================ */
 
 import { cartCopy } from '../../data/cart-copy.js'
-import { boxLabel, packPrice, packsWord, weightsText } from '../../data/boxes.js'
+import { boxLabelApprox, packPrice, packsWord, weightsText } from '../../data/boxes.js'
 import { KINDS, formatDayMonth } from '../../data/fulfillment.js'
 import { approxLabel, formatPrice, plural } from '../catalog/model.js'
 import { findPack } from './boxes.js'
@@ -45,14 +45,12 @@ const cartPacks = (line) => (line.boxes?.packIds || []).map((id) => findPack(lin
 
 /**
  * Сумма строки: { value, approx }. value null — цены нет.
- *   ручной выбор коробок или строка заказа с выбранными коробками —
- *     сумма цен коробок, точно;
- *   коробки без ручного выбора и коробки под заказ — price × qty, approx;
+ *   строка корзины с выбранными коробками (их ровно qty) или строка заказа
+ *     с записанными коробками — сумма цен коробок, точно;
+ *   коробка под заказ (коробок нет) — price × qty, approx;
  *   обычная позиция — price × qty, точно.
- * @param {{ autoIsExact?: boolean }} [options] выбор 'auto' считать точным
- *   (оформление: подбор по номиналу уже сделан)
  */
-export function lineSum(line, { autoIsExact = false } = {}) {
+export function lineSum(line) {
   if (line.price == null) return { value: null, approx: false }
   const b = line.boxes
   if (!b) return { value: round2(line.price * line.qty), approx: false }
@@ -63,9 +61,8 @@ export function lineSum(line, { autoIsExact = false } = {}) {
     return { value: round2(line.price * line.qty), approx: true }
   }
 
-  const exact = b.picked === 'manual' || (autoIsExact && b.picked === 'auto')
-  const packs = exact ? cartPacks(line) : []
-  if (exact && packs.length === line.qty) {
+  const packs = cartPacks(line)
+  if (packs.length && packs.length === line.qty) {
     return { value: round2(packs.reduce((n, p) => n + packPrice(b.pricePerKg, p.weightG), 0)), approx: false }
   }
   return { value: round2(line.price * line.qty), approx: true }
@@ -78,8 +75,8 @@ export const sumLabel = ({ value, approx }) => (approx ? approxLabel(value) : fo
  * Сумма строки словами. У заявки сумма пишется, только если цена известна, —
  * приглушённо (is-estimate): в итог она не входит.
  */
-export function lineSumLabel(line, options) {
-  const sum = lineSum(line, options)
+export function lineSumLabel(line) {
+  const sum = lineSum(line)
   return sum.value == null ? cartCopy.line.priceOnRequest : sumLabel(sum)
 }
 
@@ -88,31 +85,26 @@ const chosenText = (weights) =>
 
 /**
  * Подпись коробочной строки под названием; null у обычной позиции.
- *   1 коробка, выбор не ручной      «Коробка ≈ 200 г»
- *   n коробок, выбор не ручной      «2 коробки по ≈ 200 г»
- *   ручной выбор (на оформлении)    «Коробки 204 и 206 г» / «Коробка 204 г»
- *   строка заказа с коробками       то же по записанным весам
- *   коробки под заказ в заказе      «… · взвесим при фасовке»
- * Выбор, сделанный системой ('auto'), в корзине не показывается: до
- * оформления человек видит только приблизительное.
+ *   строка корзины с выбранными коробками   «Коробка 204 г» / «Коробки 204 и 206 г»
+ *   строка заказа с коробками               то же по записанным весам
+ *   коробка под заказ                       «Коробка ≈ 200 г · взвесим при фасовке»,
+ *                                           «2 коробки по ≈ 200 г · взвесим при фасовке»
  */
 export function boxNote(line) {
   const b = line.boxes
   if (!b) return null
   const approx =
     line.qty === 1
-      ? boxLabel(b.nominalG)
+      ? boxLabelApprox(b.nominalG)
       : fillText(boxCopy.many, { n: line.qty, word: packsWord(line.qty), g: b.nominalG })
 
   if (Array.isArray(b.packs)) {
     if (!b.approx && b.packs.length) return chosenText(b.packs.map((p) => p.weightG))
     return `${approx} · ${boxCopy.weighLater}`
   }
-  if (b.picked === 'manual') {
-    const packs = cartPacks(line)
-    if (packs.length) return chosenText(packs.map((p) => p.weightG))
-  }
-  return approx
+  const packs = cartPacks(line)
+  if (packs.length) return chosenText(packs.map((p) => p.weightG))
+  return `${approx} · ${boxCopy.weighLater}`
 }
 
 /** Строка под заголовком группы. */

@@ -25,6 +25,9 @@ import './styles/components/buttons.css'
 import './styles/components/crumbs.css'
 import './styles/components/qty.css'
 import './styles/components/summary.css'
+// Окно выбора коробок (src/js/cart/box-dialog.js) и флажки в нём (.check).
+import './styles/components/form.css'
+import './styles/components/dialog.css'
 import './styles/pages/cart.css'
 
 import { initHeader } from './js/sections/header.js'

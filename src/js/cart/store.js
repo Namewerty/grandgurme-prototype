@@ -34,10 +34,10 @@
    ============================================================================ */
 
 import { ROUTES } from '../../data/routes.js'
-import { isBox } from '../../data/boxes.js'
+import { isBox, pickPacks } from '../../data/boxes.js'
 import { KINDS, isOrderKind, kindOf, readyDateFor } from '../../data/fulfillment.js'
 import { currentUserId } from '../account/session.js'
-import { peekFreeCount } from './boxes.js'
+import { peekFreeCount, peekFreePacks } from './boxes.js'
 import { MAX_QTY, loadCart, onExternalCartChange, saveCart } from './storage.js'
 import { lineSum } from './summary.js'
 
@@ -46,16 +46,19 @@ export { MAX_QTY }
 const clampQty = (qty) => Math.max(0, Math.min(MAX_QTY, Math.round(Number(qty) || 0)))
 
 /**
- * КОРОБКИ (22.09.2026, src/data/boxes.js). У позиции в коробках в снимке
- * поле boxes: { nominalG, pricePerKg, packIds, picked }: packIds — выбранные
- * коробки (пусто — подберём на оформлении), picked — кто выбрал: null,
- * 'auto' (система) или 'manual' (человек в окне выбора). У обычной позиции
- * boxes: null. Количество коробочной позиции в наличии не больше числа
- * свободных коробок (peekFreeCount), add и setQty обрезают сами; изменение
- * количества сбрасывает выбор.
+ * КОРОБКИ (22.09.2026, выбор в карточке с 23.09.2026, src/data/boxes.js).
+ * У позиции в коробках в снимке поле boxes: { nominalG, pricePerKg, packIds }:
+ * packIds — выбранные коробки В ПОРЯДКЕ ВЫБОРА. У строки в наличии их
+ * всегда ровно qty: карточка кладёт то, что человек отметил, «в корзину»
+ * из сетки — коробку по умолчанию, а недостающее стор подбирает сам,
+ * ближайшее к номиналу (fitPacks): «+» добавляет ближайшую свободную,
+ * «−» убирает последнюю добавленную. У коробки под заказ packIds пусто —
+ * на складе её нет. У обычной позиции boxes: null. Количество коробочной
+ * позиции в наличии не больше числа свободных коробок (peekFreeCount),
+ * add и setQty обрезают сами.
  */
 const boxesOf = (product) =>
-  isBox(product) ? { nominalG: product.nominalG, pricePerKg: product.pricePerKg, packIds: [], picked: null } : null
+  isBox(product) ? { nominalG: product.nominalG, pricePerKg: product.pricePerKg, packIds: [] } : null
 
 /** Запись boxes из хранилища приводится к форме выше; чужое — null. */
 function sanitizeBoxes(boxes) {
@@ -64,7 +67,6 @@ function sanitizeBoxes(boxes) {
     nominalG: Number(boxes.nominalG) || 0,
     pricePerKg: Number(boxes.pricePerKg) || 0,
     packIds: Array.isArray(boxes.packIds) ? boxes.packIds.filter((id) => typeof id === 'string') : [],
-    picked: boxes.picked === 'auto' || boxes.picked === 'manual' ? boxes.picked : null,
   }
 }
 
@@ -72,8 +74,22 @@ function sanitizeBoxes(boxes) {
 const limitOf = (line) =>
   line.boxes && line.kind === 'stock' && line.slug ? Math.min(MAX_QTY, peekFreeCount(line.slug)) : MAX_QTY
 
-const resetPicks = (line) => {
-  if (line.boxes) line.boxes = { ...line.boxes, packIds: [], picked: null }
+/**
+ * Выбранных коробок ровно qty: лишние (с конца) убираются, недостающие
+ * подбираются ближайшими к номиналу из свободных, не выбранных в строке;
+ * коробки, которых на складе больше нет, выпадают. Под заказ — пусто.
+ * Возвращает ту же строку с новым boxes.
+ */
+function fitPacks(line) {
+  if (!line.boxes) return line
+  if (line.kind !== 'stock' || !line.slug) return { ...line, boxes: { ...line.boxes, packIds: [] } }
+  const free = peekFreePacks(line.slug)
+  const freeIds = new Set(free.map((pack) => pack.id))
+  let ids = [...new Set(line.boxes.packIds)].filter((id) => freeIds.has(id)).slice(0, line.qty)
+  if (ids.length < line.qty) {
+    ids = ids.concat(pickPacks(free, line.qty - ids.length, line.boxes.nominalG, ids).map((pack) => pack.id))
+  }
+  return { ...line, boxes: { ...line.boxes, packIds: ids } }
 }
 
 /**
@@ -81,7 +97,7 @@ const resetPicks = (line) => {
  * Цена — число или null («цена по запросу»): строку «1 290 ₽» сюда не кладём,
  * иначе сумму пришлось бы разбирать обратно из текста.
  */
-function toLine(product, qty) {
+function toLine(product, qty, packIds = []) {
   const slug = product.slug ?? null
   const line = {
     id: String(product.id ?? slug),
@@ -97,7 +113,8 @@ function toLine(product, qty) {
     fulfillment: product.fulfillment === 'preorder' ? 'preorder' : null,
     boxes: boxesOf(product),
   }
-  return { ...line, kind: kindOf(line) }
+  if (line.boxes) line.boxes.packIds = packIds.filter((id) => typeof id === 'string')
+  return fitPacks({ ...line, kind: kindOf(line) })
 }
 
 /** Запись из хранилища могла быть поправлена руками или другой версией кода. */
@@ -106,12 +123,21 @@ const isValidLine = (line) =>
 
 let state = sanitize(loadCart())
 
-/** Вид не доверяем записи — считаем из снимка (см. шапку файла). */
+/**
+ * Вид не доверяем записи — считаем из снимка (см. шапку файла). Коробки
+ * тоже: у строки в наличии выбранных ровно qty (fitPacks) — запись другой
+ * версии кода или другой вкладки не оставит строку без коробок.
+ */
 function sanitize({ items, promo }) {
   return {
     items: items
       .filter(isValidLine)
-      .map((line) => ({ ...line, qty: clampQty(line.qty), boxes: sanitizeBoxes(line.boxes), kind: kindOf(line) })),
+      .map((line) => {
+        const next = { ...line, qty: clampQty(line.qty), boxes: sanitizeBoxes(line.boxes) }
+        next.kind = kindOf(next)
+        next.qty = Math.max(1, Math.min(next.qty, limitOf(next)))
+        return fitPacks(next)
+      }),
     promo,
   }
 }
@@ -166,15 +192,18 @@ export const getItems = () => state.items.map((line) => ({ ...line }))
  * Положить позицию. Возвращает, сколько добавилось на самом деле и предел
  * строки: у коробок в наличии он равен числу свободных коробок, и кнопка
  * «в корзину» по нему различает обычный тост и «больше положить нельзя».
+ * @param {{ packIds?: string[] }} [options] коробки, отмеченные в карточке;
+ *   без них — подбор ближайших к номиналу (fitPacks)
  * @returns {{ added: number, max: number }}
  */
-export function add(product, qty = 1) {
+export function add(product, qty = 1, { packIds = [] } = {}) {
   const amount = clampQty(qty)
   if (!product || !amount) return { added: 0, max: MAX_QTY }
 
   const id = String(product.id ?? product.slug)
-  const existing = state.items.find((line) => line.id === id)
-  const line = existing || toLine(product, amount)
+  const at = state.items.findIndex((line) => line.id === id)
+  const existing = at >= 0 ? state.items[at] : null
+  const line = existing || toLine(product, amount, packIds)
   const max = limitOf(line)
   const before = existing ? existing.qty : 0
   const next = Math.min(max, before + amount)
@@ -182,11 +211,11 @@ export function add(product, qty = 1) {
   if (added <= 0) return { added: 0, max }
 
   if (existing) {
-    existing.qty = next
-    resetPicks(existing)
+    // Уже лежит: к выбранным добавляются отмеченные сейчас, остальное подбор.
+    const merged = existing.boxes ? { ...existing.boxes, packIds: existing.boxes.packIds.concat(packIds) } : null
+    state.items[at] = fitPacks({ ...existing, qty: next, boxes: merged })
   } else {
-    line.qty = next
-    state.items.push(line)
+    state.items.push(fitPacks({ ...line, qty: next }))
   }
 
   commit()
@@ -195,8 +224,9 @@ export function add(product, qty = 1) {
 
 /** qty === 0 удаляет позицию: степпер на единице и крестик — одно действие. */
 export function setQty(id, qty) {
-  const line = state.items.find((item) => item.id === id)
-  if (!line) return
+  const at = state.items.findIndex((item) => item.id === id)
+  if (at < 0) return
+  const line = state.items[at]
   const next = Math.min(clampQty(qty), limitOf(line))
 
   if (!next) {
@@ -204,8 +234,7 @@ export function setQty(id, qty) {
     return
   }
   if (line.qty === next) return
-  line.qty = next
-  resetPicks(line)
+  state.items[at] = fitPacks({ ...line, qty: next })
   commit()
 }
 
@@ -216,15 +245,19 @@ export const maxQtyOf = (id) => {
 }
 
 /**
- * Выбранные коробки строки (оформление: подбор по номиналу или окно выбора).
+ * Выбранные коробки строки — окно выбора в корзине и замена купленной
+ * коробки перед отправкой. Количество строки следует за списком: сколько
+ * коробок отмечено, столько и в строке.
  * @param {string} id
  * @param {string[]} packIds
- * @param {'auto'|'manual'|null} picked
  */
-export function setPacks(id, packIds, picked) {
-  const line = state.items.find((item) => item.id === id)
+export function setPacks(id, packIds) {
+  const at = state.items.findIndex((item) => item.id === id)
+  const line = state.items[at]
   if (!line?.boxes) return
-  line.boxes = { ...line.boxes, packIds: packIds.slice(), picked: packIds.length ? picked : null }
+  const ids = [...new Set(packIds)]
+  const qty = Math.min(clampQty(ids.length) || line.qty, limitOf(line))
+  state.items[at] = fitPacks({ ...line, qty, boxes: { ...line.boxes, packIds: ids } })
   commit()
 }
 
@@ -244,7 +277,7 @@ export function clear() {
  * корзины (src/js/cart/demo.js); кнопки сайта кладут позиции через add.
  */
 export function replace(products) {
-  state = { items: products.map(({ product, qty }) => toLine(product, clampQty(qty) || 1)), promo: '' }
+  state = sanitize({ items: products.map(({ product, qty }) => toLine(product, clampQty(qty) || 1)), promo: '' })
   commit()
 }
 
@@ -270,17 +303,15 @@ export function setPromo(code) {
  *   order      заказ (stock + preorder): count, positions, sum, approx,
  *              hasStock, hasPreorder, readyAt. Без цены в заказ не попасть;
  *              approx — есть ли в заказе хоть одна приблизительная строка
- *              (коробки без выбранного веса, см. lineSum в summary.js);
+ *              (коробки под заказ, см. lineSum в summary.js);
  *   request    заявка: count, positions.
- * @param {{ autoIsExact?: boolean }} [options] выбор коробок 'auto' считать
- *   точным — нужно оформлению, где подбор уже сделан
  */
-export function getTotals({ autoIsExact = false } = {}) {
+export function getTotals() {
   const { items } = state
   const orderItems = items.filter((line) => isOrderKind(line.kind))
   const requestItems = items.filter((line) => line.kind === 'request')
   const byKind = Object.fromEntries(KINDS.map((kind) => [kind, items.filter((line) => line.kind === kind).length]))
-  const sums = orderItems.map((line) => lineSum(line, { autoIsExact }))
+  const sums = orderItems.map((line) => lineSum(line))
 
   return {
     count: items.reduce((n, line) => n + line.qty, 0),

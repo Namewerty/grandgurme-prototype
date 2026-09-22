@@ -54,11 +54,12 @@ export const approxLabel = (value) => `${categoryCopy.boxes.approx}${formatPrice
 
 /**
  * Подпись цены позиции — одна на сетку каталога, ленты карточки, подсказки
- * поиска и избранное: у позиции в коробках цена приблизительная, «≈ 2 580 ₽».
+ * поиска и избранное. У позиции в коробках это цена коробки по умолчанию
+ * (та же, что откроется в карточке) — без «≈»: в каталоге приблизительного
+ * не пишем (решение Дениса 23.09.2026, см. src/data/boxes.js).
  * null — цены нет; текст «Цена по запросу» у каждого носителя свой.
  */
-export const priceText = (item) =>
-  item?.price == null ? null : item.sale === 'box' ? approxLabel(item.price) : formatPrice(item.price)
+export const priceText = (item) => (item?.price == null ? null : formatPrice(item.price))
 
 /** «товар» / «товара» / «товаров». */
 export function plural(n, one, few, many) {

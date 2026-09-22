@@ -396,7 +396,8 @@ export async function reorder(number) {
       result.skipped.push(line.name)
       return
     }
-    addToCart(product || line, line.qty)
+    // Коробки — те же, что были в заказе, пока они свободны; иначе подбор.
+    addToCart(product || line, line.qty, { packIds: (line.boxes?.packs || []).map((pack) => pack.id) })
     result.added += 1
   })
   return result
