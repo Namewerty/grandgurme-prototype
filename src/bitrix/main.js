@@ -63,6 +63,9 @@ import '../styles/pages/account.css'
 import '../styles/components/status-tag.css'
 import '../styles/components/code-input.css'
 import '../styles/components/dialog.css'
+// Шаги входа (22.09.2026): правила .login__* уехали из account.css в свой
+// файл, потому что ими пользуется и окно входа на карточке товара.
+import '../styles/components/login.css'
 
 import { initHeader } from '../js/sections/header.js'
 import { initFooter } from '../js/sections/footer.js'

@@ -34,6 +34,11 @@ import { cartCopy } from '../../data/cart-copy.js'
 import { formatDayMonth, kindOf, preorderDate } from '../../data/fulfillment.js'
 import { addWithToast } from '../cart/add.js'
 import { fillText } from '../cart/summary.js'
+import { showToast } from '../cart/toast.js'
+import { addToWaitlist, isInWaitlist, onWaitlistChange, removeFromWaitlist, restoreToWaitlist } from '../account/api.js'
+import { openLoginDialog } from '../account/login-dialog.js'
+import { phoneLabel } from '../account/layout.js'
+import { currentUser, onChange as onAccountChange } from '../account/session.js'
 import { createProductCard } from '../components/product-card.js'
 import { createHeartButton, favoriteFor } from '../favorites/toggle.js'
 import { stockTagHtml } from '../components/stock-tag.js'
@@ -215,6 +220,8 @@ function buyColumn(product) {
         </button>
         <span data-fav-slot></span>
       </div>
+
+      ${kind === 'request' && !product.inStock ? '<div class="pbuy__wait" data-wait></div>' : ''}
 
       <ul class="pbuy__promises">
         ${copy.promises
@@ -468,6 +475,88 @@ function wireGallery(root, product) {
   })
 }
 
+/* ------------------------------------------------- сообщить о поступлении */
+
+/**
+ * «Сообщить о поступлении» — только у позиции заявкой менеджеру, которой нет
+ * на складе (узел .pbuy__wait рисует buyColumn). Подписка есть только
+ * у вошедшего: гостю открывается окно входа (login-dialog.js), после
+ * верного кода позиция кладётся в лист сама. Состояние кнопки — из листа
+ * ожидания; вышел в соседней вкладке — кнопка возвращается к виду для гостя.
+ */
+function wireWaitlist(root, product) {
+  const box = root.querySelector('[data-wait]')
+  if (!box) return
+
+  const c = copy.waitlist
+  const id = String(product.id)
+  const snapshot = {
+    id,
+    slug: product.slug,
+    name: product.name,
+    note: product.weightLabel,
+    href: ROUTES.product(product.slug),
+    image: product.photo,
+  }
+
+  function paint() {
+    const user = currentUser()
+    const on = Boolean(user) && isInWaitlist(id)
+
+    box.innerHTML = on
+      ? `<div class="pbuy__wait-row">
+           <button type="button" class="btn pbuy__wait-btn is-on" aria-disabled="true" data-wait-on>
+             <span class="pbuy__wait-icon" aria-hidden="true">${icons.check}</span>${c.subscribed}
+           </button>
+           <button type="button" class="link-btn pbuy__wait-off" data-wait-off>${c.off}</button>
+         </div>
+         <p class="pbuy__wait-note">
+           ${escapeHtml(fillText(c.noteOn.before, { phone: phoneLabel(user.phone) }))}
+           <a href="${c.noteOn.link.href}">${c.noteOn.link.label}</a>${c.noteOn.after}
+         </p>`
+      : `<div class="pbuy__wait-row">
+           <button type="button" class="btn pbuy__wait-btn" data-wait-on>
+             <span class="pbuy__wait-icon" aria-hidden="true">${icons.bell}</span>${c.subscribe}
+           </button>
+         </div>
+         <p class="pbuy__wait-note">${c.noteOff}</p>`
+
+    box.querySelector('[data-wait-on]').addEventListener('click', subscribe)
+    box.querySelector('[data-wait-off]')?.addEventListener('click', unsubscribe)
+  }
+
+  async function subscribe(event) {
+    const button = event.currentTarget
+    if (button.getAttribute('aria-disabled') === 'true') return
+
+    if (!currentUser()) {
+      const user = await openLoginDialog(c.login)
+      // Закрыли окно, не войдя, — ничего не меняется.
+      if (!user) return
+    }
+    const result = await addToWaitlist(snapshot)
+    if (!result.ok) return
+    paint()
+    // Кнопка перерисована — фокус остаётся на ней, а не уходит в body.
+    box.querySelector('[data-wait-on]')?.focus({ preventScroll: true })
+    showToast(c.toastOn, c.toastOnAction)
+  }
+
+  async function unsubscribe() {
+    const removed = await removeFromWaitlist(id)
+    paint()
+    box.querySelector('[data-wait-on]')?.focus({ preventScroll: true })
+    showToast(c.toastOff, {
+      label: c.toastUndo,
+      onClick: () => removed && restoreToWaitlist(removed.entry, removed.index),
+    })
+  }
+
+  paint()
+  onWaitlistChange(paint)
+  onAccountChange(paint)
+}
+
 /* ------------------------------------------------------------------- init */
 
 export function initProductPage(mount) {
@@ -543,6 +632,8 @@ export function initProductPage(mount) {
 
   // Сердце — после кнопок; состояние общее с сердцами в лентах ниже.
   mount.querySelector('[data-fav-slot]')?.replaceWith(createHeartButton(product, 'pbuy__fav'))
+
+  wireWaitlist(mount, product)
 
   // Кнопка не заводит вторую форму на странице, а поднимает угловой виджет:
   // одна форма на сайте — одна точка приёма заявок. У позиции без цены

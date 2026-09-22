@@ -19,9 +19,12 @@ import { fill, positionsLabel } from './layout.js'
 
 const copy = accountCopy
 
-/** Метка статуса заказа, отгрузки или заявки. */
-export function statusTagHtml(code) {
-  const status = copy.statuses[code]
+/**
+ * Метка статуса заказа, отгрузки или заявки. Словарь можно подменить —
+ * лист ожидания передаёт свой (accountCopy.waitlist.statuses), вид тот же.
+ */
+export function statusTagHtml(code, dictionary = copy.statuses) {
+  const status = dictionary[code]
   if (!status) return ''
   return `
     <span class="status-tag status-tag--tone-${status.tone} status-tag--mark-${status.mark}">

@@ -211,6 +211,75 @@
 .pbuy__fav.is-active { color: var(--caspian); }
 .pbuy__fav.is-active svg { fill: currentColor; }
 
+/* ---- Сообщить о поступлении ---------------------------------------------
+   Отдельной строкой под рядом кнопок: кнопка второго уровня со значком
+   колокольчика, под ней мелкая подпись. Подписан — значок галочки, кнопка
+   выключена (aria-disabled), рядом «Не сообщать». Есть только у позиции
+   заявкой менеджеру не на складе (product-page.js → wireWaitlist).      */
+
+.pbuy__wait {
+  width: 100%;
+  margin-top: 1rem;
+}
+
+.pbuy__wait-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .6rem 1.25rem;
+}
+
+.pbuy__wait-icon {
+  display: inline-flex;
+  width: 18px;
+  height: 18px;
+}
+
+.pbuy__wait-icon svg {
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.25;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Подписан: тот же вид, что у .btn:disabled в base.css, — кнопка нажатий
+   не принимает, но остаётся в фокусе ради подписи для скринридера. */
+.pbuy__wait-btn[aria-disabled="true"] {
+  opacity: .45;
+  cursor: default;
+}
+
+.pbuy__wait-btn[aria-disabled="true"]:hover {
+  border-color: var(--hairline);
+  color: var(--fg);
+}
+
+.pbuy__wait-off {
+  min-height: 44px;
+  font-size: .85rem;
+}
+
+.pbuy__wait-note {
+  margin-top: .5rem;
+  max-width: 34rem;
+  font-size: .82rem;
+  line-height: 1.55;
+  color: var(--fg-mute);
+  text-wrap: pretty;
+}
+
+.pbuy__wait-note a {
+  color: var(--fg);
+  border-bottom: 1px solid var(--caspian);
+  padding-bottom: 1px;
+  transition: color var(--dur-line) var(--ease-out);
+}
+
+.pbuy__wait-note a:hover { color: var(--caspian-fg); }
+
 /* ---- Три обещания -------------------------------------------------------- */
 
 .pbuy__promises {
@@ -429,6 +498,8 @@
   /* В прототипе после кнопок стоит сердце: вторая кнопка делит строку с ним.
      На стенде сердца пока нет — там работает правило выше. */
   .pbuy__actions .btn:has(+ .pbuy__fav) { flex-basis: calc(100% - 48px - .6rem); }
+
+  .pbuy__wait-btn { width: 100%; }
 
   .post--wide {
     grid-template-columns: minmax(0, 1fr);

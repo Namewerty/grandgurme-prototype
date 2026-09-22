@@ -35,6 +35,12 @@ import './styles/components/product-card.css'
 import './styles/components/stock-tag.css'
 import './styles/components/post-card.css'
 import './styles/components/qty.css'
+// Окно входа для «Сообщить о поступлении» (22.09.2026): поля, код, диалог,
+// шаги входа — те же файлы, что у src/account.js.
+import './styles/components/form.css'
+import './styles/components/code-input.css'
+import './styles/components/dialog.css'
+import './styles/components/login.css'
 import './styles/pages/page.css'
 import './styles/pages/product.css'
 

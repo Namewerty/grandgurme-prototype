@@ -19,7 +19,7 @@ import { escapeHtml, plural } from '../catalog/model.js'
 import { formatPhone } from '../checkout/validate.js'
 import { icons } from '../icons.js'
 import * as favorites from '../favorites/store.js'
-import { logout } from './api.js'
+import { logout, onWaitlistChange, peekWaitlist } from './api.js'
 import { currentUser, onChange } from './session.js'
 
 const copy = accountCopy
@@ -80,13 +80,34 @@ export function watchSession(userId, mount) {
 
 /* ---------------------------------------------------------------- каркас */
 
+/**
+ * Пункты кабинета. count — ключ счётчика: у избранного и листа ожидания
+ * свои числа и свои атрибуты (COUNTERS ниже), обновляются по своим событиям.
+ */
 const MENU = [
   { key: 'overview', href: ROUTES.account, icon: 'user' },
   { key: 'orders', href: ROUTES.accountOrders, icon: 'receipt' },
-  { key: 'favorites', href: ROUTES.favorites, icon: 'heart', counted: true },
+  { key: 'favorites', href: ROUTES.favorites, icon: 'heart', count: 'favorites' },
+  { key: 'waitlist', href: ROUTES.accountWaitlist, icon: 'bell', count: 'waitlist' },
   { key: 'addresses', href: ROUTES.accountAddresses, icon: 'pin' },
   { key: 'profile', href: ROUTES.accountProfile, icon: 'user' },
 ]
+
+/** Счётчики пунктов: атрибут узла, число и подписка на изменения. */
+const COUNTERS = {
+  favorites: {
+    attr: 'data-acc-fav-count',
+    count: () => favorites.count(),
+    subscribe: (fn) => favorites.subscribe(fn),
+  },
+  waitlist: {
+    attr: 'data-acc-wait-count',
+    count: () => peekWaitlist().length,
+    subscribe: (fn) => onWaitlistChange(fn),
+  },
+}
+
+const countSpan = (className, key) => (key ? `<span class="${className}" ${COUNTERS[key].attr}></span>` : '')
 
 function crumbsHtml(trail) {
   const links = [{ label: copy.crumbs.home, href: ROUTES.home }, ...trail]
@@ -109,10 +130,19 @@ function paintIdentity(mount, user) {
   if (phone) phone.textContent = phoneLabel(user.phone)
 }
 
-function paintFavoritesCount(mount) {
-  const n = favorites.count()
-  mount.querySelectorAll('[data-acc-fav-count]').forEach((node) => {
+function paintCount(mount, key) {
+  const counter = COUNTERS[key]
+  const n = counter.count()
+  mount.querySelectorAll(`[${counter.attr}]`).forEach((node) => {
     node.textContent = n ? String(n) : ''
+  })
+}
+
+/** Первая отрисовка всех счётчиков и подписка каждого на своё событие. */
+function watchCounts(mount) {
+  Object.keys(COUNTERS).forEach((key) => {
+    paintCount(mount, key)
+    COUNTERS[key].subscribe(() => paintCount(mount, key))
   })
 }
 
@@ -152,12 +182,12 @@ export function renderFrame(mount, { page, trail, user }) {
 
           <nav class="acc__menu" aria-label="${copy.nav.label}">
             ${MENU.map(
-              ({ key, href, counted }) => `
+              ({ key, href, count }) => `
               <a class="acc__link${key === page ? ' is-current' : ''}" href="${href}"${
                 key === page ? ' aria-current="page"' : ''
               }>
                 <span>${copy.nav[key]}</span>
-                ${counted ? '<span class="acc__count" data-acc-fav-count></span>' : ''}
+                ${countSpan('acc__count', count)}
               </a>`,
             ).join('')}
           </nav>
@@ -170,8 +200,7 @@ export function renderFrame(mount, { page, trail, user }) {
     </div>`
 
   paintIdentity(mount, user)
-  paintFavoritesCount(mount)
-  favorites.subscribe(() => paintFavoritesCount(mount))
+  watchCounts(mount)
   mount.querySelector('[data-acc-logout]').addEventListener('click', signOut)
 
   return mount.querySelector('[data-acc-main]')
@@ -191,11 +220,11 @@ export function sectionLinks() {
   nav.innerHTML =
     MENU.filter(({ key }) => key !== 'overview')
       .map(
-        ({ key, href, icon, counted }) => `
+        ({ key, href, icon, count }) => `
         <a class="acc-rows__row" href="${href}">
           <span class="acc-rows__icon" aria-hidden="true">${icons[icon]}</span>
           <span class="acc-rows__label">${copy.nav[key]}</span>
-          ${counted ? '<span class="acc-rows__count" data-acc-fav-count></span>' : ''}
+          ${countSpan('acc-rows__count', count)}
           <span class="acc-rows__chevron" aria-hidden="true">${icons.chevronRight}</span>
         </a>`,
       )
@@ -206,8 +235,7 @@ export function sectionLinks() {
      </button>`
 
   nav.querySelector('[data-acc-logout]').addEventListener('click', signOut)
-  paintFavoritesCount(nav)
-  favorites.subscribe(() => paintFavoritesCount(nav))
+  watchCounts(nav)
   return nav
 }
 

@@ -11,7 +11,11 @@
                     +7 900 000-00-00. Запись пользователя пересоздаётся, его
                     прежние заказы и заявки удаляются и кладутся заново;
                     чужие записи не трогаются. Гостевая корзина и гостевое
-                    избранное при этом входе не сливаются и не меняются;
+                    избранное при этом входе не сливаются и не меняются.
+                    В листе ожидания три записи с разными датами:
+                    beluga-royal-metall-125 (ждём), keta-steklo-250 (ждём)
+                    и test-ikra-v-nalichii (поступил) — на обзоре из-за неё
+                    строка «Поступили товары из листа ожидания: 1»;
      ?demo=new      только на /account/login: запись +7 900 000-00-01
                     удаляется, если была, создаётся заново, и открывается
                     шаг 3 «Как к вам обращаться»;
@@ -277,6 +281,30 @@ function demoFavorites() {
   return items.filter(Boolean)
 }
 
+/**
+ * Лист ожидания: две позиции не на складе (чёрная икра — заявка, красная —
+ * под заказ) и одна тестовая в наличии — она «поступила». Даты разные:
+ * порядок внутри группы «ждём» должен быть виден.
+ */
+function demoWaitlist() {
+  const slugs = ['beluga-royal-metall-125', 'keta-steklo-250', 'test-ikra-v-nalichii']
+  return slugs
+    .map((slug, i) => {
+      const product = findProductBySlug(slug)
+      if (!product) return null
+      return {
+        id: String(product.id),
+        slug,
+        name: product.name,
+        note: product.weightLabel,
+        href: ROUTES.product(slug),
+        image: product.photo,
+        addedAt: isoAt(i * 3 + 1, 14),
+      }
+    })
+    .filter(Boolean)
+}
+
 function putUser(users, user, record) {
   Object.keys(users.byPhone).forEach((phone) => {
     if (users.byPhone[phone] === user.id) delete users.byPhone[phone]
@@ -291,8 +319,13 @@ function putUser(users, user, record) {
 function loginAsAnna() {
   const users = loadUsers()
   const profile = profileOf(ANNA)
-  putUser(users, ANNA, { profile, addresses: demoAddresses(), favorites: demoFavorites() })
-  putUser(users, OTHER, { profile: profileOf(OTHER), addresses: [], favorites: [] })
+  putUser(users, ANNA, {
+    profile,
+    addresses: demoAddresses(),
+    favorites: demoFavorites(),
+    waitlist: demoWaitlist(),
+  })
+  putUser(users, OTHER, { profile: profileOf(OTHER), addresses: [], favorites: [], waitlist: [] })
   saveUsers(users)
 
   const isDemo = (record) => DEMO_IDS.includes(record.userId)
@@ -305,7 +338,7 @@ function loginAsAnna() {
 function loginAsNewcomer() {
   const users = loadUsers()
   const profile = profileOf(NEWCOMER)
-  putUser(users, NEWCOMER, { profile, addresses: [], favorites: [] })
+  putUser(users, NEWCOMER, { profile, addresses: [], favorites: [], waitlist: [] })
   saveUsers(users)
   openSession(profile, { mergeGuest: false })
 }

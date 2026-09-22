@@ -1,20 +1,22 @@
 /* ============================================================================
    Обзор кабинета /account.
 
-   Блоки сверху вниз: приветствие и телефон · «Сейчас в работе» (до трёх
-   записей) либо последняя запись, либо пустое состояние · «Избранное»
-   (до четырёх карточек; пустое — блока нет) · пункты кабинета списком строк
-   (только уже 1024px, где бокового меню нет) · строка связи.
+   Блоки сверху вниз: приветствие и телефон · строка «Поступили товары
+   из листа ожидания: {n}» (только если такие есть) · «Сейчас в работе»
+   (до трёх записей) либо последняя запись, либо пустое состояние ·
+   «Избранное» (до четырёх карточек; пустое — блока нет) · пункты кабинета
+   списком строк (только уже 1024px, где бокового меню нет) · строка связи.
 
    Вызывает api.js: getHistory({ type: 'all', page: 1 }) при открытии,
-   reorder(n) по кнопке «Повторить заказ». Избранное — из стора.
+   reorder(n) по кнопке «Повторить заказ», getWaitlist при открытии и по
+   waitlist:change. Избранное — из стора.
    ============================================================================ */
 
 import { accountCopy } from '../../../data/account-copy.js'
 import { ROUTES } from '../../../data/routes.js'
 import { escapeHtml } from '../../catalog/model.js'
 import * as favorites from '../../favorites/store.js'
-import { getHistory } from '../api.js'
+import { getHistory, getWaitlist, onWaitlistChange, waitlistStatus } from '../api.js'
 import {
   accountTrail,
   contactLinksHtml,
@@ -51,10 +53,26 @@ export async function initOverviewPage(mount) {
   main.innerHTML = `
     <h1 class="acc-title" data-hello>${name ? escapeHtml(fill(copy.hello, { name })) : copy.helloNoName}</h1>
     <p class="acc-sub">${phoneLabel(user.phone)}</p>
+    <p class="acc-notice" data-wait-notice hidden></p>
     <section class="acc-block" data-work></section>
     <section class="acc-block" data-favs hidden></section>
     <div data-rows></div>
     <p class="acc-contact"><span>${copy.contact}</span> ${contactLinksHtml()}</p>`
+
+  /* ---- поступившие из листа ожидания ------------------------------------- */
+
+  const notice = main.querySelector('[data-wait-notice]')
+  async function paintWaitNotice() {
+    const items = await getWaitlist()
+    const arrived = items.filter((entry) => waitlistStatus(entry) === 'arrived').length
+    notice.hidden = !arrived
+    if (!arrived) return
+    notice.innerHTML = `
+      <span>${fill(copy.waitlistNotice, { n: arrived })}</span>
+      <a class="link-btn" href="${ROUTES.accountWaitlist}">${copy.waitlistNoticeAction}</a>`
+  }
+  paintWaitNotice()
+  onWaitlistChange(paintWaitNotice)
 
   /* ---- в работе / последняя запись / пусто ------------------------------- */
 

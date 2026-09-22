@@ -1,5 +1,5 @@
 /* ============================================================================
-   Точка входа входа, личного кабинета и избранного — восемь адресов:
+   Точка входа входа, личного кабинета и избранного — девять адресов:
 
      /account/login       вход и регистрация по номеру телефона;
      /account             обзор;
@@ -8,6 +8,7 @@
      /account/request?r=  заявка;
      /account/addresses   адреса доставки;
      /account/profile     личные данные;
+     /account/waitlist    лист ожидания — «Сообщить о поступлении»;
      /favorites           избранное — у гостя из браузера, у вошедшего из кабинета.
 
    Страница выбирается по location.pathname. Гость на любом адресе кабинета,
@@ -43,6 +44,7 @@ import './styles/components/summary.css'
 import './styles/components/form.css'
 import './styles/components/code-input.css'
 import './styles/components/dialog.css'
+import './styles/components/login.css'
 import './styles/pages/checkout.css'
 import './styles/pages/account.css'
 
@@ -58,6 +60,7 @@ import { initOrderPage } from './js/account/pages/order.js'
 import { initRequestPage } from './js/account/pages/request.js'
 import { initAddressesPage } from './js/account/pages/addresses.js'
 import { initProfilePage } from './js/account/pages/profile.js'
+import { initWaitlistPage } from './js/account/pages/waitlist.js'
 import { initFavoritesPage } from './js/account/pages/favorites.js'
 
 const PAGES = {
@@ -67,6 +70,7 @@ const PAGES = {
   '/account/request': initRequestPage,
   [ROUTES.accountAddresses]: initAddressesPage,
   [ROUTES.accountProfile]: initProfilePage,
+  [ROUTES.accountWaitlist]: initWaitlistPage,
   [ROUTES.favorites]: initFavoritesPage,
 }
 

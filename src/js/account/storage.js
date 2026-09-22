@@ -10,7 +10,8 @@
    КЛЮЧИ
      gg-session    { userId } — кто вошёл в этом браузере;
      gg-users      { version: 1, byId, byPhone } — в записи пользователя лежат
-                   профиль, адреса и избранное: { profile, addresses, favorites };
+                   профиль, адреса, избранное и лист ожидания:
+                   { profile, addresses, favorites, waitlist };
      gg-favorites  { version: 1, items } — избранное гостя;
      gg-codes      { version: 1, byPhone } — выданные коды входа: когда
                    отправлен, сколько попыток осталось (нужно api.js для
@@ -91,7 +92,7 @@ export function loadUsers() {
 
 export const saveUsers = (users) => writeKey(USERS_KEY, { ...users, version: VERSION })
 
-/** Запись пользователя: { profile, addresses, favorites } или null. */
+/** Запись пользователя: { profile, addresses, favorites, waitlist } или null. */
 export const loadUserRecord = (userId) => loadUsers().byId[userId] || null
 
 /** Меняет запись пользователя функцией и сохраняет. Возвращает новую запись. */
@@ -103,6 +104,8 @@ export function updateUserRecord(userId, change) {
     profile: current.profile,
     addresses: current.addresses || [],
     favorites: current.favorites || [],
+    // Записи, сделанные до 22.09.2026, листа ожидания не имеют.
+    waitlist: current.waitlist || [],
   })
   users.byId[userId] = next
   saveUsers(users)

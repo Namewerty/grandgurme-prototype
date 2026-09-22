@@ -1,0 +1,54 @@
+/* ============================================================================
+   Шаги входа (.login__step): заголовок, подводка, кнопка, строки под формой.
+   Разметка — src/js/account/login-flow.js.
+
+   Вынесены 22.09.2026 из pages/account.css без правки правил: шагами
+   пользуются страница /account/login и окно входа на карточке товара
+   («Сообщить о поступлении»), а карточка стили кабинета не грузит.
+   Подключается в src/account.js и src/product.js. Раскладка самой страницы
+   входа (.login, .login__col, .login__media) осталась в account.css.
+   ============================================================================ */
+
+.login__step {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.login__title {
+  margin: 0;
+  font-size: clamp(2rem, 3.8vw, 2.75rem);
+  line-height: var(--lh-h2);
+}
+
+.eyebrow + .login__title { margin-top: -.35rem; }
+
+.login__lead {
+  font-size: .95rem;
+  line-height: 1.6;
+  color: var(--fg-mute);
+  text-wrap: pretty;
+}
+
+.login__change {
+  min-height: 44px;
+  margin-left: .5rem;
+  font-size: .85rem;
+}
+
+.login__submit { width: 100%; }
+
+.login__later {
+  align-self: center;
+  min-height: 44px;
+  font-size: .85rem;
+}
+
+.login__note {
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--hairline);
+  font-size: .85rem;
+  line-height: 1.6;
+  color: var(--fg-mute);
+  text-wrap: pretty;
+}

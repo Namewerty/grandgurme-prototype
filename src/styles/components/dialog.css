@@ -1,6 +1,7 @@
 /* ============================================================================
-   Диалог подтверждения (<dialog class="dialog">). Сейчас один — удаление
-   личного кабинета (src/js/account/pages/profile.js).
+   Диалог (<dialog class="dialog">). Два носителя: подтверждение удаления
+   личного кабинета (src/js/account/pages/profile.js) и окно входа
+   с карточки товара (src/js/account/login-dialog.js, модификатор --login).
 
    Открывается showModal(): фокус внутри окна и Esc держит сам браузер.
    Вид — как у тоста и панели виджета: --radius-card, волосяная рамка,
@@ -9,6 +10,7 @@
    ============================================================================ */
 
 .dialog {
+  position: relative;
   width: min(30rem, calc(100vw - 2 * var(--gutter)));
   margin: auto;
   padding: clamp(1.5rem, 4vw, 2.25rem);
@@ -17,6 +19,36 @@
   background: var(--bg);
   color: var(--fg);
 }
+
+/* Окно входа: шире — внутри поле кода из шести ячеек; заголовок шага (h2)
+   того же размера, что у .dialog__title, а не как на странице входа. */
+.dialog--login {
+  width: min(34rem, calc(100vw - 2 * var(--gutter)));
+}
+
+.dialog--login .login__title { font-size: 1.5rem; }
+
+.dialog__close {
+  position: absolute;
+  top: .75rem;
+  right: .75rem;
+  color: var(--fg-mute);
+}
+
+.dialog__close:hover { color: var(--caspian-fg); }
+
+.dialog__close svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.25;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Крестик стоит в углу — заголовок первого шага не должен под него заезжать. */
+.dialog--login .dialog__body { padding-right: 2rem; }
 
 .dialog::backdrop {
   background: color-mix(in srgb, var(--void) 62%, transparent);

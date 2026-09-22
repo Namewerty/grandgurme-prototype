@@ -13,6 +13,16 @@
 
    В ПРОТОТИПЕ СМС НЕ ОТПРАВЛЯЕТСЯ: подходит код 123456 для любого номера.
 
+   ЛИСТ ОЖИДАНИЯ (22.09.2026) — поле waitlist в записи пользователя, рядом
+   с favorites. Гостевого листа нет: подписка есть только у вошедшего, СМС
+   уходит на номер кабинета. СМС о поступлении в прототипе тоже НЕ
+   отправляется — ни при подписке, ни при поступлении: уведомление — дело
+   сервера. На Битриксе это штатная подписка на товар модуля каталога
+   (компонент «Подписка на товар», список подписок в кабинете, отправка через
+   «Службу сообщений»); функции ниже заменяются её запросами — записка
+   PERENOS-ikra-menyu-ozhidanie.md. Статус записи не хранится, а считается
+   при показе по текущему каталогу (waitlistStatus).
+
    Ничего не читает и не рисует при импорте.
    ============================================================================ */
 
@@ -31,12 +41,14 @@ import {
 import { add as addToCart } from '../cart/store.js'
 import { currentUser, emitChange } from './session.js'
 import {
+  USERS_KEY,
   clearGuestFavorites,
   clearSession,
   loadCodes,
   loadGuestFavorites,
   loadUserRecord,
   loadUsers,
+  onExternalChange,
   saveCodes,
   saveGuestFavorites,
   saveSession,
@@ -97,6 +109,7 @@ const PROTOTYPE_CODE = '123456'
 
 export const MAX_ADDRESSES = 10
 export const MAX_FAVORITES = 200
+export const MAX_WAITLIST = 100
 export const HISTORY_PAGE_SIZE = 20
 
 /** Задержка ответа у шагов входа: без неё не видно, что кнопка ждёт ответа. */
@@ -172,7 +185,7 @@ function createUser(phone) {
     marketing: false,
     createdAt: new Date().toISOString(),
   }
-  users.byId[profile.id] = { profile, addresses: [], favorites: [] }
+  users.byId[profile.id] = { profile, addresses: [], favorites: [], waitlist: [] }
   users.byPhone[phone] = profile.id
   saveUsers(users)
   return profile
@@ -575,3 +588,127 @@ export async function removeFavorite(id) {
 
 /** Синхронное чтение для первой отрисовки: шапке нужен счётчик сразу. */
 export const peekFavorites = () => copyOf(readFavorites())
+
+/* --------------------------------------------------------- лист ожидания */
+
+/**
+ * @typedef {object} WaitlistEntry снимок позиции, как у избранного
+ * @property {string} id        id позиции каталога строкой
+ * @property {string} slug
+ * @property {string} name
+ * @property {string} note      фасовка
+ * @property {string} href      адрес карточки
+ * @property {string|null} image
+ * @property {string} addedAt   ISO
+ */
+
+/** Гость → пустой массив: гостевого листа нет. */
+function readWaitlist() {
+  const user = currentUser()
+  return user ? loadUserRecord(user.id)?.waitlist || [] : []
+}
+
+function emitWaitlistChange() {
+  const items = copyOf(readWaitlist())
+  document.dispatchEvent(new CustomEvent('waitlist:change', { detail: { items, count: items.length } }))
+}
+
+function writeWaitlist(items) {
+  const user = currentUser()
+  if (!user) return
+  updateUserRecord(user.id, (record) => ({ ...record, waitlist: items }))
+  emitWaitlistChange()
+}
+
+/** Записи новые сверху. Гость → []. */
+export async function getWaitlist() {
+  return copyOf(readWaitlist())
+}
+
+/** Синхронно — счётчику в меню кабинета и первой отрисовке кнопки. */
+export const peekWaitlist = () => copyOf(readWaitlist())
+
+export const isInWaitlist = (id) => readWaitlist().some((entry) => entry.id === String(id))
+
+/** Самые старые уходят при переполнении. */
+function trimWaitlist(items) {
+  while (items.length > MAX_WAITLIST) {
+    const oldest = items.reduce((min, item) => (String(item.addedAt) < String(min.addedAt) ? item : min))
+    items.splice(items.indexOf(oldest), 1)
+  }
+  return items
+}
+
+/**
+ * Подписаться на поступление. Повтор не дублирует запись.
+ * @param {{ id, slug, name, note, href, image }} snapshot
+ * @returns {Promise<{ ok: true, entry: WaitlistEntry } | { ok: false, reason: 'guest' }>}
+ */
+export async function addToWaitlist(snapshot) {
+  if (!currentUser()) return { ok: false, reason: 'guest' }
+
+  const id = String(snapshot.id)
+  const items = readWaitlist()
+  const existing = items.find((entry) => entry.id === id)
+  if (existing) return { ok: true, entry: copyOf(existing) }
+
+  const entry = {
+    id,
+    slug: snapshot.slug ?? null,
+    name: snapshot.name,
+    note: snapshot.note ?? '',
+    href: snapshot.href ?? (snapshot.slug ? `/product/${snapshot.slug}` : '/catalog'),
+    image: snapshot.image ?? null,
+    addedAt: new Date().toISOString(),
+  }
+  writeWaitlist(trimWaitlist([entry, ...items]))
+  return { ok: true, entry: copyOf(entry) }
+}
+
+/** @returns {Promise<{ entry: WaitlistEntry, index: number } | null>} место — для «Вернуть» */
+export async function removeFromWaitlist(id) {
+  const items = readWaitlist()
+  const at = items.findIndex((entry) => entry.id === String(id))
+  if (at === -1) return null
+  const [entry] = items.splice(at, 1)
+  writeWaitlist(items)
+  return { entry: copyOf(entry), index: at }
+}
+
+/** «Вернуть» из тоста: запись встаёт на прежнее место. */
+export async function restoreToWaitlist(snapshot, index = 0) {
+  if (!currentUser()) return { ok: false, reason: 'guest' }
+  const items = readWaitlist().filter((entry) => entry.id !== String(snapshot.id))
+  items.splice(Math.max(0, Math.min(index, items.length)), 0, { ...snapshot, id: String(snapshot.id) })
+  writeWaitlist(trimWaitlist(items))
+  return { ok: true }
+}
+
+/**
+ * Статус записи — по текущему каталогу, не хранится:
+ *   waiting  позиция есть и не на складе — «Ждём поступления»;
+ *   arrived  позиция есть и на складе — «Поступил»;
+ *   gone     позиции в каталоге нет — «Больше не продаётся».
+ * @returns {'waiting'|'arrived'|'gone'}
+ */
+export function waitlistStatus(entry) {
+  const product = entry?.slug ? findProductBySlug(entry.slug) : null
+  if (!product) return 'gone'
+  return product.inStock ? 'arrived' : 'waiting'
+}
+
+let watchingWaitlist = false
+
+/**
+ * Подписка на изменения листа: в этой вкладке — событие waitlist:change,
+ * в соседних — событие storage по gg-users. Возвращает отписку.
+ */
+export function onWaitlistChange(fn) {
+  if (!watchingWaitlist) {
+    watchingWaitlist = true
+    onExternalChange([USERS_KEY], emitWaitlistChange)
+  }
+  const handler = (event) => fn(event.detail)
+  document.addEventListener('waitlist:change', handler)
+  return () => document.removeEventListener('waitlist:change', handler)
+}

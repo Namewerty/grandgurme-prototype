@@ -67,6 +67,9 @@ const template = ({ title, lead, entry }) => `${MARKER}
 
   <div id="topbar"></div>
   <header id="masthead" class="header" data-header></header>
+  <!-- Мобильное меню, как на главной: без этого узла бургер на внутренних
+       страницах ничего не открывал (22.09.2026). -->
+  <div id="nav-panel"></div>
 
   <main id="main" class="page"></main>
 
