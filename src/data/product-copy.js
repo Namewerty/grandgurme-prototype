@@ -135,6 +135,7 @@ export const productCopy = {
          поэтому подпись берётся по разделу, а не пишется в разметке. */
       byCategory: {
         'chernaya-ikra': 'Другие виды икры',
+        'krasnaya-ikra': 'Другие виды икры',
         ryba: 'Другие виды рыбы',
       },
     },

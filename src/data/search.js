@@ -26,7 +26,7 @@
  */
 
 import { categories } from './catalog.js'
-import { caviarProducts, fishProducts } from './catalog-products.js'
+import { caviarProducts, fishProducts, redCaviarProducts } from './catalog-products.js'
 import { ROUTES, SAMPLE } from './routes.js'
 
 /** Что показывает панель при пустом поле. */
@@ -86,6 +86,7 @@ const CATEGORY_SYNONYMS = {
 /** Плоский список товаров, по которому ищем. */
 const PRODUCTS = [
   ...caviarProducts.map((product) => ({ product, categorySlug: 'chernaya-ikra' })),
+  ...redCaviarProducts.map((product) => ({ product, categorySlug: 'krasnaya-ikra' })),
   ...fishProducts.map((product) => ({ product, categorySlug: 'ryba' })),
 ]
 
@@ -110,8 +111,10 @@ export function searchAll(query, limits = {}) {
   if (q.length < 2) return { query, products: [], categories: [], total: 0 }
 
   const found = PRODUCTS.filter(({ product }) => {
+    /* Вид рыбы (attrs.species) — в тексте позиции: «Икра кеты» слова «кета»
+       не содержит, и без вида запрос «кета» находил бы только раздел. */
     const haystack = normalize(
-      [product.name, product.weightLabel, product.attrs?.grade, product.attrs?.brand]
+      [product.name, product.weightLabel, product.attrs?.species, product.attrs?.grade, product.attrs?.brand]
         .filter(Boolean)
         .join(' '),
     )

@@ -118,12 +118,14 @@ findGenerated(ROOT).forEach((file) => {
  *   /src/cart.js           корзина;
  *   /src/checkout.js       оформление заказа;
  *   /src/order-success.js  «Заказ принят»;
- *   /src/account.js        вход, личный кабинет и избранное — восемь адресов,
- *                          страница выбирается внутри по location.pathname;
+ *   /src/account.js        вход, личный кабинет, лист ожидания и избранное —
+ *                          девять адресов, страница выбирается внутри
+ *                          по location.pathname;
  *   /src/page.js           всё остальное — общий каркас заглушек.
  *
  * Раздел без товаров тоже остаётся на заглушке: пустой каталог с нулём
  * в счётчике выглядит на показе хуже, чем честное описание раздела.
+ * Витрины (/catalog/ikra) идут тем же путём: hasProducts знает про них.
  */
 const ENTRY_BY_PATH = {
   '/cart': '/src/cart.js',
@@ -136,6 +138,7 @@ const ENTRY_BY_PATH = {
   '/account/request': '/src/account.js',
   '/account/addresses': '/src/account.js',
   '/account/profile': '/src/account.js',
+  '/account/waitlist': '/src/account.js',
   '/favorites': '/src/account.js',
 }
 

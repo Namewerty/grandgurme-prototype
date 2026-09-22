@@ -35,7 +35,7 @@
    под шапкой, на мобильном — снизу, под большой палец.
    ============================================================================ */
 
-import { categories, subHref } from '../../data/catalog.js'
+import { categories, showcases, subHref } from '../../data/catalog.js'
 import { categoryCopy, fill } from '../../data/category-copy.js'
 import { PAGE_SIZE, getSchema } from '../../data/facets.js'
 import { getProducts } from '../../data/catalog-products.js'
@@ -173,7 +173,7 @@ function pendingMarkup(category) {
         <p class="catalog__pending">${copy.pending.text}</p>
 
         <div class="catalog__subs">
-          ${category.subs
+          ${(category.subs || [])
             .map(
               (sub) =>
                 `<a class="chip" href="${subHref(category.slug, sub.slug)}">${escapeHtml(sub.name)}</a>`,
@@ -281,9 +281,11 @@ function badgeFor(product) {
 }
 
 function buildCard(ctx, product) {
-  // Раздел у позиции берётся из страницы: от него зависит, под заказ это
-  // или заявка (kindOf в src/data/fulfillment.js).
-  const item = { ...product, categorySlug: ctx.category.slug }
+  // Раздел у позиции — от него зависит, под заказ это или заявка (kindOf
+  // в src/data/fulfillment.js). На витрине из нескольких разделов он уже
+  // стоит у самой позиции (getProducts), на странице раздела — это раздел
+  // страницы. Иначе красная икра на витрине получала бы вид чёрной.
+  const item = { ...product, categorySlug: product.categorySlug || ctx.category.slug }
   const kind = kindOf(item)
 
   return createProductCard({
@@ -573,11 +575,15 @@ function wire(ctx) {
 
 /* ------------------------------------------------------------------ init */
 
-/** Категория по адресу /catalog/<slug>. */
+/** Категория или витрина (showcases в src/data/catalog.js) по адресу /catalog/<slug>. */
 export function findCategory(pathname = location.pathname) {
   const clean = pathname.replace(/\/index\.html$/, '').replace(/(.)\/$/, '$1')
   const slug = clean.startsWith('/catalog/') ? clean.slice('/catalog/'.length) : null
-  return categories.find((category) => category.slug === slug) || null
+  return (
+    categories.find((category) => category.slug === slug) ||
+    showcases.find((showcase) => showcase.slug === slug) ||
+    null
+  )
 }
 
 export function initCategoryPage(mount) {

@@ -27,7 +27,7 @@
  * ссылке, каждый раз проверяет, туда ли он попал.
  */
 
-import { categories } from './catalog.js'
+import { categories, showcases } from './catalog.js'
 import { allProducts } from './catalog-products.js'
 import { journalPosts } from './journal.js'
 
@@ -50,6 +50,7 @@ export const ROUTES = {
   accountRequest: (r) => `/account/request?r=${encodeURIComponent(r)}`,
   accountAddresses: '/account/addresses',
   accountProfile: '/account/profile',
+  accountWaitlist: '/account/waitlist',
   favorites: '/favorites',
   search: '/search',
 
@@ -219,6 +220,14 @@ export const staticPages = [
     group: 'shop',
     title: 'Избранное',
     lead: 'Отмеченные товары; без входа хранятся в браузере.',
+  },
+  /* Лист ожидания (22.09.2026): подписка «Сообщить о поступлении» с карточки
+     товара. Только у вошедшего — СМС уходит на номер кабинета. */
+  {
+    path: ROUTES.accountWaitlist,
+    group: 'shop',
+    title: 'Лист ожидания',
+    lead: 'Товары, о поступлении которых сообщим СМС.',
   },
   {
     path: ROUTES.certificates,
@@ -414,6 +423,20 @@ export const categoryPages = categories.map((category) => ({
   lead: category.lead,
 }))
 
+/**
+ * Витрины — страницы из нескольких разделов (src/data/catalog.js → showcases).
+ * Шаблон тот же, что у категорий (template: 'category'), поэтому генератор
+ * собирает для них каркас с точкой входа /src/category.js. В панели, подвале
+ * и на /catalog их нет: это не разделы каталога, а быстрый вход из шапки.
+ */
+export const showcasePages = showcases.map((showcase) => ({
+  path: ROUTES.category(showcase.slug),
+  group: 'shop',
+  template: 'category',
+  title: showcase.name,
+  lead: showcase.lead,
+}))
+
 /** Статьи журнала — по трём материалам, на которые ссылается главная. */
 export const articlePages = journalPosts.map((post) => ({
   path: ROUTES.article(post.slug),
@@ -449,7 +472,7 @@ export const productPages = allProducts.map((product) => ({
 export const templatePages = [...productPages, ...articlePages]
 
 /** Все страницы сайта, кроме главной. */
-export const allPages = [...staticPages, ...categoryPages, ...templatePages]
+export const allPages = [...staticPages, ...categoryPages, ...showcasePages, ...templatePages]
 
 /** Страница по адресу. Нужна заглушкам: они узнают себя по location. */
 export function findPage(path) {

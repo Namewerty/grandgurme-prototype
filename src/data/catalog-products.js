@@ -1,6 +1,9 @@
 /**
  * Товары для страниц категорий.
  *
+ * КРАСНАЯ ИКРА — СНИМОК СТЕНДА от 22.09.2026: 12 позиций из 18 первой
+ * страницы выдачи раздела на bitrix.grandgurme.ru, см. блок redCaviarProducts.
+ *
  * ЧЁРНАЯ ИКРА — НАСТОЯЩАЯ. Все 52 позиции взяты из выгрузки 1С от 20.08.2026
  * (раздел «Икра» → «Икра черная», `ikra_chernaya`): девять линеек, шесть
  * фасовок, три вида упаковки. Придуманных сортов — «Бестер», «Роял Белуга»,
@@ -56,6 +59,7 @@
  * Ожидаемые файлы перечислены в src/data/media.js (catalogShots).
  */
 
+import { showcases } from './catalog.js'
 import { MEDIA_ROOT, caviarGallery } from './media.js'
 
 /** Кадр позиции каталога: /media/catalog/<категория>/<слаг>.jpg, квадрат. */
@@ -867,6 +871,69 @@ const TEST_CAVIAR = [
   photo: caviarShot[species],
 }))
 
+/* ---------------------------------------------------------- красная икра */
+
+/**
+ * Двенадцать позиций красной икры — СНИМОК СТЕНДА bitrix.grandgurme.ru
+ * от 22.09.2026: первая страница выдачи раздела «Красная икра» (12 позиций
+ * из 18; остальные шесть в снимок не попали, и придумывать их нельзя).
+ * Источник данных стенда — выгрузка из 1С, раздел «Икра» → «Икра красная»
+ * (`ikra_krasnaya`).
+ *
+ * Цены и наличие — как на стенде в этот день: на складе ничего, цена есть
+ * только у горбуши. Остальные позиции — price: null, «Цена по запросу».
+ * Раздел с предзаказом (fulfillment: 'preorder' в src/data/catalog.js),
+ * поэтому горбуша идёт «под заказ», а всё без цены — заявкой менеджеру.
+ *
+ * ТРИ ОСИ РАЗДЕЛА: species (вид рыбы, главная ось), format (фасовка),
+ * packaging (упаковка). Линеек, как у чёрной икры, здесь нет.
+ *
+ * ⚠ popularity — порядок в выдаче стенда, не статистика продаж.
+ * Дат поступления нет — addedAt: null, сортировки «Сначала новинки» у раздела
+ * нет. Кадров под позиции нет: заглушка рисует имя ожидаемого файла
+ * /media/catalog/krasnaya-ikra/<слаг>.jpg.
+ */
+const RED_CAVIAR = [
+  ['gorbusha-steklo-125', 'Икра горбуши', 'Горбуша', 125, 'Банка стекло', 2000],
+  ['gorbusha-steklo-250', 'Икра горбуши', 'Горбуша', 250, 'Банка стекло', 4000],
+  ['gorbusha-steklo-500', 'Икра горбуши', 'Горбуша', 500, 'Банка стекло', 8000],
+  ['keta-steklo-125', 'Икра кеты', 'Кета', 125, 'Банка стекло', null],
+  ['keta-steklo-250', 'Икра кеты', 'Кета', 250, 'Банка стекло', null],
+  ['keta-steklo-500', 'Икра кеты', 'Кета', 500, 'Банка стекло', null],
+  ['keta-zhest-100', 'Икра кеты', 'Кета', 100, 'Жестяная банка', null],
+  ['keta-lotok-250', 'Икра кеты', 'Кета', 250, 'Лоток', null],
+  ['kizhuch-steklo-125', 'Икра кижуча', 'Кижуч', 125, 'Банка стекло', null],
+  ['kizhuch-steklo-250', 'Икра кижуча', 'Кижуч', 250, 'Банка стекло', null],
+  ['kizhuch-steklo-500', 'Икра кижуча', 'Кижуч', 500, 'Банка стекло', null],
+  ['nerka-steklo-125', 'Икра нерки', 'Нерка', 125, 'Банка стекло', null],
+]
+
+export const redCaviarProducts = RED_CAVIAR.map(
+  ([slug, name, species, weightG, packaging, price], index) => ({
+    id: 1001 + index,
+    slug,
+    name,
+    /* Вторая строка карточки — упаковка и вес, как у чёрной икры: две позиции
+       кеты по 250 г (стекло и лоток) иначе выглядели бы дублем. */
+    weightLabel: `${packaging}, ${weightG} г`,
+    weightG,
+    price,
+    oldPrice: null,
+    inStock: false,
+    isNew: false,
+    isSale: false,
+    isClearance: false,
+    popularity: 100 - index,
+    addedAt: null,
+    attrs: {
+      species,
+      format: `${weightG} г`,
+      packaging,
+    },
+    photo: shot('krasnaya-ikra', slug),
+  }),
+)
+
 /* ----------------------------------------------------------------- реестр */
 
 /**
@@ -877,16 +944,46 @@ const TEST_CAVIAR = [
 export const productsByCategory = {
   ryba: fishProducts,
   'chernaya-ikra': [...TEST_CAVIAR, ...caviarProducts],
+  'krasnaya-ikra': redCaviarProducts,
 }
 
-export const hasProducts = (slug) => Boolean(productsByCategory[slug]?.length)
+const showcaseBySlug = (slug) => showcases.find((showcase) => showcase.slug === slug) || null
 
-export const getProducts = (slug) => productsByCategory[slug] || []
+/**
+ * Позиции витрины (src/data/catalog.js → showcases): разделы из from подряд,
+ * в порядке from. У позиций в productsByCategory поля categorySlug нет —
+ * его добавляет только allProducts, — поэтому для витрины он проставляется
+ * здесь: от раздела зависит вид позиции (под заказ или заявка). attrs
+ * копируется, в копию добавляется type — подпись раздела из typeLabels для
+ * оси «Икра»; исходные объекты не меняются.
+ */
+const showcaseProducts = (showcase) =>
+  showcase.from.flatMap((categorySlug) =>
+    (productsByCategory[categorySlug] || []).map((product) => ({
+      ...product,
+      categorySlug,
+      attrs: { ...product.attrs, type: showcase.typeLabels[categorySlug] },
+    })),
+  )
+
+export const hasProducts = (slug) => {
+  const showcase = showcaseBySlug(slug)
+  if (showcase) return showcase.from.some((categorySlug) => productsByCategory[categorySlug]?.length)
+  return Boolean(productsByCategory[slug]?.length)
+}
+
+export const getProducts = (slug) => {
+  const showcase = showcaseBySlug(slug)
+  return showcase ? showcaseProducts(showcase) : productsByCategory[slug] || []
+}
 
 /**
  * Все позиции всех разделов плоским списком, с указанием раздела. Нужен
  * карточке товара и генератору страниц: у каждой позиции свой адрес
  * /product/<слаг>, и оба должны получать один и тот же список.
+ *
+ * Витрины сюда не входят: иначе у каждой позиции икры было бы две записи
+ * и две страницы.
  */
 export const allProducts = Object.entries(productsByCategory).flatMap(
   ([categorySlug, list]) => list.map((product) => ({ ...product, categorySlug })),
