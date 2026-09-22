@@ -33,6 +33,18 @@
    contact.userId и order.addressId либо новый адрес. Вход сменился в соседней
    вкладке — корзина не переключается, страница просит обновиться.
 
+   КОРОБКИ С РАЗНЫМ ВЕСОМ (22.09.2026, src/data/boxes.js). При открытии для
+   каждой коробочной строки в наличии система подбирает коробки, самые
+   близкие к номиналу (pickPacks), и пишет их в строку с picked: 'auto';
+   ручной выбор остаётся, если все его коробки по-прежнему свободны.
+   В сводке блок «Вес коробок»: веса и точная сумма, ссылка «Выбрать другие»
+   открывает окно выбора (<dialog class="dialog dialog--boxes">). Коробки под
+   заказ не подбираются: «взвесим при фасовке», сумма с «≈», и у шага «Оплата»
+   остаётся один вариант — при получении. Перед отправкой выбранные коробки
+   проверяются заново (getFreePacks): купленную заменяет ближайшая свободная,
+   заказ не отправляется, человек видит новую сумму; следующее нажатие
+   отправляет. Коробки берутся только через границу cart/boxes.js.
+
    Отправка — одна функция submitCheckout (submit.js), на Битриксе она
    заменяется целиком. Хранилища эта страница не знает.
    ============================================================================ */
@@ -49,12 +61,14 @@ import {
   isSameDay,
   toIsoDay,
 } from '../../data/fulfillment.js'
+import { packPrice, packsWord, packsWordAcc, pickPacks, pricePer100, weightsText } from '../../data/boxes.js'
 import { escapeHtml, formatPrice } from '../catalog/model.js'
 import { createImage } from '../media.js'
 import { icons } from '../icons.js'
 import { getLenis } from '../scroll.js'
+import { findPack, getFreePacks } from '../cart/boxes.js'
 import * as cart from '../cart/store.js'
-import { fillText, kindOrder, modeOf, positionsLabel } from '../cart/summary.js'
+import { fillText, kindOrder, lineSum, modeOf, positionsLabel, sumLabel } from '../cart/summary.js'
 import { formatPhone, maskPhone, phoneDigits, rules } from './validate.js'
 import { submitCheckout } from './submit.js'
 import { accountCopy } from '../../data/account-copy.js'
@@ -89,12 +103,23 @@ function planOf(items, totals) {
     requestItems,
     stockItems: orderItems.filter((line) => line.kind === 'stock'),
     preorderItems: orderItems.filter((line) => line.kind === 'preorder'),
+    // Коробки: строки с коробками и есть ли среди них под заказ — от этого
+    // зависит шаг «Оплата».
+    boxLines: orderItems.filter((line) => line.boxes),
+    hasPreorderBoxes: orderItems.some((line) => line.boxes && line.kind !== 'stock'),
     totals,
   }
 }
 
-/** Подпись состава страницы: поменялась — страницу нужно собрать заново. */
-const signatureOf = (plan) => [plan.mode, plan.canSplit].join('|')
+/**
+ * Подпись состава страницы: поменялась — страницу нужно собрать заново.
+ * Признак коробок под заказ здесь же: состав корзины может поменяться
+ * в соседней вкладке, и шаг «Оплата» должен пересобраться вместе с ним.
+ */
+const signatureOf = (plan) => [plan.mode, plan.canSplit, plan.hasPreorderBoxes].join('|')
+
+/** Итоги оформления: подбор коробок уже сделан, выбор 'auto' точный. */
+const totalsNow = () => cart.getTotals({ autoIsExact: true })
 
 /* -------------------------------------------------------------- разметка */
 
@@ -430,16 +455,23 @@ function whenStep(n, plan, today = new Date()) {
   )
 }
 
-/** Оплата. В заказе с заявкой — строка о том, что оплачивается только заказ. */
+const readyLine = (text, attrs = '') =>
+  `<p class="ready-line co-note"${attrs}><span class="ready-line__mark" aria-hidden="true">⬦</span><span>${text}</span></p>`
+
+/**
+ * Оплата. В заказе с заявкой — строка о том, что оплачивается только заказ.
+ * Есть коробки под заказ — точной суммы у заказа нет: единственный вариант
+ * «При получении» и примечание об этом.
+ */
 function paymentStep(n, plan) {
   const p = copy.payment
-  const note =
+  const options = plan.hasPreorderBoxes ? p.options.filter((o) => o.value === 'on-receipt') : p.options
+  const notes = [
+    plan.hasPreorderBoxes ? readyLine(p.preorderBoxes) : '',
     plan.mode === 'both'
-      ? `<p class="ready-line co-note"><span class="ready-line__mark" aria-hidden="true">⬦</span><span>${fillText(
-          p.orderOnly,
-          { sum: formatPrice(plan.totals.order.sum) },
-        )}</span></p>`
-      : ''
+      ? readyLine(`<span data-order-only>${fillText(p.orderOnly, { sum: sumLabel({ value: plan.totals.order.sum, approx: plan.totals.order.approx }) })}</span>`)
+      : '',
+  ].join('')
 
   return step(
     n,
@@ -448,10 +480,10 @@ function paymentStep(n, plan) {
     `<fieldset class="group">
        <legend class="visually-hidden">${p.legend}</legend>
        <div class="caps">
-         ${p.options.map((o, i) => cap({ name: 'payment', value: o.value, label: o.label, checked: i === 0 })).join('')}
+         ${options.map((o, i) => cap({ name: 'payment', value: o.value, label: o.label, checked: i === 0 })).join('')}
        </div>
      </fieldset>
-     ${note}`,
+     ${notes}`,
   )
 }
 
@@ -553,6 +585,16 @@ function summaryMarkup(plan) {
         <h2 class="summary__title">${requestOnly ? s.requestTitle : s.title}</h2>
         ${plan.hasOrder ? `<ul class="summary__items" data-items aria-label="${s.itemsLabel}"></ul>` : ''}
         ${
+          /* «Вес коробок» — только когда в заказе есть коробочные строки;
+             узел стоит всегда, показывается по составу (paintSummary). */
+          plan.hasOrder
+            ? `<div class="summary__boxes" data-boxes hidden>
+                 <p class="summary__label">${copy.boxes.title}</p>
+                 <ul class="summary__box-list" data-box-list></ul>
+               </div>`
+            : ''
+        }
+        ${
           plan.hasRequest
             ? `${plan.hasOrder ? `<p class="summary__label">${s.requestTitle}</p>` : ''}
                <ul class="summary__items" data-request-items aria-label="${s.requestItemsLabel}"></ul>`
@@ -645,9 +687,165 @@ function summaryItem(line) {
   return li
 }
 
+/* ---------------------------------------------------------------- коробки */
+
+/** Строка блока «Вес коробок». message — { text, alert?, link? } или null. */
+function boxRow(line, message) {
+  const c = copy.boxes
+  const b = line.boxes
+  const inStock = line.kind === 'stock'
+  const packs = inStock ? b.packIds.map((id) => findPack(line.slug, id)).filter(Boolean) : []
+  const weights = packs.length ? weightsText(packs.map((p) => p.weightG)) : `≈ ${b.nominalG} г`
+  const sub = inStock
+    ? fillText(c.line, { n: line.qty, word: packsWord(line.qty), weights })
+    : fillText(c.preorderLine, { n: line.qty, word: packsWord(line.qty) })
+
+  const li = document.createElement('li')
+  li.className = 'summary__box'
+  li.dataset.boxLine = line.id
+  li.innerHTML = `
+    <div class="summary__box-head">
+      <span class="summary__box-name">${escapeHtml(line.name)}</span>
+      <span class="summary__box-sum">${sumLabel(lineSum(line, { autoIsExact: true }))}</span>
+    </div>
+    <p class="summary__box-sub">${escapeHtml(sub)}</p>
+    ${
+      inStock
+        ? `<button type="button" class="link-btn summary__box-pick" data-box-pick="${escapeHtml(line.id)}"
+                   aria-label="${escapeHtml(fillText(c.pickLabel, { name: line.name }))}">${c.pick}</button>`
+        : ''
+    }
+    ${
+      message
+        ? `<p class="summary__box-message" data-box-message${message.alert ? ' role="alert"' : ''} tabindex="-1">
+             ${escapeHtml(message.text)}${
+               message.link ? ` <a href="${message.link.href}">${message.link.label}</a>` : ''
+             }
+           </p>`
+        : ''
+    }`
+  return li
+}
+
+/**
+ * Окно выбора коробок. Список всех свободных по возрастанию веса: при одной
+ * коробке — радиокнопки, иначе флажки; когда отмечено n, остальные
+ * выключаются. «Готово» пишет выбор с picked: 'manual', «Подобрать
+ * автоматически» — подбор по номиналу с 'auto'. Esc, «Отмена» и клик по
+ * затемнению закрывают без изменений; фокус возвращается на ссылку строки.
+ */
+async function openBoxDialog(line) {
+  const c = copy.boxes.dialog
+  const b = line.boxes
+  const n = line.qty
+  const single = n === 1
+  const free = await getFreePacks(line.slug)
+  const selected = new Set(b.packIds)
+
+  const dialog = document.createElement('dialog')
+  dialog.className = 'dialog dialog--boxes'
+  dialog.setAttribute('aria-labelledby', 'box-dialog-title')
+  dialog.innerHTML = `
+    <h2 class="dialog__title" id="box-dialog-title">${escapeHtml(line.name)}</h2>
+    <p class="dialog__text">${escapeHtml(
+      fillText(c.lead, { per100: formatPrice(pricePer100(b.pricePerKg)), n, word: packsWordAcc(n) }),
+    )}</p>
+    <ul class="boxlist" data-lenis-prevent aria-label="${c.listLabel}">
+      ${free
+        .map(
+          (pack) => `
+        <li class="boxlist__row">
+          <label class="check boxlist__label">
+            <input type="${single ? 'radio' : 'checkbox'}" name="pack" value="${escapeHtml(pack.id)}"${
+              selected.has(pack.id) ? ' checked' : ''
+            }>
+            <span class="check__box" aria-hidden="true">${icons.check}</span>
+            <span class="boxlist__weight">${pack.weightG} г</span>
+            <span class="boxlist__price">${formatPrice(packPrice(b.pricePerKg, pack.weightG))}</span>
+          </label>
+        </li>`,
+        )
+        .join('')}
+    </ul>
+    <p class="boxlist__hint field__hint" data-box-hint hidden>${c.hint}</p>
+    <p class="boxlist__count" data-box-count aria-live="polite"></p>
+    <div class="dialog__actions">
+      <button type="button" class="btn btn--solid" data-box-done>${c.done}</button>
+      <button type="button" class="btn" data-box-cancel>${c.cancel}</button>
+    </div>
+    <p class="boxlist__auto"><button type="button" class="link-btn" data-box-auto>${c.auto}</button></p>`
+  document.body.appendChild(dialog)
+
+  const inputs = [...dialog.querySelectorAll('input[name="pack"]')]
+  const done = dialog.querySelector('[data-box-done]')
+  const hint = dialog.querySelector('[data-box-hint]')
+  const count = dialog.querySelector('[data-box-count]')
+
+  const refresh = () => {
+    const k = inputs.filter((input) => input.checked).length
+    count.textContent = fillText(c.count, { k, n })
+    const full = !single && k >= n
+    inputs.forEach((input) => {
+      input.disabled = full && !input.checked
+    })
+    hint.hidden = !full
+    done.disabled = k !== n
+  }
+
+  let result = null
+  const close = () => dialog.close()
+
+  dialog.addEventListener('change', refresh)
+  done.addEventListener('click', () => {
+    result = { ids: inputs.filter((input) => input.checked).map((input) => input.value), picked: 'manual' }
+    close()
+  })
+  dialog.querySelector('[data-box-cancel]').addEventListener('click', close)
+  dialog.querySelector('[data-box-auto]').addEventListener('click', () => {
+    result = { ids: pickPacks(free, n, b.nominalG).map((pack) => pack.id), picked: 'auto' }
+    close()
+  })
+  dialog.addEventListener('click', (event) => {
+    if (event.target === dialog) close()
+  })
+  // showModal() держит страницу недоступной, но Tab с последней кнопки
+  // уходит в интерфейс браузера — держим его в окне по кругу.
+  dialog.addEventListener('keydown', (event) => {
+    if (event.key !== 'Tab') return
+    const stops = [...dialog.querySelectorAll('input:not([disabled]), button:not([disabled]), a[href]')]
+    const first = stops[0]
+    const last = stops[stops.length - 1]
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault()
+      last.focus()
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault()
+      first.focus()
+    }
+  })
+
+  return new Promise((resolve) => {
+    dialog.addEventListener('close', () => {
+      getLenis()?.start()
+      dialog.remove()
+      resolve(result)
+    })
+    getLenis()?.stop()
+    dialog.showModal()
+    refresh()
+    ;(inputs.find((input) => input.checked) || inputs[0])?.focus()
+  })
+}
+
 /* -------------------------------------------------------------- страница */
 
-export async function initCheckoutPage(mount) {
+/**
+ * @param {HTMLElement} mount
+ * @param {{ demo?: { beforeVerify?: (items: object[]) => void } | null }} [options]
+ *   demo — только прототип (src/js/checkout/demo.js): ?demo=box-taken перед
+ *   первой проверкой коробок помечает одну проданной
+ */
+export async function initCheckoutPage(mount, { demo = null } = {}) {
   if (!mount) return
 
   // Оформлять нечего — возвращаем в корзину: там пустое состояние с выходами.
@@ -664,8 +862,12 @@ export async function initCheckoutPage(mount) {
   const user = currentUser()
   const account = { user, addresses: user ? await getAddresses() : [] }
 
-  const plan = planOf(cart.getItems(), cart.getTotals())
+  const plan = planOf(cart.getItems(), totalsNow())
   const signature = signatureOf(plan)
+
+  /** Сообщения блока «Вес коробок» по id строки и строки, с которыми заказ не отправить. */
+  const boxMessages = new Map()
+  const blocked = new Set()
 
   document.title = `${copy.modes[plan.mode].title} — №1 Гранд Гурмэ`
   mount.className = 'page-checkout'
@@ -693,6 +895,9 @@ export async function initCheckoutPage(mount) {
   const els = {
     items: mount.querySelector('[data-items]'),
     requestItems: mount.querySelector('[data-request-items]'),
+    boxes: mount.querySelector('[data-boxes]'),
+    boxList: mount.querySelector('[data-box-list]'),
+    orderOnly: mount.querySelector('[data-order-only]'),
     sum: mount.querySelector('[data-sum]'),
     delivery: mount.querySelector('[data-delivery]'),
     total: mount.querySelector('[data-total]'),
@@ -711,7 +916,7 @@ export async function initCheckoutPage(mount) {
       return
     }
 
-    const next = planOf(items, cart.getTotals())
+    const next = planOf(items, totalsNow())
     // Состав корзины поменяли в соседней вкладке так, что меняются сами
     // шаги (появилась заявка, ушёл предзаказ). Перестроить форму на месте
     // значило бы потерять введённое без предупреждения — страница
@@ -724,19 +929,148 @@ export async function initCheckoutPage(mount) {
     if (els.items) els.items.replaceChildren(...next.orderItems.map(summaryItem))
     if (els.requestItems) els.requestItems.replaceChildren(...next.requestItems.map(summaryItem))
 
+    // «Вес коробок»: точные веса и суммы коробок в наличии, «взвесим при
+    // фасовке» у коробок под заказ, сообщения подбора и проверки.
+    if (els.boxes) {
+      els.boxes.hidden = !next.boxLines.length
+      els.boxList.replaceChildren(...next.boxLines.map((line) => boxRow(line, boxMessages.get(line.id) || null)))
+    }
+
     if (next.hasOrder) {
-      els.sum.textContent = formatPrice(next.totals.order.sum)
+      const total = sumLabel({ value: next.totals.order.sum, approx: next.totals.order.approx })
+      els.sum.textContent = total
       els.delivery.textContent =
         method() === 'pickup'
           ? copy.summary.pickupValue
           : split() === 'two'
             ? copy.summary.deliveryTwo
             : copy.summary.deliveryValue
-      els.total.textContent = formatPrice(next.totals.order.sum)
+      els.total.textContent = total
+      if (els.orderOnly) els.orderOnly.textContent = fillText(copy.payment.orderOnly, { sum: total })
     } else {
       els.positions.textContent = String(next.totals.request.positions)
     }
   }
+
+  /* ---- коробки --------------------------------------------------------- */
+
+  const boxLinesInStock = () => cart.getItems().filter((line) => line.boxes && line.kind === 'stock')
+  const goneMessage = (line) => ({
+    text: fillText(copy.boxes.gone, { name: line.name }),
+    link: copy.boxes.goneLink,
+    alert: true,
+  })
+
+  /**
+   * Подбор при открытии. Ручной выбор остаётся, если все его коробки
+   * свободны и их столько же, сколько в строке; иначе — подбор по номиналу
+   * с picked: 'auto'. Свободных меньше, чем в строке, — количество
+   * уменьшается; не осталось ни одной — сообщение, и отправка стоит.
+   */
+  async function prepareBoxes() {
+    for (const line of boxLinesInStock()) {
+      const free = await getFreePacks(line.slug)
+      if (!free.length) {
+        boxMessages.set(line.id, goneMessage(line))
+        blocked.add(line.id)
+        continue
+      }
+      let current = line
+      if (free.length < line.qty) {
+        cart.setQty(line.id, free.length)
+        boxMessages.set(line.id, {
+          text: fillText(copy.boxes.reduced, { n: free.length, word: packsWord(free.length) }),
+        })
+        current = cart.getItems().find((item) => item.id === line.id)
+      }
+      const freeIds = new Set(free.map((pack) => pack.id))
+      const b = current.boxes
+      const keep =
+        b.picked === 'manual' && b.packIds.length === current.qty && b.packIds.every((id) => freeIds.has(id))
+      if (!keep) cart.setPacks(line.id, pickPacks(free, current.qty, b.nominalG).map((pack) => pack.id), 'auto')
+    }
+    paintSummary()
+  }
+
+  /**
+   * Проверка перед отправкой: коробку, которую уже купили, заменяет
+   * ближайшая к номиналу свободная, не выбранная в этом заказе; сводка
+   * пересчитывается, заказ не отправляется. Свободных не осталось —
+   * сообщение со ссылкой в корзину, отправка стоит.
+   * @returns {Promise<boolean>} можно ли отправлять
+   */
+  async function verifyBoxes() {
+    let ok = true
+    const lines = boxLinesInStock()
+    const chosen = new Set(lines.flatMap((line) => line.boxes.packIds))
+
+    for (const line of lines) {
+      const free = await getFreePacks(line.slug)
+      const freeIds = new Set(free.map((pack) => pack.id))
+      const taken = line.boxes.packIds.filter((id) => !freeIds.has(id))
+      if (!taken.length) {
+        if (blocked.has(line.id) && free.length >= line.qty) {
+          blocked.delete(line.id)
+          boxMessages.delete(line.id)
+        }
+        continue
+      }
+
+      ok = false
+      const next = line.boxes.packIds.slice()
+      for (const id of taken) {
+        const [replacement] = pickPacks(free, 1, line.boxes.nominalG, [...chosen])
+        if (!replacement) {
+          boxMessages.set(line.id, goneMessage(line))
+          blocked.add(line.id)
+          break
+        }
+        chosen.add(replacement.id)
+        next[next.indexOf(id)] = replacement.id
+        boxMessages.set(line.id, {
+          alert: true,
+          text: fillText(copy.boxes.taken, {
+            old: findPack(line.slug, id)?.weightG ?? '',
+            new: replacement.weightG,
+            price: formatPrice(packPrice(line.boxes.pricePerKg, replacement.weightG)),
+          }),
+        })
+      }
+      if (!blocked.has(line.id)) cart.setPacks(line.id, next, line.boxes.picked)
+    }
+
+    return ok && !blocked.size
+  }
+
+  /** Строка заказа: выбранные коробки с весом и ценой; под заказ — пусто и approx. */
+  function toOrderLine(line) {
+    if (!line.boxes) return line
+    const { nominalG, pricePerKg, packIds } = line.boxes
+    const inStock = line.kind === 'stock'
+    const packs = inStock
+      ? packIds
+          .map((id) => findPack(line.slug, id))
+          .filter(Boolean)
+          .sort((a, b) => a.weightG - b.weightG)
+          .map((pack) => ({ id: pack.id, weightG: pack.weightG, price: packPrice(pricePerKg, pack.weightG) }))
+      : []
+    return { ...line, boxes: { nominalG, pricePerKg, packs, approx: !inStock } }
+  }
+
+  mount.addEventListener('click', async (event) => {
+    const pick = event.target.closest('[data-box-pick]')
+    if (!pick) return
+    const id = pick.dataset.boxPick
+    const line = cart.getItems().find((item) => item.id === id)
+    if (!line) return
+    const result = await openBoxDialog(line)
+    if (result) {
+      boxMessages.delete(id)
+      cart.setPacks(id, result.ids, result.picked)
+    }
+    // Сводка перерисована — ссылка новая, фокус ставим на неё по id строки.
+    mount.querySelector(`[data-box-pick="${CSS.escape(id)}"]`)?.focus({ preventScroll: true })
+  })
 
   /* ---- ошибки ---------------------------------------------------------- */
 
@@ -888,7 +1222,7 @@ export async function initCheckoutPage(mount) {
 
   function collectPayload() {
     const items = cart.getItems()
-    const now = planOf(items, cart.getTotals())
+    const now = planOf(items, totalsNow())
     const value = (name) => (f[name]?.value ?? '').trim()
 
     const contact = {
@@ -939,11 +1273,14 @@ export async function initCheckoutPage(mount) {
         payment: f.payment.value,
         comment: value('comment'),
         promo: cart.getPromo(),
-        items: now.orderItems,
+        // Коробки уходят в заказ с весом и ценой каждой (toOrderLine).
+        items: now.orderItems.map(toOrderLine),
         totals: {
           count: now.totals.order.count,
           positions: now.totals.order.positions,
           sum: now.totals.order.sum,
+          // Есть коробки под заказ — сумма приблизительная, до фасовки.
+          approx: Boolean(now.totals.order.approx),
           readyAt: toIsoDay(now.totals.order.readyAt),
         },
       }
@@ -973,16 +1310,36 @@ export async function initCheckoutPage(mount) {
     submit.setAttribute('aria-busy', 'true')
     submit.textContent = copy.summary.submitting
 
-    try {
-      await submitCheckout(collectPayload())
-    } catch {
+    const release = () => {
       submit.disabled = false
       submit.removeAttribute('aria-busy')
       submit.textContent = copy.modes[plan.mode].submit
     }
+
+    // Коробки проверяются заново: купленную заменяет свободная, заказ
+    // не уходит — человек видит новую сумму и нажимает ещё раз.
+    demo?.beforeVerify?.(cart.getItems())
+    const boxesOk = await verifyBoxes()
+    if (!boxesOk) {
+      release()
+      paintSummary()
+      const message = mount.querySelector('[data-box-message]')
+      if (message) {
+        message.focus({ preventScroll: true })
+        message.scrollIntoView({ block: 'center', behavior: REDUCED ? 'auto' : 'smooth' })
+      }
+      return
+    }
+
+    try {
+      await submitCheckout(collectPayload())
+    } catch {
+      release()
+    }
   })
 
   paintSummary()
+  prepareBoxes()
 
   // Состав поменяли в соседней вкладке — сводка следует за ним. Ленту дней
   // и блок оплаты не перестраиваем: введённое в форму терять нельзя.

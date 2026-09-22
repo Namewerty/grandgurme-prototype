@@ -59,11 +59,67 @@
  * Ожидаемые файлы перечислены в src/data/media.js (catalogShots).
  */
 
+import { withBoxFields } from './boxes.js'
 import { showcases } from './catalog.js'
 import { MEDIA_ROOT, caviarGallery } from './media.js'
 
 /** Кадр позиции каталога: /media/catalog/<категория>/<слаг>.jpg, квадрат. */
 const shot = (categorySlug, slug) => `${MEDIA_ROOT}/catalog/${categorySlug}/${slug}.jpg`
+
+/* ---------------------------------------------------------------- коробки */
+
+/**
+ * КОРОБКИ С РАЗНЫМ ВЕСОМ (22.09.2026, src/data/boxes.js). Пять позиций рыбы
+ * продаются коробками: у каждой pricePerKg, nominalG и список свободных
+ * коробок packs; weightG, weightLabel, price и inStock выводит withBoxFields.
+ *
+ * ⚠ ТЕСТОВЫЕ ВЕСА КОРОБОК. Настоящая одна — «Лосось нежно подвяленный,
+ * в коробке» (артикул GGRBLS009): её 11 весов сняты с grandgurme.ru
+ * 22.09.2026, цена 12 900 ₽ за кг. Веса четырёх остальных придуманы, чтобы
+ * показать подбор, окно выбора и коробку под заказ; заменить данными 1С.
+ *
+ * У осетра были oldPrice: 3800 и isSale: true — зачёркнутая цена рядом
+ * с приблизительной не имеет смысла, пока скидка не задана за килограмм:
+ * у коробочных позиций oldPrice: null, isSale: false (см. README,
+ * «Что осталось предварительным»).
+ *
+ * id коробки — <слаг позиции>-<вес>; совпадут веса — порядковый суффикс.
+ */
+const packsOf = (slug, weights) => {
+  const seen = new Map()
+  return weights.map((weightG) => {
+    const n = (seen.get(weightG) || 0) + 1
+    seen.set(weightG, n)
+    return { id: `${slug}-${weightG}${n > 1 ? `-${n}` : ''}`, weightG }
+  })
+}
+
+const BOX_WEIGHTS = {
+  'losos-nezhno-podvyalenyy-korobka': [174, 176, 178, 180, 184, 202, 204, 206, 212, 220, 238],
+  'losos-hk-korobka-146': [138, 142, 146, 149, 153, 157],
+  'losos-apelsin-hk-168': [161, 165, 168, 172, 179],
+  'osetr-hk-korobka-250': [236, 244, 251, 258],
+  /* Коробок на складе нет — позиция под заказ (рыба — раздел с предзаказом). */
+  'klykach-file-hk-206': [],
+}
+
+const BOX_PRICES = {
+  'losos-nezhno-podvyalenyy-korobka': { pricePerKg: 12900, nominalG: 200 },
+  'losos-hk-korobka-146': { pricePerKg: 12900, nominalG: 150 },
+  'losos-apelsin-hk-168': { pricePerKg: 12900, nominalG: 170 },
+  'osetr-hk-korobka-250': { pricePerKg: 13800, nominalG: 250 },
+  'klykach-file-hk-206': { pricePerKg: 9900, nominalG: 200 },
+}
+
+/** Позиция в коробках: цена за кг, номинал и коробки — из таблиц выше. */
+const box = (product) =>
+  withBoxFields({
+    ...product,
+    ...BOX_PRICES[product.slug],
+    packs: packsOf(product.slug, BOX_WEIGHTS[product.slug]),
+    oldPrice: null,
+    isSale: false,
+  })
 
 /* ------------------------------------------------------------------- рыба */
 
@@ -128,17 +184,11 @@ export const fishProducts = [
       brand: 'Русский улов',
     },
   },
-  {
+  box({
     id: 3,
     slug: 'losos-hk-korobka-146',
     name: 'Лосось холодного копчения, классический, в коробке',
-    weightLabel: '1 шт, 146 г',
-    weightG: 146,
-    price: 1883,
-    oldPrice: null,
-    inStock: true,
     isNew: false,
-    isSale: false,
     isClearance: false,
     popularity: 80,
     addedAt: '2025-09-20',
@@ -150,7 +200,7 @@ export const fishProducts = [
       country: 'Норвегия',
       brand: 'Siberian Luxury Bar',
     },
-  },
+  }),
   {
     id: 4,
     slug: 'pashtet-losos-tsitrus-180',
@@ -174,17 +224,12 @@ export const fishProducts = [
       brand: 'Siberian Luxury Bar',
     },
   },
-  {
+  /* Коробок на складе нет — под заказ, см. BOX_WEIGHTS. */
+  box({
     id: 5,
     slug: 'klykach-file-hk-206',
     name: 'Клыкач филе холодного копчения, в коробке',
-    weightLabel: '1 шт, 206 г',
-    weightG: 206,
-    price: 2039,
-    oldPrice: null,
-    inStock: false, // демонстрация «под заказ», см. шапку файла
     isNew: false,
-    isSale: false,
     isClearance: false,
     popularity: 60,
     addedAt: '2025-08-05',
@@ -196,18 +241,12 @@ export const fishProducts = [
       country: 'Чили',
       brand: 'Nordic Catch',
     },
-  },
-  {
+  }),
+  box({
     id: 6,
     slug: 'losos-apelsin-hk-168',
     name: 'Лосось с апельсином холодного копчения, в коробке',
-    weightLabel: '1 шт, 168 г',
-    weightG: 168,
-    price: 2167,
-    oldPrice: null,
-    inStock: true,
     isNew: false,
-    isSale: false,
     isClearance: false,
     popularity: 65,
     addedAt: '2025-07-18',
@@ -219,7 +258,7 @@ export const fishProducts = [
       country: 'Норвегия',
       brand: 'Siberian Luxury Bar',
     },
-  },
+  }),
   {
     id: 7,
     slug: 'forel-file-slaboy-soli-100',
@@ -450,17 +489,12 @@ export const fishProducts = [
       brand: 'Siberian Luxury Bar',
     },
   },
-  {
+  /* Была скидка (oldPrice 3800, isSale): у коробок она снята, см. шапку блока. */
+  box({
     id: 17,
     slug: 'osetr-hk-korobka-250',
     name: 'Осётр холодного копчения, классический, в коробке',
-    weightLabel: '1 шт, 250 г',
-    weightG: 250,
-    price: 3450,
-    oldPrice: 3800,
-    inStock: true,
     isNew: false,
-    isSale: true,
     isClearance: false,
     popularity: 70,
     addedAt: '2026-04-19',
@@ -472,7 +506,7 @@ export const fishProducts = [
       country: 'Россия',
       brand: 'Siberian Luxury Bar',
     },
-  },
+  }),
   {
     id: 18,
     slug: 'seld-slaboy-soli-250',
@@ -588,6 +622,25 @@ export const fishProducts = [
       brand: 'Nordic Catch',
     },
   },
+  /* Настоящая коробочная позиция: веса сняты с grandgurme.ru 22.09.2026.
+     id 25 — следующий свободный: 23, названный в задании, занят набором. */
+  box({
+    id: 25,
+    slug: 'losos-nezhno-podvyalenyy-korobka',
+    name: 'Лосось нежно подвяленный, в коробке',
+    isNew: false,
+    isClearance: false,
+    popularity: 90,
+    addedAt: '2026-09-15',
+    attrs: {
+      species: 'Лосось',
+      processing: 'Вяленая и сушёная',
+      taste: 'Классический',
+      packaging: 'Фирменная коробка',
+      country: 'Россия',
+      brand: 'Siberian Luxury Bar',
+    },
+  }),
 ].map((product) => ({ ...product, photo: shot('ryba', product.slug) }))
 
 /* ------------------------------------------------------------ чёрная икра */

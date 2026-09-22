@@ -20,7 +20,7 @@ import { cartCopy } from '../../../data/cart-copy.js'
 import { KINDS } from '../../../data/fulfillment.js'
 import { ROUTES } from '../../../data/routes.js'
 import { addWithToast } from '../../cart/add.js'
-import { formatPrice } from '../../catalog/model.js'
+import { priceText } from '../../catalog/model.js'
 import { createProductCard } from '../../components/product-card.js'
 import * as favorites from '../../favorites/store.js'
 import { favoriteFor } from '../../favorites/toggle.js'
@@ -44,7 +44,7 @@ export function favoriteCard(item) {
     name: item.name,
     note: item.note,
     href: item.href,
-    price: item.price == null ? cartCopy.line.priceOnRequest : formatPrice(item.price),
+    price: priceText(item) ?? cartCopy.line.priceOnRequest,
     image: { src: item.image || '', ratio: '1:1' },
     favorite: favoriteFor(item),
     add: { label: cartCopy.addLabel[item.kind], onAdd: () => addWithToast(item) },

@@ -20,8 +20,8 @@ import { accountCopy } from '../../../data/account-copy.js'
 import { checkoutCopy } from '../../../data/checkout-copy.js'
 import { ROUTES } from '../../../data/routes.js'
 import { showToast } from '../../cart/toast.js'
-import { lineSumLabel } from '../../cart/summary.js'
-import { escapeHtml, formatPrice } from '../../catalog/model.js'
+import { boxNote, lineSumLabel, sumLabel } from '../../cart/summary.js'
+import { escapeHtml } from '../../catalog/model.js'
 import { icons } from '../../icons.js'
 import { createImage } from '../../media.js'
 import { getOrder, logout, reorder } from '../api.js'
@@ -79,7 +79,11 @@ export function renderNotFound(main, texts) {
   })
 }
 
-/** Строка состава: кадр, название ссылкой, фасовка, количество, сумма. */
+/**
+ * Строка состава: кадр, название ссылкой, фасовка, количество, сумма.
+ * У коробок вместо фасовки — веса («Коробки 204 и 206 г») или «взвесим
+ * при фасовке» (boxNote в cart/summary.js).
+ */
 export function lineRow(line, { sum }) {
   const li = document.createElement('li')
   li.className = 'acc-line'
@@ -87,7 +91,7 @@ export function lineRow(line, { sum }) {
     <span class="acc-line__shot" data-shot></span>
     <span class="acc-line__text">
       <a class="acc-line__name" href="${line.href || ROUTES.catalog}">${escapeHtml(line.name)}</a>
-      <span class="acc-line__note">${escapeHtml([line.note, `× ${line.qty}`].filter(Boolean).join(' '))}</span>
+      <span class="acc-line__note">${escapeHtml(boxNote(line) ?? [line.note, `× ${line.qty}`].filter(Boolean).join(' '))}</span>
     </span>
     ${sum ? `<span class="acc-line__sum${sum.muted ? ' is-estimate' : ''}">${sum.text}</span>` : ''}`
   li.querySelector('[data-shot]').appendChild(
@@ -194,6 +198,8 @@ export async function initOrderPage(mount) {
 
   const payment = checkoutCopy.payment.options.find((option) => option.value === order.payment)?.label || ''
   const canceled = order.status === 'canceled'
+  // Коробки под заказ: сумма приблизительная до фасовки.
+  const total = sumLabel({ value: order.totals?.sum ?? 0, approx: Boolean(order.totals?.approx) })
 
   main.innerHTML = `
     <div class="acc-order">
@@ -238,13 +244,14 @@ export async function initOrderPage(mount) {
           <h2 class="summary__title">${copy.summaryTitle}</h2>
           <dl class="summary__rows">
             <div class="summary__row"><dt>${copy.count}</dt><dd>${order.totals?.count ?? ''}</dd></div>
-            <div class="summary__row"><dt>${copy.sum}</dt><dd>${formatPrice(order.totals?.sum ?? 0)}</dd></div>
+            <div class="summary__row"><dt>${copy.sum}</dt><dd>${total}</dd></div>
             <div class="summary__row"><dt>${copy.delivery}</dt><dd>${deliveryValue(order)}</dd></div>
           </dl>
           <p class="summary__total">
             <span>${copy.total}</span>
-            <span class="summary__total-value">${formatPrice(order.totals?.sum ?? 0)}</span>
+            <span class="summary__total-value">${total}</span>
           </p>
+          ${order.totals?.approx ? `<p class="summary__note">${checkoutCopy.success.approxNote}</p>` : ''}
           <button type="button" class="btn btn--solid summary__action" data-reorder>${copy.reorder}</button>
           <p class="summary__note">${copy.change}</p>
           <p class="acc-contact acc-contact--stack">${contactLinksHtml()}</p>

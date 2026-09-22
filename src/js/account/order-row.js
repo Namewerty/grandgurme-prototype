@@ -12,7 +12,8 @@
 import { accountCopy } from '../../data/account-copy.js'
 import { formatDate, formatDayMonth, fromIsoDay } from '../../data/fulfillment.js'
 import { ROUTES } from '../../data/routes.js'
-import { escapeHtml, formatPrice } from '../catalog/model.js'
+import { escapeHtml } from '../catalog/model.js'
+import { sumLabel } from '../cart/summary.js'
 import { icons } from '../icons.js'
 import { createImage } from '../media.js'
 import { fill, positionsLabel } from './layout.js'
@@ -92,7 +93,7 @@ export function createOrderRow(row) {
       ${statusTagHtml(row.status)}
       ${line ? `<span class="order-row__receive">${escapeHtml(line)}</span>` : ''}
     </div>
-    ${row.total == null ? '' : `<span class="order-row__sum">${formatPrice(row.total)}</span>`}
+    ${row.total == null ? '' : `<span class="order-row__sum">${sumLabel({ value: row.total, approx: row.approx })}</span>`}
     <span class="order-row__thumbs" data-thumbs></span>
     <span class="order-row__chevron" aria-hidden="true">${icons.chevronRight}</span>`
 

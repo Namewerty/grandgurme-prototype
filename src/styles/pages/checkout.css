@@ -392,6 +392,14 @@
   font-size: 1.35rem;
 }
 
+/* Итог с «≈»: в заказе коробки под заказ, сумму сообщим после фасовки. */
+.order-lines__approx {
+  margin-top: .5rem;
+  font-size: .82rem;
+  line-height: 1.5;
+  color: var(--fg-mute);
+}
+
 .order-done__contacts {
   display: flex;
   flex-wrap: wrap;

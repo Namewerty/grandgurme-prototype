@@ -48,9 +48,17 @@ function toSnapshot(product) {
     inStock: product.inStock !== false,
     categorySlug: product.categorySlug ?? null,
     fulfillment: product.fulfillment === 'preorder' ? 'preorder' : null,
+    // Коробки (src/data/boxes.js): по sale карточка пишет «≈ 2 580 ₽»,
+    // по nominalG и pricePerKg корзина собирает строку.
+    ...boxFields(product),
     addedAt: new Date().toISOString(),
   }
 }
+
+const boxFields = (product) =>
+  product?.sale === 'box'
+    ? { sale: 'box', nominalG: product.nominalG, pricePerKg: product.pricePerKg }
+    : { sale: null, nominalG: null, pricePerKg: null }
 
 /** Свежие цена, наличие и кадр из каталога; null — позиция снята с продажи. */
 function refresh(snapshot) {
@@ -66,6 +74,10 @@ function refresh(snapshot) {
     image: product.photo ?? snapshot.image,
     categorySlug: product.categorySlug ?? snapshot.categorySlug,
     fulfillment: product.fulfillment === 'preorder' ? 'preorder' : null,
+    // Позиция стала коробочной после того, как попала в избранное:
+    // подпись и поля коробки — из каталога.
+    note: product.weightLabel ?? snapshot.note,
+    ...boxFields(product),
   }
 }
 

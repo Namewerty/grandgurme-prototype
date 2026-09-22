@@ -31,7 +31,7 @@ import { icons } from '../icons.js'
 import { createQtyStepper } from '../components/qty-stepper.js'
 import { kindIcon } from '../components/stock-tag.js'
 import * as cart from './store.js'
-import { groupLead, lineSumLabel, positionsLabel, summaryTexts } from './summary.js'
+import { boxNote, groupLead, lineSum, lineSumLabel, positionsLabel, summaryTexts } from './summary.js'
 
 const copy = cartCopy
 const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -97,6 +97,7 @@ function layout() {
               <span>${s.total}</span>
               <span class="summary__total-value" data-total aria-live="polite"></span>
             </p>
+            <p class="summary__note" data-approx-note hidden></p>
           </div>
 
           <div class="summary__request" data-request-block hidden>
@@ -177,10 +178,11 @@ function createLine(line, { onQty, onRemove }) {
     )
   }
 
+  // Коробки в наличии: не больше свободных коробок на складе.
   const stepper = createQtyStepper({
     value: line.qty,
     size: 'sm',
-    max: cart.MAX_QTY,
+    max: cart.maxQtyOf(line.id),
     label: `${copy.line.qty}: ${line.name}`,
     decrease: copy.line.decrease,
     increase: copy.line.increase,
@@ -199,12 +201,15 @@ function createLine(line, { onQty, onRemove }) {
     node,
     update(next) {
       // Приписки наличия в строке больше нет: срок сказан заголовком группы.
-      note.textContent = next.note
-      note.hidden = !next.note
+      // У коробок подпись зависит от количества и выбора (boxNote).
+      const text = boxNote(next) ?? next.note
+      note.textContent = text
+      note.hidden = !text
       sum.textContent = lineSumLabel(next)
       sum.classList.toggle('is-request', next.price == null)
       // Сумма позиции заявки в итог не входит — пишется приглушённо.
       sum.classList.toggle('is-estimate', next.kind === 'request' && next.price != null)
+      sum.classList.toggle('is-approx', lineSum(next).approx)
       if (stepper.value !== next.qty) stepper.set(next.qty)
     },
   }
@@ -289,6 +294,7 @@ export function initCartPage(mount) {
       count: body.querySelector('[data-count]'),
       sum: body.querySelector('[data-sum]'),
       total: body.querySelector('[data-total]'),
+      approxNote: body.querySelector('[data-approx-note]'),
       splitHint: body.querySelector('[data-split-hint]'),
       requestBlock: body.querySelector('[data-request-block]'),
       requestNote: body.querySelector('[data-request-note]'),
@@ -351,6 +357,9 @@ export function initCartPage(mount) {
     els.count.textContent = t.count
     els.sum.textContent = t.sum
     els.total.textContent = t.total
+    // Коробки без выбранного веса: «≈» в сумме и строка под итогом.
+    els.approxNote.textContent = t.approxNote
+    els.approxNote.hidden = !t.approxNote
     els.splitHint.hidden = !t.splitHint
 
     els.requestBlock.hidden = !t.showRequest

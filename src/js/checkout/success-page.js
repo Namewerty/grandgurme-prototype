@@ -22,8 +22,8 @@ import { checkoutCopy } from '../../data/checkout-copy.js'
 import { contacts } from '../../data/nav.js'
 import { ROUTES, staticPages } from '../../data/routes.js'
 import { formatDayMonth, fromIsoDay, isSameDay } from '../../data/fulfillment.js'
-import { escapeHtml, formatPrice } from '../catalog/model.js'
-import { fillText, lineSumLabel } from '../cart/summary.js'
+import { escapeHtml } from '../catalog/model.js'
+import { boxNote, fillText, lineSumLabel, sumLabel } from '../cart/summary.js'
 import { getOrder, getRequest } from './submit.js'
 import { accountCopy } from '../../data/account-copy.js'
 import { currentUser } from '../account/session.js'
@@ -158,6 +158,9 @@ const stepsList = (steps) => `
       .join('')}
   </ol>`
 
+/** Подпись строки: у коробок — веса («Коробки 204 и 206 г») или «взвесим при фасовке». */
+export const lineNote = (line) => boxNote(line) ?? [line.note, `× ${line.qty}`].filter(Boolean).join(' ')
+
 const linesList = (items, { sums }) => `
   <ul class="order-lines">
     ${items
@@ -165,7 +168,7 @@ const linesList = (items, { sums }) => `
         (line) => `
       <li class="order-lines__row">
         <span class="order-lines__name">${escapeHtml(line.name)}
-          <span class="order-lines__note">${escapeHtml([line.note, `× ${line.qty}`].filter(Boolean).join(' '))}</span>
+          <span class="order-lines__note">${escapeHtml(lineNote(line))}</span>
         </span>
         ${sums ? `<span class="order-lines__sum">${lineSumLabel(line)}</span>` : ''}
       </li>`,
@@ -175,11 +178,13 @@ const linesList = (items, { sums }) => `
 
 function orderItemsBlock(order) {
   if (!order?.items?.length) return ''
+  const approx = Boolean(order.totals.approx)
   return `
     <section class="order-done__block" aria-labelledby="order-items">
       <h2 class="co-label" id="order-items">${copy.itemsTitle}</h2>
       ${linesList(order.items, { sums: true })}
-      <p class="order-lines__total"><span>${copy.total}</span><span>${formatPrice(order.totals.sum)}</span></p>
+      <p class="order-lines__total"><span>${copy.total}</span><span>${sumLabel({ value: order.totals.sum, approx })}</span></p>
+      ${approx ? `<p class="order-lines__approx">${copy.approxNote}</p>` : ''}
     </section>`
 }
 

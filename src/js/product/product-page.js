@@ -44,7 +44,10 @@ import { createHeartButton, favoriteFor } from '../favorites/toggle.js'
 import { stockTagHtml } from '../components/stock-tag.js'
 import { createQtyStepper } from '../components/qty-stepper.js'
 import { createImage } from '../media.js'
-import { escapeHtml, formatPrice } from '../catalog/model.js'
+import { approxLabel, escapeHtml, formatPrice, priceText } from '../catalog/model.js'
+import { isBox, packsWord, pricePer100 } from '../../data/boxes.js'
+import { getFreePacks, peekFreeCount } from '../cart/boxes.js'
+import { MAX_QTY } from '../cart/store.js'
 import { icons } from '../icons.js'
 import { createArrow, createPager, initRail } from '../rail.js'
 
@@ -58,8 +61,14 @@ export function slugFromPath(pathname = location.pathname) {
   return clean.startsWith('/product/') ? clean.slice('/product/'.length) : null
 }
 
-const priceLabel = (product) =>
-  product.price == null ? copy.buy.priceOnRequest : formatPrice(product.price)
+/** Цена в лентах: у коробок «≈ 2 580 ₽», без цены — «Цена по запросу». */
+const priceLabel = (product) => priceText(product) ?? copy.buy.priceOnRequest
+
+/** Цена в правой колонке: у коробок ещё и мелко «за коробку». */
+const priceMarkup = (product) =>
+  isBox(product)
+    ? `${approxLabel(product.price)} <span class="pbuy__price-unit">${copy.boxes.perBox}</span>`
+    : priceLabel(product)
 
 /** Позиции той же линейки: у икры это grade, у остальных — само название. */
 function lineOf(product) {
@@ -202,7 +211,8 @@ function buyColumn(product) {
     <div class="pbuy">
       <h1 class="pbuy__title">${escapeHtml(product.name)}</h1>
       ${line ? `<p class="pbuy__line">${escapeHtml(line)}</p>` : ''}
-      <p class="pbuy__price">${priceLabel(product)}</p>
+      <p class="pbuy__price">${priceMarkup(product)}</p>
+      ${isBox(product) ? '<p class="pbuy__boxes" data-boxes-line></p>' : ''}
       <div class="pbuy__kind">
         ${stockTagHtml(kind)}
         <p class="pbuy__kind-text">${kindText}</p>
@@ -220,6 +230,7 @@ function buyColumn(product) {
         </button>
         <span data-fav-slot></span>
       </div>
+      ${isBox(product) && product.inStock ? '<p class="pbuy__limit" data-boxes-limit hidden></p>' : ''}
 
       ${kind === 'request' && !product.inStock ? '<div class="pbuy__wait" data-wait></div>' : ''}
 
@@ -243,7 +254,12 @@ function specs(product) {
     .filter((key) => product.attrs?.[key])
     .map((key) => ({ term: copy.specs.labels[key], value: product.attrs[key] }))
 
-  if (product.weightG) rows.push({ term: copy.specs.weight, value: `${product.weightG} г` })
+  // У коробки вес номинальный: «Вес коробки — около 200 г».
+  if (isBox(product)) {
+    rows.push({ term: copy.boxes.specWeight, value: fillText(copy.boxes.specWeightValue, { g: product.nominalG }) })
+  } else if (product.weightG) {
+    rows.push({ term: copy.specs.weight, value: `${product.weightG} г` })
+  }
   if (!rows.length) return ''
 
   return `
@@ -475,6 +491,32 @@ function wireGallery(root, product) {
   })
 }
 
+/* ------------------------------------------------------------- коробки */
+
+/**
+ * Строка под ценой у позиции в коробках (src/data/boxes.js): цена за 100 г
+ * и что лежит на складе. Коробки берутся через границу cart/boxes.js —
+ * список приходит асинхронно, строка заполняется, когда он пришёл.
+ * Под заказ (коробок нет): вес узнают при фасовке.
+ */
+async function fillBoxesLine(root, product) {
+  const node = root.querySelector('[data-boxes-line]')
+  if (!node) return
+  const c = copy.boxes
+  const per100 = formatPrice(pricePer100(product.pricePerKg))
+
+  if (!product.inStock) {
+    node.textContent = fillText(c.preorderLine, { per100 })
+    return
+  }
+  const packs = await getFreePacks(product.slug)
+  const weights = packs.map((pack) => pack.weightG)
+  node.textContent =
+    packs.length === 1
+      ? fillText(c.stockOne, { per100, w: weights[0] })
+      : fillText(c.stockLine, { per100, min: Math.min(...weights), max: Math.max(...weights) })
+}
+
 /* ------------------------------------------------- сообщить о поступлении */
 
 /**
@@ -617,14 +659,26 @@ export function initProductPage(mount) {
   fillRail(mount, 'species', otherSpecies(product), product.categorySlug)
 
   // Количество живёт в степпере до нажатия «В корзину»: карточка ничего
-  // не пишет в корзину, пока человек не решил.
+  // не пишет в корзину, пока человек не решил. У коробок в наличии
+  // максимум — число свободных коробок; упёрлись — подпись под кнопками.
+  const boxMax = isBox(product) && product.inStock ? Math.min(MAX_QTY, peekFreeCount(product.slug)) : MAX_QTY
+  const limitNote = mount.querySelector('[data-boxes-limit]')
+  const paintLimit = (value) => {
+    if (!limitNote) return
+    limitNote.hidden = value < boxMax
+    limitNote.textContent = fillText(copy.boxes.limit, { n: boxMax, word: packsWord(boxMax) })
+  }
   const qty = createQtyStepper({
     value: 1,
+    max: boxMax,
     label: copy.buy.qty,
     decrease: copy.buy.decrease,
     increase: copy.buy.increase,
+    onChange: paintLimit,
   })
   mount.querySelector('[data-qty]')?.replaceWith(qty.node)
+  paintLimit(qty.value)
+  fillBoxesLine(mount, product)
 
   mount.querySelector('[data-add-to-cart]')?.addEventListener('click', () => {
     addWithToast(product, qty.value)

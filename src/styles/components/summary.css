@@ -155,6 +155,71 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* ---- Вес коробок (оформление, src/data/boxes.js) -------------------------
+   Сразу после миниатюр заказа: на каждую коробочную строку название, веса
+   и точная сумма, ссылка «Выбрать другие»; сообщения подбора и проверки
+   перед отправкой — под строкой.                                            */
+
+.summary__boxes { margin-bottom: 1rem; }
+
+.summary__boxes[hidden] { display: none; }
+
+.summary__box-list {
+  margin: 0;
+  border-top: 1px solid var(--hairline);
+}
+
+.summary__box {
+  padding-block: .7rem;
+  border-bottom: 1px solid var(--hairline);
+  font-size: .85rem;
+  line-height: 1.4;
+}
+
+.summary__box-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+}
+
+.summary__box-name { min-width: 0; }
+
+.summary__box-sum {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.summary__box-sub {
+  margin-top: .2rem;
+  font-size: .8rem;
+  color: var(--fg-mute);
+}
+
+.summary__box-pick {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  font-size: .8rem;
+}
+
+.summary__box-message {
+  margin-top: .35rem;
+  font-size: .82rem;
+  line-height: 1.5;
+  color: var(--fg);
+  text-wrap: pretty;
+}
+
+.summary__box-message:focus { outline: none; }
+
+.summary__box-message a {
+  color: var(--fg);
+  border-bottom: 1px solid var(--caspian);
+  padding-bottom: 1px;
+}
+
 @media (max-width: 1023px) {
   .summary-sticky { position: static; }
 }

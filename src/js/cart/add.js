@@ -9,6 +9,7 @@
    ============================================================================ */
 
 import { cartCopy } from '../../data/cart-copy.js'
+import { isBox, packsWord } from '../../data/boxes.js'
 import { formatDayMonth, kindOf, preorderDate } from '../../data/fulfillment.js'
 import { fillText } from './summary.js'
 import { add } from './store.js'
@@ -24,6 +25,12 @@ export const toastText = (kind, now = new Date()) =>
  * @param {number} [qty]
  */
 export function addWithToast(product, qty = 1) {
-  add(product, qty)
+  const { added, max } = add(product, qty)
+
+  // Коробки: упёрлись в число свободных на складе — вместо обычного тоста.
+  if (isBox(product) && added < qty) {
+    showToast(fillText(cartCopy.boxes.limitToast, { n: max, word: packsWord(max) }), cartCopy.toast.action)
+    return
+  }
   showToast(toastText(kindOf(product)), cartCopy.toast.action)
 }

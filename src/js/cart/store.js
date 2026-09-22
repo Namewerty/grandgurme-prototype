@@ -34,13 +34,47 @@
    ============================================================================ */
 
 import { ROUTES } from '../../data/routes.js'
+import { isBox } from '../../data/boxes.js'
 import { KINDS, isOrderKind, kindOf, readyDateFor } from '../../data/fulfillment.js'
 import { currentUserId } from '../account/session.js'
+import { peekFreeCount } from './boxes.js'
 import { MAX_QTY, loadCart, onExternalCartChange, saveCart } from './storage.js'
+import { lineSum } from './summary.js'
 
 export { MAX_QTY }
 
 const clampQty = (qty) => Math.max(0, Math.min(MAX_QTY, Math.round(Number(qty) || 0)))
+
+/**
+ * КОРОБКИ (22.09.2026, src/data/boxes.js). У позиции в коробках в снимке
+ * поле boxes: { nominalG, pricePerKg, packIds, picked }: packIds — выбранные
+ * коробки (пусто — подберём на оформлении), picked — кто выбрал: null,
+ * 'auto' (система) или 'manual' (человек в окне выбора). У обычной позиции
+ * boxes: null. Количество коробочной позиции в наличии не больше числа
+ * свободных коробок (peekFreeCount), add и setQty обрезают сами; изменение
+ * количества сбрасывает выбор.
+ */
+const boxesOf = (product) =>
+  isBox(product) ? { nominalG: product.nominalG, pricePerKg: product.pricePerKg, packIds: [], picked: null } : null
+
+/** Запись boxes из хранилища приводится к форме выше; чужое — null. */
+function sanitizeBoxes(boxes) {
+  if (!boxes || typeof boxes !== 'object') return null
+  return {
+    nominalG: Number(boxes.nominalG) || 0,
+    pricePerKg: Number(boxes.pricePerKg) || 0,
+    packIds: Array.isArray(boxes.packIds) ? boxes.packIds.filter((id) => typeof id === 'string') : [],
+    picked: boxes.picked === 'auto' || boxes.picked === 'manual' ? boxes.picked : null,
+  }
+}
+
+/** Предел количества строки: у коробок в наличии — свободные коробки. */
+const limitOf = (line) =>
+  line.boxes && line.kind === 'stock' && line.slug ? Math.min(MAX_QTY, peekFreeCount(line.slug)) : MAX_QTY
+
+const resetPicks = (line) => {
+  if (line.boxes) line.boxes = { ...line.boxes, packIds: [], picked: null }
+}
 
 /**
  * Позиция корзины из товара каталога или из готового снимка.
@@ -61,6 +95,7 @@ function toLine(product, qty) {
     inStock: product.inStock !== false,
     categorySlug: product.categorySlug ?? null,
     fulfillment: product.fulfillment === 'preorder' ? 'preorder' : null,
+    boxes: boxesOf(product),
   }
   return { ...line, kind: kindOf(line) }
 }
@@ -76,7 +111,7 @@ function sanitize({ items, promo }) {
   return {
     items: items
       .filter(isValidLine)
-      .map((line) => ({ ...line, qty: clampQty(line.qty), kind: kindOf(line) })),
+      .map((line) => ({ ...line, qty: clampQty(line.qty), boxes: sanitizeBoxes(line.boxes), kind: kindOf(line) })),
     promo,
   }
 }
@@ -127,24 +162,42 @@ export function holdAccount() {
 /** Копия состава: снаружи состояние не правится мимо API. */
 export const getItems = () => state.items.map((line) => ({ ...line }))
 
+/**
+ * Положить позицию. Возвращает, сколько добавилось на самом деле и предел
+ * строки: у коробок в наличии он равен числу свободных коробок, и кнопка
+ * «в корзину» по нему различает обычный тост и «больше положить нельзя».
+ * @returns {{ added: number, max: number }}
+ */
 export function add(product, qty = 1) {
   const amount = clampQty(qty)
-  if (!product || !amount) return
+  if (!product || !amount) return { added: 0, max: MAX_QTY }
 
   const id = String(product.id ?? product.slug)
   const existing = state.items.find((line) => line.id === id)
+  const line = existing || toLine(product, amount)
+  const max = limitOf(line)
+  const before = existing ? existing.qty : 0
+  const next = Math.min(max, before + amount)
+  const added = next - before
+  if (added <= 0) return { added: 0, max }
 
-  if (existing) existing.qty = clampQty(existing.qty + amount)
-  else state.items.push(toLine(product, amount))
+  if (existing) {
+    existing.qty = next
+    resetPicks(existing)
+  } else {
+    line.qty = next
+    state.items.push(line)
+  }
 
   commit()
+  return { added, max }
 }
 
 /** qty === 0 удаляет позицию: степпер на единице и крестик — одно действие. */
 export function setQty(id, qty) {
-  const next = clampQty(qty)
   const line = state.items.find((item) => item.id === id)
   if (!line) return
+  const next = Math.min(clampQty(qty), limitOf(line))
 
   if (!next) {
     remove(id)
@@ -152,6 +205,26 @@ export function setQty(id, qty) {
   }
   if (line.qty === next) return
   line.qty = next
+  resetPicks(line)
+  commit()
+}
+
+/** Предел количества строки — степперу карточки и корзины. */
+export const maxQtyOf = (id) => {
+  const line = state.items.find((item) => item.id === id)
+  return line ? limitOf(line) : MAX_QTY
+}
+
+/**
+ * Выбранные коробки строки (оформление: подбор по номиналу или окно выбора).
+ * @param {string} id
+ * @param {string[]} packIds
+ * @param {'auto'|'manual'|null} picked
+ */
+export function setPacks(id, packIds, picked) {
+  const line = state.items.find((item) => item.id === id)
+  if (!line?.boxes) return
+  line.boxes = { ...line.boxes, packIds: packIds.slice(), picked: packIds.length ? picked : null }
   commit()
 }
 
@@ -194,15 +267,20 @@ export function setPromo(code) {
  *              странице корзины;
  *   positions  строк всех видов — «5 позиций» под заголовком;
  *   byKind     { stock, preorder, request } — строк каждого вида;
- *   order      заказ (stock + preorder): count, positions, sum, hasStock,
- *              hasPreorder, readyAt. Сумма точная: без цены в заказ не попасть;
+ *   order      заказ (stock + preorder): count, positions, sum, approx,
+ *              hasStock, hasPreorder, readyAt. Без цены в заказ не попасть;
+ *              approx — есть ли в заказе хоть одна приблизительная строка
+ *              (коробки без выбранного веса, см. lineSum в summary.js);
  *   request    заявка: count, positions.
+ * @param {{ autoIsExact?: boolean }} [options] выбор коробок 'auto' считать
+ *   точным — нужно оформлению, где подбор уже сделан
  */
-export function getTotals() {
+export function getTotals({ autoIsExact = false } = {}) {
   const { items } = state
   const orderItems = items.filter((line) => isOrderKind(line.kind))
   const requestItems = items.filter((line) => line.kind === 'request')
   const byKind = Object.fromEntries(KINDS.map((kind) => [kind, items.filter((line) => line.kind === kind).length]))
+  const sums = orderItems.map((line) => lineSum(line, { autoIsExact }))
 
   return {
     count: items.reduce((n, line) => n + line.qty, 0),
@@ -211,7 +289,8 @@ export function getTotals() {
     order: {
       count: orderItems.reduce((n, line) => n + line.qty, 0),
       positions: orderItems.length,
-      sum: orderItems.reduce((n, line) => n + line.price * line.qty, 0),
+      sum: Math.round(sums.reduce((n, sum) => n + (sum.value || 0), 0) * 100) / 100,
+      approx: sums.some((sum) => sum.approx),
       hasStock: byKind.stock > 0,
       hasPreorder: byKind.preorder > 0,
       readyAt: readyDateFor(orderItems),

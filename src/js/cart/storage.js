@@ -29,6 +29,13 @@
    ещё пишут версию 2, и новая страница корзины показывала бы пустоту,
    пока человек не перезагрузит всё. Заказы и заявки остаются на версии 2.
 
+   ВЕРСИЯ 4 КОРЗИНЫ (22.09.2026): у позиции поле boxes — коробки с разным
+   весом (src/data/boxes.js): { nominalG, pricePerKg, packIds, picked } либо
+   null у обычной позиции. Версии 2 и 3 читаются: у позиции, которая
+   в каталоге стала коробочной, boxes, price и note берутся из каталога
+   по слагу — иначе у losos-hk-korobka-146 остались бы старые «1 шт, 146 г»
+   и 1 883 ₽; у остальных boxes: null.
+
    КОРЗИНА ПО ПОЛЬЗОВАТЕЛЮ (17.09.2026). Ключ корзины — gg-cart у гостя
    и gg-cart:<userId> у вошедшего. Текущий ключ определяется при КАЖДОМ чтении
    и записи через account/session.js, а не запоминается: вход и выход меняют
@@ -51,14 +58,16 @@
    «Заявки менеджеру», а не заказ магазина: в обмен с 1С она не попадает.
    ============================================================================ */
 
+import { isBox } from '../../data/boxes.js'
 import { findProductBySlug } from '../../data/catalog-products.js'
 import { currentUserId } from '../account/session.js'
+import { peekFreeCount } from './boxes.js'
 
 const CART_KEY = 'gg-cart'
 const ORDERS_KEY = 'gg-orders'
 const REQUESTS_KEY = 'gg-requests'
-const CART_VERSION = 3
-const CART_VERSIONS_READ = [2, 3]
+const CART_VERSION = 4
+const CART_VERSIONS_READ = [2, 3, 4]
 const RECORD_VERSION = 2
 
 /**
@@ -118,11 +127,41 @@ function drop(key) {
 
 /* --------------------------------------------------------------- корзина */
 
-/** Позиция версии 2 — без fulfillment; берём его из каталога по слагу. */
-const upgradeLine = (line) =>
-  line && line.fulfillment === undefined
-    ? { ...line, fulfillment: findProductBySlug(line.slug)?.fulfillment ?? null }
-    : line
+/**
+ * Позиция версии 2 — без fulfillment, версий 2 и 3 — без boxes; недостающее
+ * берётся из каталога по слагу (см. шапку файла).
+ */
+function upgradeLine(line) {
+  if (!line) return line
+  let next = line
+  if (next.fulfillment === undefined) {
+    next = { ...next, fulfillment: findProductBySlug(next.slug)?.fulfillment ?? null }
+  }
+  if (next.boxes === undefined) {
+    const product = next.slug ? findProductBySlug(next.slug) : null
+    next = isBox(product)
+      ? {
+          ...next,
+          boxes: { nominalG: product.nominalG, pricePerKg: product.pricePerKg, packIds: [], picked: null },
+          price: product.price,
+          note: product.weightLabel,
+        }
+      : { ...next, boxes: null }
+  }
+  return next
+}
+
+/** Слияние корзин: у коробок в наличии количество не больше свободных коробок, выбор сброшен. */
+function mergeBoxLine(line) {
+  if (!line.boxes) return line
+  const product = line.slug ? findProductBySlug(line.slug) : null
+  const cap = isBox(product) && product.packs.length ? peekFreeCount(line.slug) : MAX_QTY
+  return {
+    ...line,
+    qty: Math.max(1, Math.min(cap, Number(line.qty) || 1)),
+    boxes: { ...line.boxes, packIds: [], picked: null },
+  }
+}
 
 /** Ключ корзины: гостевой или пользователя. Считается при каждом обращении. */
 const cartKeyOf = (userId) => (userId ? `${CART_KEY}:${userId}` : CART_KEY)
@@ -172,7 +211,7 @@ export function mergeGuestCart(userId) {
     else items.push({ ...line, qty: Math.min(MAX_QTY, Number(line.qty) || 1) })
   })
 
-  write(cartKeyOf(userId), { version: CART_VERSION, items, promo: own.promo || guest.promo })
+  write(cartKeyOf(userId), { version: CART_VERSION, items: items.map(mergeBoxLine), promo: own.promo || guest.promo })
   drop(CART_KEY)
 }
 

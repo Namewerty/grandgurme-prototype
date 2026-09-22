@@ -49,6 +49,7 @@ import {
   searchUrl,
 } from '../../data/search.js'
 import { ROUTES } from '../../data/routes.js'
+import { priceText } from '../catalog/model.js'
 import { icons } from '../icons.js'
 import { hydrateMedia } from '../media.js'
 import { getLenis } from '../scroll.js'
@@ -64,7 +65,8 @@ const REMOTE_TYPE_DELAY = 250
 const escape = (text) =>
   String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
-const price = (value) => `${value.toLocaleString('ru-RU')}&nbsp;₽`
+/** Цена позиции прототипа — общей подписью (у коробок «≈ 2 580 ₽»), пробел неразрывный. */
+const price = (product) => (priceText(product) ?? searchCopy.priceOnRequest).replace(/ ₽$/, '&nbsp;₽')
 
 /**
  * Подсветка совпадения. Ищем по нормализованной строке (без «ё» и регистра),
@@ -106,7 +108,7 @@ const productRow = ({ product }, query) => `
       <span class="srow__name">${highlight(product.name, query)}</span>
       <span class="srow__note">${escape(product.weightLabel)}</span>
     </span>
-    <span class="srow__price">${product.price == null ? searchCopy.priceOnRequest : price(product.price)}</span>
+    <span class="srow__price">${price(product)}</span>
   </a>
 `
 

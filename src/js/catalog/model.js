@@ -16,6 +16,7 @@
    ============================================================================ */
 
 import { BENEFITS, DEFAULT_SORT } from '../../data/facets.js'
+import { categoryCopy } from '../../data/category-copy.js'
 
 /* --------------------------------------------------------------- утилиты */
 
@@ -47,6 +48,17 @@ export function formatPrice(value) {
     : { maximumFractionDigits: 0 }
   return `${new Intl.NumberFormat('ru-RU', options).format(value)} ₽`
 }
+
+/** «≈ 2 580 ₽» — приблизительная цена или сумма (коробки, src/data/boxes.js). */
+export const approxLabel = (value) => `${categoryCopy.boxes.approx}${formatPrice(value)}`
+
+/**
+ * Подпись цены позиции — одна на сетку каталога, ленты карточки, подсказки
+ * поиска и избранное: у позиции в коробках цена приблизительная, «≈ 2 580 ₽».
+ * null — цены нет; текст «Цена по запросу» у каждого носителя свой.
+ */
+export const priceText = (item) =>
+  item?.price == null ? null : item.sale === 'box' ? approxLabel(item.price) : formatPrice(item.price)
 
 /** «товар» / «товара» / «товаров». */
 export function plural(n, one, few, many) {

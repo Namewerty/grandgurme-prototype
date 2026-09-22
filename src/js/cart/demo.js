@@ -11,7 +11,11 @@
                     складе без цены и позиция витрины главной, помеченная здесь
                     отсутствующей на складе (заявка с ценой);
      ?demo=order    наличие и под заказ — заказ без заявки;
-     ?demo=request  только заявка.
+     ?demo=request  только заявка;
+     ?demo=boxes    коробки с разным весом (src/data/boxes.js): лосось нежно
+                    подвяленный × 2 и осётр × 1 в наличии, клыкач — коробка
+                    под заказ, и обычная позиция в наличии. Итог корзины
+                    «≈ 11 780 ₽», на оформлении подбор коробок и окно выбора.
 
    Подключается только точкой входа прототипа src/cart.js. В сборку Битрикса
    не попадает: src/bitrix/main.js этот файл не импортирует.
@@ -59,6 +63,12 @@ const SETS = {
     catalog('ugor-gk-120'),
   ],
   request: () => [catalog('beluga-royal-metall-50'), showcaseOutOfStock()],
+  boxes: () => [
+    catalog('losos-nezhno-podvyalenyy-korobka', 2),
+    catalog('osetr-hk-korobka-250'),
+    catalog('klykach-file-hk-206'),
+    catalog('losos-file-hk-klassicheskiy-100'),
+  ],
 }
 
 /** Читает ?demo= и, если набор известен, подменяет корзину. */

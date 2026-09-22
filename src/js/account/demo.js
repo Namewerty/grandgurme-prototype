@@ -34,9 +34,11 @@
    Битрикса не попадает: src/bitrix/main.js этот файл не импортирует.
    ============================================================================ */
 
+import { isBox, packPrice, pickPacks } from '../../data/boxes.js'
 import { findProductBySlug } from '../../data/catalog-products.js'
 import { checkoutCopy } from '../../data/checkout-copy.js'
 import { addDays, kindOf, toIsoDay } from '../../data/fulfillment.js'
+import { lineSum } from '../cart/summary.js'
 import { pickupPoints } from '../../data/offline.js'
 import { ROUTES } from '../../data/routes.js'
 import { DEMO_ORDER_FROM, DEMO_REQUEST_FROM, replaceDemoOrders, replaceDemoRequests } from '../cart/storage.js'
@@ -62,8 +64,14 @@ const profileOf = ({ id, phone, name }) => ({
   createdAt: new Date().toISOString(),
 })
 
-/** Снимок позиции каталога — в том виде, в каком её кладёт корзина. */
-function line(slug, qty = 1) {
+/**
+ * Снимок позиции каталога — в том виде, в каком её кладёт корзина, а для
+ * заказа — строка заказа: у коробочной позиции выбранные коробки с весом
+ * и ценой (packIds — заданные, иначе подбор по номиналу), у коробки под
+ * заказ — пусто и approx. У оформленного заказа вес уже известен: «≈» там
+ * быть не должно.
+ */
+function line(slug, qty = 1, { packIds = null } = {}) {
   const product = findProductBySlug(slug)
   if (!product) return null
   const snapshot = {
@@ -78,11 +86,28 @@ function line(slug, qty = 1) {
     inStock: product.inStock !== false,
     categorySlug: product.categorySlug,
     fulfillment: product.fulfillment === 'preorder' ? 'preorder' : null,
+    sale: isBox(product) ? 'box' : null,
+    nominalG: isBox(product) ? product.nominalG : null,
+    pricePerKg: isBox(product) ? product.pricePerKg : null,
   }
-  return { ...snapshot, kind: kindOf(snapshot) }
+  let boxes = null
+  if (isBox(product)) {
+    const picked = !product.inStock
+      ? []
+      : packIds
+        ? packIds.map((id) => product.packs.find((pack) => pack.id === id)).filter(Boolean)
+        : pickPacks(product.packs, qty, product.nominalG)
+    boxes = {
+      nominalG: product.nominalG,
+      pricePerKg: product.pricePerKg,
+      packs: picked.map((pack) => ({ id: pack.id, weightG: pack.weightG, price: packPrice(product.pricePerKg, pack.weightG) })),
+      approx: !product.inStock,
+    }
+  }
+  return { ...snapshot, kind: kindOf(snapshot), boxes }
 }
 
-const lines = (...pairs) => pairs.map(([slug, qty]) => line(slug, qty)).filter(Boolean)
+const lines = (...items) => items.map(([slug, qty, options]) => line(slug, qty, options)).filter(Boolean)
 
 const isoAt = (daysAgo, hour) => {
   const day = addDays(new Date(), -daysAgo)
@@ -90,12 +115,17 @@ const isoAt = (daysAgo, hour) => {
   return day.toISOString()
 }
 
-const totalsOf = (items, readyAt) => ({
-  count: items.reduce((n, item) => n + item.qty, 0),
-  positions: items.length,
-  sum: items.reduce((n, item) => n + item.price * item.qty, 0),
-  readyAt: toIsoDay(readyAt),
-})
+/** Итоги — той же функцией суммы строки, что у корзины и заказа (lineSum). */
+const totalsOf = (items, readyAt) => {
+  const sums = items.map((item) => lineSum(item))
+  return {
+    count: items.reduce((n, item) => n + item.qty, 0),
+    positions: items.length,
+    sum: Math.round(sums.reduce((n, sum) => n + (sum.value || 0), 0) * 100) / 100,
+    approx: sums.some((sum) => sum.approx),
+    readyAt: toIsoDay(readyAt),
+  }
+}
 
 const contactOf = (user) => ({ name: user.name, phone: formatPhone(user.phone), email: '' })
 
@@ -128,7 +158,17 @@ function demoOrders() {
   const first = DEMO_ORDER_FROM
 
   // Две отгрузки: наличие «В пути» сегодня, под заказ «Ждём поставку» к дню готовности.
-  const stock = lines(['losos-file-hk-klassicheskiy-100', 2], ['nerka-file-hk-150', 1], ['losos-hk-korobka-146', 1])
+  // Лосось нежно подвяленный — две коробки 204 и 206 г, 5 289 ₽ (коробки, src/data/boxes.js).
+  const stock = lines(
+    ['losos-file-hk-klassicheskiy-100', 2],
+    ['nerka-file-hk-150', 1],
+    ['losos-hk-korobka-146', 1],
+    [
+      'losos-nezhno-podvyalenyy-korobka',
+      2,
+      { packIds: ['losos-nezhno-podvyalenyy-korobka-204', 'losos-nezhno-podvyalenyy-korobka-206'] },
+    ],
+  )
   const preorder = lines(['forel-file-hk-ukrop-100', 1], ['ugor-gk-120', 1])
 
   const pickupItems = lines(['losos-file-slaboy-soli-100', 1], ['pashtet-losos-tsitrus-180', 2])
@@ -261,7 +301,8 @@ function demoFavorites() {
     'losos-apelsin-hk-168',
   ]
   const items = slugs.map((slug, i) => {
-    const { qty, kind, ...snapshot } = line(slug) || {}
+    // Снимок избранного — без количества, вида и коробок заказа.
+    const { qty, kind, boxes, ...snapshot } = line(slug) || {}
     return snapshot.id ? { ...snapshot, addedAt: isoAt(i, 12) } : null
   })
   // Слага нет в каталоге: стор выбросит позицию и покажет строку «больше не продаются».

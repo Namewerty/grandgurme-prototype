@@ -96,6 +96,34 @@
   color: var(--fg);
 }
 
+/* ---- Коробки с разным весом (src/data/boxes.js) --------------------------
+   Цена приблизительная, «≈ 2 580 ₽», и мелко «за коробку»; под ценой строка
+   про цену за 100 г и коробки на складе; под кнопками — подпись, когда
+   степпер упёрся в число свободных коробок.                                */
+
+.pbuy__price-unit {
+  font-family: var(--font-body);
+  font-size: .82rem;
+  color: var(--fg-mute);
+}
+
+.pbuy__boxes {
+  max-width: 34rem;
+  margin-top: .6rem;
+  font-size: .88rem;
+  line-height: 1.55;
+  color: var(--fg-mute);
+  text-wrap: pretty;
+}
+
+.pbuy__limit {
+  margin-top: .6rem;
+  font-size: .82rem;
+  color: var(--fg-mute);
+}
+
+.pbuy__limit[hidden] { display: none; }
+
 /* ---- Вид позиции ---------------------------------------------------------
    Сразу под ценой: метка (.stock-tag, общий компонент) и одно предложение
    обычным цветом — «когда» и «можно ли оплатить» здесь главный ответ,

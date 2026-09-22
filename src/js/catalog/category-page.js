@@ -56,6 +56,7 @@ import {
   formatPrice,
   foundLabel,
   hasAnyActive,
+  priceText,
   sortProducts,
   stockFirst,
   stockView,
@@ -296,7 +297,8 @@ function buildCard(ctx, product) {
     // (см. productPages в src/data/routes.js).
     href: ROUTES.product(product.slug),
     // Цены может не быть вовсе: в выгрузке 1С по чёрной икре её нет.
-    price: product.price == null ? copy.card.priceOnRequest : formatPrice(product.price),
+    // У коробок она приблизительная — «≈ 2 580 ₽» (priceText).
+    price: priceText(product) ?? copy.card.priceOnRequest,
     oldPrice: product.oldPrice ? formatPrice(product.oldPrice) : null,
     image: { src: product.photo, ratio: '1:1' },
     badge: badgeFor(product),

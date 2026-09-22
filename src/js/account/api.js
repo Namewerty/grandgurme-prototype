@@ -92,6 +92,7 @@ import {
  * @property {string} createdAt
  * @property {string} status
  * @property {number|null} total           у заявки null
+ * @property {boolean} approx              сумма приблизительная: коробки под заказ
  * @property {number} positions
  * @property {{src: string, alt: string}[]} previews  до четырёх
  * @property {{method: 'delivery'|'pickup'|null, dates: {date: string, interval: string}[]}} receive
@@ -317,6 +318,7 @@ const orderRow = (order) => ({
   createdAt: order.createdAt,
   status: orderStatus(order),
   total: order.totals?.sum ?? 0,
+  approx: Boolean(order.totals?.approx),
   positions: order.items?.length || 0,
   previews: previewsOf(order.items),
   receive: {
@@ -331,6 +333,7 @@ const requestRow = (request) => ({
   createdAt: request.createdAt,
   status: request.status || 'new',
   total: null,
+  approx: false,
   positions: request.items?.length || 0,
   previews: previewsOf(request.items),
   receive: { method: null, dates: [] },

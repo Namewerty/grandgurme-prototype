@@ -22,15 +22,21 @@ import './styles/components/buttons.css'
 import './styles/components/crumbs.css'
 import './styles/components/summary.css'
 import './styles/components/form.css'
+// Окно выбора коробок (22.09.2026).
+import './styles/components/dialog.css'
 import './styles/pages/checkout.css'
 
 import { initHeader } from './js/sections/header.js'
 import { initFooter } from './js/sections/footer.js'
 import { initSmoothScroll } from './js/scroll.js'
 import { initCheckoutPage } from './js/checkout/checkout-page.js'
+import { applyCheckoutDemo } from './js/checkout/demo.js'
 
 initSmoothScroll()
 
+// Демонстрация (?demo=box-taken) — только прототип, до сборки страницы.
+const demo = applyCheckoutDemo()
+
 initHeader()
 initFooter()
-initCheckoutPage(document.querySelector('#main'))
+initCheckoutPage(document.querySelector('#main'), { demo })
