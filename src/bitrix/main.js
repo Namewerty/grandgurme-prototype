@@ -74,6 +74,8 @@ import { maskPhone } from '../js/checkout/validate.js'
 import { hydrateQtySteppers } from './qty-hydrate.js'
 import { hydrateCartBar, hydrateReceiveMethod, hydrateServerToast } from './purchase-hydrate.js'
 import { hydrateAccount } from './account-hydrate.js'
+import { hydrateCatalog } from './catalog-hydrate.js'
+import { initInlineSearch } from '../js/nav/search.js'
 
 function boot() {
   const main = document.querySelector('#main')
@@ -96,6 +98,14 @@ function boot() {
   hydrateReceiveMethod(document)
   hydrateServerToast(document)
   hydrateAccount(document)
+  // Сетка и фильтры каталога: «в корзину» без перезагрузки, выпадающие
+  // фильтры по одному (22.09.2026).
+  hydrateCatalog(document)
+  // Строка на /search/ подсказывает так же, как строка в шапке.
+  initInlineSearch(document.querySelector('.search-page__form'), {
+    suggestUrl: '/search/suggest.php',
+    resultsUrl: '/search/',
+  })
 
   initScroll()
 

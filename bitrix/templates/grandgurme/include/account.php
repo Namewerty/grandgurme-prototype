@@ -1769,8 +1769,8 @@ function gg_account_fav_cards(array $ids): array
 
 /**
  * Карточка избранного — article.product, та же разметка, что в сетке
- * /favorites/ (и в сетке каталога), с сердцем в углу кадра. Кнопки
- * «в корзину» в сетке стенда нет.
+ * /favorites/ (и в сетке каталога), с сердцем и кнопкой «в корзину»
+ * в углах кадра.
  */
 function gg_account_fav_card(array $card): string
 {
@@ -1780,6 +1780,7 @@ function gg_account_fav_card(array $card): string
         . gg_product_shot($card['element'], (string)$card['alt'])
         . '</a>'
         . gg_fav_button((int)$card['id'], (string)$card['title'])
+        . gg_cart_add_button((int)$card['id'], (string)$card['kind'], (string)$card['alt'])
         . '</div>'
         . '<div class="product__body">'
         . '<h3 class="product__name"><a href="' . gg_e($card['href']) . '">' . gg_e($card['title']) . '</a></h3>';

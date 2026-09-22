@@ -50,10 +50,37 @@ function gg_catalog_category(string $slug): ?array
     return null;
 }
 
-/** Оси фильтра раздела. Их может не быть вовсе — это нормально. */
+/**
+ * Оси фильтра раздела.
+ *
+ * Своих осей в карте витрины нет, а подразделы 1С есть (бакалея, напитки,
+ * сладости, снеки, товары для дома) — строка капсул собирается из них сама
+ * (22.09.2026): «Масло, соусы, специи», «Оливки и маслины»… Ключ sub —
+ * тот же, что у ссылок мега-панели: раньше /catalog/bakaleya?sub=olivki-masliny
+ * открывал весь раздел, теперь открывает оливки. Одна подкатегория строку
+ * не собирает: выбирать не из чего.
+ */
 function gg_catalog_facets(array $cat): array
 {
-    return $cat['facets'] ?? [];
+    if (isset($cat['facets'])) {
+        return $cat['facets'];
+    }
+    $options = [];
+    foreach ($cat['subs'] ?? [] as $sub) {
+        if (($sub['type'] ?? '') === 'section' && !empty($sub['section'])) {
+            $options[] = ['slug' => $sub['slug'], 'name' => $sub['name'], 'sections' => [(int)$sub['section']]];
+        }
+    }
+    if (count($options) < 2) {
+        return [];
+    }
+    return [[
+        'key' => 'sub',
+        'label' => 'Вид',
+        'style' => 'chips',
+        'anyLabel' => 'Все',
+        'options' => $options,
+    ]];
 }
 
 /**
@@ -160,14 +187,59 @@ function gg_catalog_filter(array $cat, array $picked = []): array
             if ($option['slug'] !== $slug) {
                 continue;
             }
-            $ids = gg_prop_enum_ids($facet['prop'], $option['values']);
-            /* Значения нет в справочнике — показываем пустую выдачу, а не весь
-               раздел: молча снятый фильтр хуже честного «ничего не нашлось». */
-            $filter['PROPERTY_' . $facet['prop']] = $ids ?: [-1];
+            if (empty($option['sections']) && empty($option['names'])) {
+                $ids = gg_prop_enum_ids($facet['prop'], $option['values']);
+                /* Значения нет в справочнике — показываем пустую выдачу, а не весь
+                   раздел: молча снятый фильтр хуже честного «ничего не нашлось». */
+                $filter['PROPERTY_' . $facet['prop']] = $ids ?: [-1];
+            } else {
+                $filter[] = gg_facet_option_filter($facet, $option);
+            }
         }
     }
 
     return $filter;
+}
+
+/**
+ * Условие опции, собранной не только из списочного свойства (22.09.2026).
+ *
+ * У чёрной икры каждая опция — значение одного свойства из справочника 1С.
+ * У остальных разделов так не выходит: вид рыбы и способ обработки в 1С
+ * заведены у половины позиций, и разными словами («х/к», «Холодное
+ * копчение»), а 109 позиций рыбы лежат в самом разделе «Рыба» без
+ * подраздела. Поэтому опция может собираться из трёх источников сразу,
+ * через ИЛИ:
+ *
+ *   values   — значения списочного свойства facet['prop'], как у икры;
+ *   sections — ID разделов 1С (подраздел «Рыба холодного копчения»);
+ *   names    — подстроки рабочего наименования («х/к», «лосос»). Сравнение
+ *              в базе не различает регистр и «ё» (utf8mb4_0900_ai_ci).
+ *
+ * Списки подстрок сверены с выгрузкой 22.09.2026 — см. карту витрины.
+ * Не нашлось ни одного источника — пустая выдача, как у икры.
+ */
+function gg_facet_option_filter(array $facet, array $option): array
+{
+    $or = ['LOGIC' => 'OR'];
+
+    if (!empty($option['values']) && !empty($facet['prop'])) {
+        $ids = gg_prop_enum_ids($facet['prop'], $option['values']);
+        if ($ids) {
+            $or[] = ['PROPERTY_' . $facet['prop'] => $ids];
+        }
+    }
+    if (!empty($option['sections'])) {
+        $or[] = ['SECTION_ID' => array_map('intval', $option['sections']), 'INCLUDE_SUBSECTIONS' => 'Y'];
+    }
+    foreach ($option['names'] ?? [] as $needle) {
+        $needle = trim((string)$needle);
+        if ($needle !== '') {
+            $or[] = ['%NAME' => $needle];
+        }
+    }
+
+    return count($or) > 1 ? $or : ['ID' => -1];
 }
 
 /** Сколько активных товаров попадает под фильтр. Запрос только на счёт. */

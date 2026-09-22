@@ -22,6 +22,12 @@ require_once __DIR__ . '/include/fn.php';
 require_once __DIR__ . '/include/favorites.php';
 gg_fav_handle_post();
 
+/* Кнопка «в корзину» в углу кадра сетки — так же, как сердце: форма на любой
+   странице с карточками, ответ — JSON для скрипта или редирект
+   (include/cart.php, gg_cart_quick_add_handle). */
+require_once __DIR__ . '/include/cart.php';
+gg_cart_quick_add_handle();
+
 $ggHero = defined('GG_HERO') && GG_HERO === true;
 ?><!doctype html>
 <html lang="<?= LANGUAGE_ID ?>" data-theme="light">

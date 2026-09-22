@@ -397,6 +397,50 @@ function gg_cart_handle_post(string $back = '/cart/'): void
 }
 
 /**
+ * Положить позицию туда, куда её пускает вид: «в наличии» и «под заказ» —
+ * в корзину Битрикса, «по заявке» — в заявку менеджеру (cookie).
+ *
+ * Одна функция на все кнопки: форма карточки товара (gg_cart_add_handle)
+ * и кнопка в углу кадра сетки (gg_cart_quick_add_handle). Вид считается
+ * по живым данным в момент нажатия: позиция могла кончиться, пока открыта
+ * страница, и тогда она уходит в заявку, а не молча пропадает.
+ *
+ * @return array{ok: bool, kind: string, toast: string}
+ */
+function gg_cart_put(int $id, int $qty = 1): array
+{
+    $qty = max(1, min(GG_MAX_QTY, $qty));
+    $fail = ['ok' => false, 'kind' => '', 'toast' => ''];
+    if ($id <= 0 || !CModule::IncludeModule('catalog') || !CModule::IncludeModule('sale')) {
+        return $fail;
+    }
+
+    $live = gg_products_live([$id])[$id] ?? null;
+    $kind = $live ? gg_item_kind($live) : 'request';
+
+    if ($kind !== 'request') {
+        try {
+            $result = \Bitrix\Catalog\Product\Basket::addProduct(
+                ['PRODUCT_ID' => $id, 'QUANTITY' => $qty],
+                [],
+                ['USE_MERGE' => 'Y']
+            );
+            if ($result->isSuccess()) {
+                return ['ok' => true, 'kind' => $kind, 'toast' => gg_toast_text($kind)];
+            }
+            /* Битрикс позицию не принял — значит, её можно только заявить. */
+        } catch (\Throwable $e) {
+            return $fail;
+        }
+    }
+
+    if (gg_request_add($id, $qty)) {
+        return ['ok' => true, 'kind' => 'request', 'toast' => gg_toast_text('request')];
+    }
+    return $fail;
+}
+
+/**
  * Добавление в корзину с карточки товара.
  *
  * Форма карточки по-прежнему шлёт action=ADD2BASKET, id и quantity — ровно
@@ -419,33 +463,77 @@ function gg_cart_add_handle(string $back): void
         return;
     }
 
-    $id = (int)($_REQUEST['id'] ?? 0);
-    $qty = max(1, min(GG_MAX_QTY, (int)($_REQUEST['quantity'] ?? 1)));
-    $live = gg_products_live([$id])[$id] ?? null;
-    $kind = $live ? gg_item_kind($live) : 'request';
+    $result = gg_cart_put((int)($_REQUEST['id'] ?? 0), (int)($_REQUEST['quantity'] ?? 1));
+    if ($result['ok']) {
+        gg_flash_toast_set($result['toast']);
+    }
+    LocalRedirect($back);
+}
 
-    if ($kind === 'request') {
-        /* Позиция стала заявкой, пока карточка была открыта. */
-        if (gg_request_add($id, $qty)) {
-            gg_flash_toast_set(gg_toast_text('request'));
+/* -------------------------------------------------------------------------
+   «В корзину» из сетки (22.09.2026)
+
+   Кнопка в углу кадра, как в прототипе (product__add в
+   src/js/components/product-card.js): каталог, поиск, избранное. Это
+   маленькая форма с POST — без скрипта она работает редиректом на ту же
+   страницу и тостом, со скриптом (src/bitrix/catalog-hydrate.js) уходит
+   запросом с gg_cart_ajax=Y, и страница не перезагружается: тост и число
+   в шапке обновляются на месте.
+
+   Обработчик стоит в header.php рядом с сердцем: сетки есть на многих
+   страницах, и у каждой свой обработчик POST, который ничего о кнопке
+   не знает.
+   ------------------------------------------------------------------------- */
+
+/** Кнопка «в корзину» / «в заявку» для кадра карточки в сетке. */
+function gg_cart_add_button(int $id, string $kind, string $name): string
+{
+    $label = ($kind === 'request' ? 'В заявку' : 'В корзину') . ': ' . $name;
+    return '<form class="cart-add" method="post" action="' . gg_e(gg_fav_back_url()) . '">'
+        . bitrix_sessid_post()
+        . '<input type="hidden" name="gg_cart_add" value="Y">'
+        . '<input type="hidden" name="id" value="' . $id . '">'
+        . '<button type="submit" class="product__add" data-cart-add="' . $id . '" aria-label="' . gg_e($label) . '">'
+        . gg_icon('cart')
+        . '</button>'
+        . '</form>';
+}
+
+/**
+ * POST кнопки из сетки. Вызывается в header.php до вывода: отвечает
+ * JSON (скрипт) или редиректом на ту же страницу (обычная форма).
+ *
+ * JSON отдаётся с \CMain::FinalActions(), как sendJsonAnswer родных
+ * компонентов каталога: у нового гостя корзина заводит покупателя
+ * (Fuser) и ставит его cookie, а cookie Битрикса уходят только на
+ * завершении хита. Голый die() оставил бы товар в корзине, которую
+ * браузер не узнает.
+ */
+function gg_cart_quick_add_handle(): void
+{
+    if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST' || ($_POST['gg_cart_add'] ?? '') !== 'Y') {
+        return;
+    }
+    $ajax = ($_POST['gg_cart_ajax'] ?? '') === 'Y';
+    $back = gg_fav_back_url();
+
+    $result = check_bitrix_sessid()
+        ? gg_cart_put((int)($_POST['id'] ?? 0), (int)($_POST['quantity'] ?? 1))
+        : ['ok' => false, 'kind' => '', 'toast' => ''];
+
+    if ($ajax) {
+        global $APPLICATION;
+        if ($APPLICATION instanceof CMain) {
+            $APPLICATION->RestartBuffer();
         }
-        LocalRedirect($back);
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode($result + ['count' => gg_cart_count(), 'href' => '/cart/'], JSON_UNESCAPED_UNICODE);
+        \CMain::FinalActions();
+        die();
     }
 
-    try {
-        $result = \Bitrix\Catalog\Product\Basket::addProduct(
-            ['PRODUCT_ID' => $id, 'QUANTITY' => $qty],
-            [],
-            ['USE_MERGE' => 'Y']
-        );
-        if ($result->isSuccess()) {
-            gg_flash_toast_set(gg_toast_text($kind));
-        } elseif (gg_request_add($id, $qty)) {
-            /* Битрикс позицию не принял — значит, её можно только заявить. */
-            gg_flash_toast_set(gg_toast_text('request'));
-        }
-    } catch (\Throwable $e) {
-        // Ничего не добавилось — возвращаем на карточку без тоста.
+    if ($result['ok']) {
+        gg_flash_toast_set($result['toast']);
     }
     LocalRedirect($back);
 }

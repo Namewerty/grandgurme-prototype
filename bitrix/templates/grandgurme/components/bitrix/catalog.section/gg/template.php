@@ -21,7 +21,11 @@
  * ВИД ПОЗИЦИИ (16.09.2026). Под ценой — метка .stock-tag для «под заказ»
  * и «по заявке» (gg_item_kind, gg_stock_tag). У «в наличии» метки в сетке
  * нет: наличие здесь норма. Приглушённого кадра и приписки «· под заказ»
- * к фасовке больше нет. Кнопки добавления в сетке стенда нет.
+ * к фасовке больше нет.
+ *
+ * «В КОРЗИНУ» В УГЛУ КАДРА (22.09.2026) — как в прототипе: кнопка
+ * появляется при наведении, у «по заявке» она кладёт в заявку менеджеру
+ * (gg_cart_add_button, include/cart.php).
  *
  * Кадров у товаров нет ни одного: фотографии в выгрузку 1С не попали.
  * Пока файла нет, на месте кадра стоит знак марки (gg_product_shot).
@@ -134,24 +138,36 @@ if ($items && $page['ids']) {
     $current = $picked[$facet['key']] ?? '';
     $itemClass = $style === 'tabs' ? 'tab' : 'chip';
     $railClass = $style === 'tabs' ? 'tabs' : 'chips';
+
+    /* Число у опции — сколько человек увидит, выбрав её: с тем же правилом
+       наличия, что у выдачи. Иначе у «Белуги», которой нет на складе, стоял
+       бы ноль и опция пропала бы из строки. Вариант, под который в разделе
+       нет ни одного товара — ни со склада, ни под заказ, — не показываем:
+       фильтр, ведущий в пустоту, — это обещание, которого нет за чем. */
+    $shown = [];
+    foreach ($facet['options'] as $option) {
+        $on = $current === $option['slug'];
+        $count = gg_catalog_count_shown($cat, array_merge($picked, [$facet['key'] => $option['slug']]));
+        if ($count > 0 || $on) {
+            $shown[] = ['option' => $option, 'on' => $on, 'count' => $count];
+        }
+    }
+    /* Строка, в которой выбирать не из чего, не рисуется (22.09.2026): ни
+       одной опции или одна, которая показывает то же, что «Все», — это
+       капсула, нажатие на которую ничего не меняет. */
+    if ($current === '' && (!$shown
+        || (count($shown) === 1 && $shown[0]['count'] === gg_catalog_count_shown($cat, array_merge($picked, [$facet['key'] => '']))))) {
+        continue;
+    }
 ?>
       <div class="facets__row">
         <span class="facets__label"><?= gg_e($facet['label']) ?></span>
         <div class="facets__rail <?= $railClass ?>">
           <a class="<?= $itemClass ?><?= $current === '' ? ' is-active' : '' ?>"
              href="<?= gg_e(gg_catalog_url($cat, $picked, $facet['key'], '')) ?>"><?= gg_e($facet['anyLabel'] ?? 'Все') ?></a>
-<?php   foreach ($facet['options'] as $option):
-            $on = $current === $option['slug'];
-            /* Число у опции — сколько человек увидит, выбрав её: с тем же
-               правилом наличия, что у выдачи. Иначе у «Белуги», которой нет
-               на складе, стоял бы ноль и опция пропала бы из строки. */
-            $count = gg_catalog_count_shown($cat, array_merge($picked, [$facet['key'] => $option['slug']]));
-            /* Вариант, под который в разделе нет ни одного товара — ни со
-               склада, ни под заказ, — не показываем: фильтр, ведущий
-               в пустоту, — это обещание, которого нет за чем. */
-            if ($count === 0 && !$on) {
-                continue;
-            }
+<?php   foreach ($shown as $entry):
+            $option = $entry['option'];
+            $on = $entry['on'];
 ?>
           <a class="<?= $itemClass ?><?= $on ? ' is-active' : '' ?>"
              href="<?= gg_e(gg_catalog_url($cat, $picked, $facet['key'], $on ? '' : $option['slug'])) ?>"><?= gg_e($option['name']) ?></a>
@@ -283,6 +299,7 @@ if ($items && $page['ids']) {
         <div class="product__frame">
           <a class="product__shot" href="<?= gg_e($href) ?>" tabindex="-1" aria-hidden="true"><?= gg_product_shot($item, $alt) ?></a>
           <?= gg_fav_button((int)$item['ID'], $title) ?>
+          <?= gg_cart_add_button((int)$item['ID'], $kind, $alt) ?>
         </div>
         <div class="product__body">
           <h3 class="product__name"><a href="<?= gg_e($href) ?>"><?= gg_e($title) ?></a></h3>

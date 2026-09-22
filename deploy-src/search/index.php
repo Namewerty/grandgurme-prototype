@@ -17,7 +17,7 @@ $APPLICATION->SetPageProperty('robots', 'noindex, follow');
 
 $query = gg_search_query((string)($_GET['q'] ?? ''));
 $ids = mb_strlen($query) >= 2 ? gg_search_ids($query) : [];
-$categories = mb_strlen($query) >= 2 ? gg_search_categories($query) : [];
+$categories = mb_strlen($query) >= 2 ? array_slice(gg_search_categories($query), 0, 8) : [];
 
 $total = count($ids);
 $pages = max(1, (int)ceil($total / GG_SEARCH_PAGE_SIZE));
@@ -64,7 +64,7 @@ $popular = ['икра белуги', 'осётр', 'красная икра', '�
         <span class="facets__label">Разделы</span>
         <div class="facets__rail chips">
 <?php   foreach ($categories as $cat): ?>
-          <a class="chip" href="<?= gg_e($cat['href']) ?>"><?= gg_e($cat['name']) ?></a>
+          <a class="chip" href="<?= gg_e($cat['href']) ?>"><?= gg_e($cat['name']) ?><?php if (!empty($cat['parent'])): ?><span class="chip__num">· <?= gg_e($cat['parent']) ?></span><?php endif; ?></a>
 <?php   endforeach; ?>
         </div>
       </div>
@@ -84,6 +84,8 @@ $popular = ['икра белуги', 'осётр', 'красная икра', '�
       <article class="product">
         <div class="product__frame">
           <a class="product__shot" href="<?= gg_e($card['href']) ?>" tabindex="-1" aria-hidden="true"><?= gg_product_shot($card['row'], $alt) ?></a>
+          <?= gg_fav_button((int)$card['id'], $card['name']) ?>
+          <?= gg_cart_add_button((int)$card['id'], $card['kind'], $alt) ?>
         </div>
         <div class="product__body">
           <h3 class="product__name"><a href="<?= gg_e($card['href']) ?>"><?= gg_e($card['name']) ?></a></h3>

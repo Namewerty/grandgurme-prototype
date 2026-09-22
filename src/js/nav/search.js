@@ -130,10 +130,14 @@ const remoteProductRow = (card, query) => `
   </a>
 `
 
+/* Подкатегория на живом сайте приходит с именем раздела (parent):
+   «Холодного копчения» без «Рыбы» рядом читалась бы оторванной. */
 const categoryRow = (category, query) => `
   <a class="scat" href="${category.href ? escape(category.href) : ROUTES.category(category.slug)}" data-search-item>
     <span class="scat__icon" aria-hidden="true">${icons[category.icon] || icons.search}</span>
-    <span class="scat__name">${highlight(category.name, query)}</span>
+    <span class="scat__name">${highlight(category.name, query)}${
+      category.parent ? `<span class="scat__parent">${escape(category.parent)}</span>` : ''
+    }</span>
   </a>
 `
 
@@ -642,4 +646,177 @@ export function initSearch({ header, triggers = [], onOpen, remote = null }) {
     close: () => setOpen(false),
     isOpen: () => open,
   }
+}
+
+/* ------------------------------------------------ строка на /search/ */
+
+/**
+ * Подсказки под строкой страницы результатов (только Битрикс).
+ *
+ * До 22.09.2026 строка на /search/ была голой формой: набираешь — ничего
+ * не происходит, пока не нажмёшь «Найти». Подсказки жили только в шапке,
+ * и человек, дописывавший запрос на странице выдачи, видел поиск
+ * «сломанным». Теперь под строкой та же выдача, что в шапке: те же
+ * строки товаров, разделы и «Показать все результаты», тот же сервер
+ * и та же задержка; пустое поле — свои последние и популярные запросы.
+ *
+ * Разметка страницы: form.search-page__form > input.search-page__input.
+ * Без скрипта форма работает как раньше.
+ *
+ * @param {HTMLFormElement} form
+ * @param {{suggestUrl: string, resultsUrl: string}} remote
+ */
+export function initInlineSearch(form, remote) {
+  const input = form?.querySelector('input[name="q"]')
+  if (!form || !input || !remote) return
+
+  const box = document.createElement('div')
+  box.className = 'search-page__suggest'
+  box.hidden = true
+  box.innerHTML = results('page')
+  form.appendChild(box)
+  const body = box.querySelector('[data-search-results]')
+
+  input.setAttribute('role', 'combobox')
+  input.setAttribute('aria-autocomplete', 'list')
+  input.setAttribute('aria-controls', 'search-results-page')
+  input.setAttribute('aria-expanded', 'false')
+
+  const cache = new Map()
+  let pending = null
+  let typing = null
+  let items = []
+  let active = -1
+
+  const resultsHref = (query) => `${remote.resultsUrl}?q=${encodeURIComponent(query)}`
+
+  function show(next) {
+    box.hidden = !next
+    input.setAttribute('aria-expanded', String(next))
+    if (!next) {
+      active = -1
+      input.removeAttribute('aria-activedescendant')
+    }
+  }
+
+  function render(html) {
+    body.innerHTML = html
+    items = [...body.querySelectorAll('[data-search-item]')]
+    items.forEach((el, index) => {
+      el.setAttribute('role', 'option')
+      el.id = `search-page-option-${index}`
+      el.setAttribute('aria-selected', 'false')
+    })
+    active = -1
+    show(true)
+  }
+
+  async function fetchSuggest(query) {
+    if (cache.has(query)) return cache.get(query)
+    pending?.abort()
+    pending = new AbortController()
+    const response = await fetch(`${remote.suggestUrl}?q=${encodeURIComponent(query)}`, {
+      signal: pending.signal,
+      headers: { Accept: 'application/json' },
+    })
+    if (!response.ok) throw new Error(`suggest ${response.status}`)
+    const data = await response.json()
+    const result = {
+      query,
+      products: Array.isArray(data.products) ? data.products : [],
+      categories: Array.isArray(data.categories) ? data.categories : [],
+      total: Number(data.total) || 0,
+    }
+    result.total = Math.max(result.total, result.products.length) + result.categories.length
+    cache.set(query, result)
+    return result
+  }
+
+  function paint() {
+    const query = input.value.trim()
+    if (query.length < 2) {
+      pending?.abort()
+      render(remoteIdleBody())
+      return
+    }
+    fetchSuggest(query)
+      .then((result) => {
+        if (input.value.trim() !== query) return
+        render(resultsBody(result, { row: remoteProductRow, url: resultsHref(query) }))
+      })
+      .catch((error) => {
+        if (error.name === 'AbortError') return
+        render(resultsBody({ query, products: [], categories: [], total: 1 }, { url: resultsHref(query) }))
+      })
+  }
+
+  function setActive(index) {
+    if (!items.length) return
+    active = (index + items.length) % items.length
+    items.forEach((el, i) => {
+      el.classList.toggle('is-active', i === active)
+      el.setAttribute('aria-selected', String(i === active))
+    })
+    input.setAttribute('aria-activedescendant', items[active].id)
+    items[active].scrollIntoView({ block: 'nearest' })
+  }
+
+  input.addEventListener('focus', () => {
+    if (box.hidden) paint()
+  })
+
+  input.addEventListener('input', () => {
+    clearTimeout(typing)
+    typing = setTimeout(paint, REMOTE_TYPE_DELAY)
+  })
+
+  input.addEventListener('keydown', (event) => {
+    if (event.key === 'ArrowDown') {
+      event.preventDefault()
+      if (box.hidden) paint()
+      else setActive(active + 1)
+      return
+    }
+    if (event.key === 'ArrowUp') {
+      event.preventDefault()
+      setActive(active - 1)
+      return
+    }
+    if (event.key === 'Escape') {
+      if (!box.hidden) {
+        event.preventDefault()
+        show(false)
+      }
+      return
+    }
+    if (event.key !== 'Enter') return
+    const el = items[active]
+    if (!el || box.hidden) return // обычная отправка формы
+    event.preventDefault()
+    if (el.dataset.query) {
+      input.value = el.dataset.query
+      paint()
+      return
+    }
+    el.click()
+  })
+
+  body.addEventListener('click', (event) => {
+    if (event.target.closest('a[data-search-item]')) rememberQuery(input.value)
+    const chipEl = event.target.closest('[data-query]')
+    if (!chipEl) return
+    input.value = chipEl.dataset.query
+    input.focus()
+    paint()
+  })
+
+  form.addEventListener('submit', () => rememberQuery(input.value))
+
+  document.addEventListener('pointerdown', (event) => {
+    if (!box.hidden && !form.contains(event.target)) show(false)
+  })
+
+  document.addEventListener('focusin', (event) => {
+    if (!box.hidden && !form.contains(event.target)) show(false)
+  })
 }

@@ -149,6 +149,7 @@ if ($user) {
             <div class="product__frame">
               <a class="product__shot" href="<?= gg_e($card['href']) ?>" tabindex="-1" aria-hidden="true"><?= gg_product_shot($card['element'], $card['alt']) ?></a>
               <?= gg_fav_button((int)$card['id'], $card['title']) ?>
+              <?= gg_cart_add_button((int)$card['id'], $card['kind'], $card['alt']) ?>
             </div>
             <div class="product__body">
               <h3 class="product__name"><a href="<?= gg_e($card['href']) ?>"><?= gg_e($card['title']) ?></a></h3>

@@ -22,6 +22,28 @@
 
 .search-page__form:focus-within { border-color: var(--caspian); }
 
+/* Подсказки под строкой (initInlineSearch в src/js/nav/search.js): та же
+   выдача, что в панели шапки, в рамке выпадающего списка каталога
+   (.drop__pop) — золотая волосяная линия, фон страницы. */
+.search-page__form { position: relative; }
+
+.search-page__suggest {
+  position: absolute;
+  z-index: 60;
+  top: calc(100% + .5rem);
+  left: 0;
+  right: 0;
+  max-height: min(70vh, 34rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: clamp(1rem, 2vh, 1.4rem) clamp(1rem, 2vw, 1.4rem);
+  border: 1px solid var(--gold);
+  border-radius: var(--radius-card);
+  background: var(--bg);
+}
+
+.search-page__suggest[hidden] { display: none; }
+
 .search-page__icon {
   display: inline-flex;
   flex: none;

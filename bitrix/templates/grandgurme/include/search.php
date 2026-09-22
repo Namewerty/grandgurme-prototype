@@ -325,7 +325,19 @@ function gg_search_cards(array $ids): array
     return $cards;
 }
 
-/** Разделы витрины, подходящие под запрос: по названию и словам раздела. */
+/**
+ * Разделы и подкатегории, подходящие под запрос.
+ *
+ * Сначала разделы витрины — по названию и словам gg_search_category_words.
+ * Следом подкатегории (22.09.2026): опции строк фильтра на странице раздела
+ * — «Белуга», «Лосось», «Холодного копчения», «Оливки и маслины». Ссылка
+ * ведёт на раздел с уже выбранной опцией, в строке — имя раздела рядом
+ * («Лосось · Рыба»). Подкатегория подходит, если хотя бы одно слово запроса
+ * есть в ней самой (в названии или в подстроках, по которым она ищет
+ * товары), а остальные — в ней или в её разделе: «икра белуги» находит
+ * «Белугу» чёрной икры, но не белугу рыбного раздела, а «икра» одна
+ * подкатегорий не собирает вовсе — ей хватает двух разделов икры.
+ */
 function gg_search_categories(string $q): array
 {
     $terms = gg_search_terms($q);
@@ -333,12 +345,18 @@ function gg_search_categories(string $q): array
         return [];
     }
     $words = gg_search_category_words();
+    $flat = static fn(string $text): string => mb_strtoupper(str_replace(['ё', 'Ё'], 'е', $text));
+    $hit = static function (string $haystack, array $term): bool {
+        return mb_strpos($haystack, $term['stem']) !== false || mb_strpos($haystack, $term['word']) !== false;
+    };
+
     $out = [];
+    $subs = [];
     foreach (gg_catalog_tree() as $cat) {
-        $haystack = mb_strtoupper(str_replace(['ё', 'Ё'], 'е', $cat['name'] . ' ' . ($words[$cat['slug']] ?? '')));
+        $catText = $flat($cat['name'] . ' ' . ($words[$cat['slug']] ?? ''));
         $all = true;
         foreach ($terms as $term) {
-            if (mb_strpos($haystack, $term['stem']) === false && mb_strpos($haystack, $term['word']) === false) {
+            if (!$hit($catText, $term)) {
                 $all = false;
                 break;
             }
@@ -350,8 +368,35 @@ function gg_search_categories(string $q): array
                 'icon' => gg_search_category_icon($cat['slug']),
             ];
         }
+
+        foreach (gg_catalog_facets($cat) as $facet) {
+            if (($facet['style'] ?? 'chips') === 'pills') {
+                continue;
+            }
+            foreach ($facet['options'] as $option) {
+                $own = $flat($option['name'] . ' ' . implode(' ', $option['names'] ?? []));
+                $mine = false;
+                $all = true;
+                foreach ($terms as $term) {
+                    if ($hit($own, $term)) {
+                        $mine = true;
+                    } elseif (!$hit($catText, $term)) {
+                        $all = false;
+                        break;
+                    }
+                }
+                if ($mine && $all) {
+                    $subs[] = [
+                        'name' => $option['name'],
+                        'parent' => $cat['name'],
+                        'href' => gg_category_url($cat['slug']) . '?' . http_build_query([$facet['key'] => $option['slug']]),
+                        'icon' => gg_search_category_icon($cat['slug']),
+                    ];
+                }
+            }
+        }
     }
-    return $out;
+    return array_merge($out, $subs);
 }
 
 /** Ответ подсказок: пять товаров, до четырёх разделов, общее число. */
