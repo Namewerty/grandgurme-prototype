@@ -1,0 +1,113 @@
+/* ============================================================================
+   Общее для альтернативной главной 2 (/alt2). Подключается ПОСЛЕДНИМ
+   (см. src/alt2/main.js). ЧЕРНОВИК НА ВЫБРОС.
+
+   Всё — под body.is-alt2: основная главная и /alt этих правил не видят.
+   ============================================================================ */
+
+/* ---- Акцентный шрифт ------------------------------------------------------
+   Cormorant Garamond, курсив 400/500 (подключён в alt2/index.html). Им
+   набираются только крупные числа — возраст рыбы, «800 км», номера шагов
+   и строк — и подписи-врезки, отмеченные в задании словом «акцент».
+   Заголовки остаются на Prata, текст — на Golos Text.                       */
+
+body.is-alt2 {
+  --font-accent: 'Cormorant Garamond', Georgia, serif;
+}
+
+/* ---- Зерно на тёмных секциях ----------------------------------------------
+   Шум feTurbulence поверх фона #hero, #origin и #proof: плоский --void
+   на крупных площадях читается как пустота, лёгкое зерно даёт ему
+   фактуру печати. Зерно лежит под слоем секции — текст, кнопки и кадры
+   над ним. ::after, а не ::before: ::before у секций занят волосяной
+   линией-разделителем (layout.css).                                         */
+
+body.is-alt2 #hero::after,
+body.is-alt2 #origin::after,
+body.is-alt2 #proof::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: .05;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 180px 180px;
+}
+
+body.is-alt2 #hero > .section__layer,
+body.is-alt2 #origin > .section__layer,
+body.is-alt2 #proof > .section__layer {
+  z-index: 1;
+}
+
+/* ---- Переключатель версий -------------------------------------------------
+   Капсула та же, что на /alt (src/alt/alt.css, раздел 5): стили /alt
+   сюда не подключаются, поэтому правила повторены под .is-alt2.          */
+
+body.is-alt2 .alt-switch {
+  position: fixed;
+  left: clamp(1rem, 3vw, 2.5rem);
+  bottom: calc(clamp(1rem, 3vw, 2.5rem) + var(--ring-size) + .75rem);
+  z-index: 72;
+  display: inline-flex;
+  align-items: center;
+  padding: 3px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+}
+
+body.is-alt2 .alt-switch__link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding-inline: .85rem;
+  border-radius: var(--radius-pill);
+  font-size: .6875rem;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: .08em;
+  white-space: nowrap;
+  color: var(--fg-mute);
+  transition: color var(--dur-line) var(--ease-out),
+              background-color var(--dur-line) var(--ease-out);
+}
+
+body.is-alt2 .alt-switch__link:hover { color: var(--fg); }
+
+body.is-alt2 .alt-switch__link.is-current {
+  background: var(--bg);
+  color: var(--fg);
+}
+
+/* Широкая раскладка первого экрана: в левом нижнем углу стоит список
+   разделов и «Весь каталог», капсула на /alt-месте закрывала бы их.
+   Здесь она стоит по центру кадра (от колонки 6 до правого края окна —
+   тот же расчёт, что у .stage__media), на той же высоте над кольцом.
+   Ниже первого экрана она не задевает ни кольцо слева, ни виджет эксперта
+   справа. */
+@media (min-width: 1024px) and (min-height: 600px) {
+  body.is-alt2 .alt-switch {
+    --switch-frame-left: calc(
+      max(0px, (100% - var(--container)) / 2) + var(--gutter) +
+      (min(100%, var(--container)) - 2 * var(--gutter) + var(--gap)) * 5 / 12
+    );
+    left: calc((var(--switch-frame-left) + 100%) / 2);
+    transform: translateX(-50%);
+  }
+}
+
+@media (max-width: 767px) {
+  body.is-alt2 .alt-switch {
+    left: 1rem;
+    bottom: calc(1rem + var(--ring-size) + .6rem);
+  }
+
+  body.is-alt2 .alt-switch__link {
+    min-height: 28px;
+    padding-inline: .7rem;
+    font-size: .625rem;
+  }
+}

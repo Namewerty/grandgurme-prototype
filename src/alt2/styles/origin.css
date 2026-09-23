@@ -1,0 +1,495 @@
+/* ============================================================================
+   #origin на /alt2 — «Происхождение». ЧЕРНОВИК НА ВЫБРОС.
+
+   Узкая раскладка — вне медиазапроса: у каждого шага кадр 4:5 во всю
+   ширину, под ним номер, название и текст; липкого кадра нет, виджеты стоят
+   поверх своего кадра. Широкая — от 1024px: шаги в колонках 1–5, не ниже
+   70vh каждый; кадр в колонках 7–12, липкий, по центру экрана под шапкой.
+   ============================================================================ */
+
+/* ---- Шапка --------------------------------------------------------------- */
+
+.origin__head {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.origin__intro {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1.25rem;
+}
+
+.origin__title { margin: 0; }
+
+.origin__note {
+  max-width: 52ch;
+  margin: 0;
+  font-size: .95rem;
+  line-height: 1.6;
+  color: var(--fg-mute);
+  text-wrap: pretty;
+}
+
+.origin__tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .5rem;
+}
+
+.origin__tab {
+  min-height: 44px;
+  padding: .5rem 1rem;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+  font-size: .85rem;
+  font-weight: 500;
+  line-height: 1.25;
+  color: var(--fg-mute);
+  transition: color 300ms var(--ease-out), border-color 300ms var(--ease-out);
+}
+
+.origin__tab:hover { color: var(--fg); }
+
+.origin__tab[aria-selected='true'] {
+  border-color: var(--caspian);
+  color: var(--fg);
+}
+
+@media (min-width: 1024px) {
+  .origin__head {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    column-gap: var(--gap);
+    align-items: end;
+  }
+
+  .origin__intro { grid-column: 1 / span 7; }
+
+  .origin__tabs {
+    grid-column: 8 / -1;
+    display: flex;
+    justify-content: flex-end;
+    justify-self: end;
+  }
+
+  .origin__tab { padding-inline: 1.25rem; white-space: nowrap; }
+}
+
+/* ---- Шаги: узкая раскладка ----------------------------------------------- */
+
+.origin__stories { margin-top: clamp(2rem, 5vh, 3.5rem); }
+
+.origin__steps {
+  display: flex;
+  flex-direction: column;
+  gap: 3rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.origin__media {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 4 / 5;
+  border-radius: var(--radius-card);
+  background: var(--void-2);
+  transform-origin: 50% 50%;
+}
+
+/* Планшет в портрете: кадр 4:5 во всю ширину 768px — это 960px высоты
+   на каждый шаг, история из пяти шагов растягивалась на шесть экранов.
+   Кадр ограничен 560px и стоит по левому краю, как текст под ним. */
+@media (min-width: 600px) and (max-width: 1023px) {
+  .origin__slot > .origin__media { max-width: 560px; }
+}
+
+.origin__media .origin__photo {
+  position: absolute;
+  inset: 0;
+  aspect-ratio: auto;
+  background: var(--void-2);
+}
+
+.origin__text { margin-top: 1.25rem; }
+
+.origin__num {
+  margin: 0;
+  font-family: var(--font-accent, var(--font-display));
+  font-style: italic;
+  font-size: 1.4rem;
+  line-height: 1;
+  color: var(--gold);
+}
+
+.origin__step-title {
+  margin: .4rem 0 .9rem;
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 4.5vw, 1.9rem);
+  font-weight: 400;
+  line-height: 1.15;
+  color: var(--fg);
+}
+
+.origin__para {
+  max-width: 40ch;
+  margin: 0 0 .75rem;
+  font-size: 1.05rem;
+  line-height: 1.6;
+  color: var(--fg);
+  text-wrap: pretty;
+}
+
+.origin__aside {
+  max-width: 44ch;
+  margin: 1.1rem 0 0;
+  padding-left: 1rem;
+  border-left: 1px solid var(--gold);
+  font-size: .95rem;
+  line-height: 1.6;
+  color: var(--fg-mute);
+  text-wrap: pretty;
+}
+
+.origin__sticky { display: none; }
+
+.origin__action { margin: 2.5rem 0 0; }
+
+.origin__action-link {
+  font-size: .85rem;
+  font-weight: 500;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--fg);
+  border-bottom: 1px solid var(--caspian);
+  padding-bottom: .35rem;
+  transition: color var(--dur-line) var(--ease-out);
+}
+
+.origin__action-link:hover { color: var(--caspian-fg); }
+
+/* ---- Шаги: широкая раскладка --------------------------------------------- */
+
+@media (min-width: 1024px) {
+  .origin__grid {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    column-gap: var(--gap);
+  }
+
+  .origin__steps {
+    grid-column: 1 / span 5;
+    grid-row: 1;
+    gap: 0;
+  }
+
+  .origin__step {
+    display: flex;
+    align-items: center;
+    min-height: 70vh;
+  }
+
+  .origin__slot { display: none; }
+
+  .origin__text {
+    margin: 0;
+    opacity: .35;
+    transition: opacity 400ms var(--ease-out);
+  }
+
+  .origin__step.is-active .origin__text { opacity: 1; }
+
+  .origin__step-title { font-size: 1.9rem; }
+
+  /* Липкий кадр по центру видимой области под шапкой. Кадр не выше этой
+     области: на 1280×720 кадр 4:5 шестиколоночной ширины не поместился бы. */
+  .origin__sticky {
+    grid-column: 7 / -1;
+    grid-row: 1;
+    align-self: start;
+    position: sticky;
+    top: var(--header-h);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: calc(100vh - var(--header-h));
+  }
+
+  .origin__frame {
+    position: relative;
+    width: min(100%, calc((100vh - var(--header-h) - 3rem) * .8));
+    aspect-ratio: 4 / 5;
+  }
+
+  .origin__frame > .origin__media {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+  }
+
+  .origin__action {
+    grid-column: 1 / span 5;
+    grid-row: 2;
+    margin-top: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .origin__text { opacity: 1 !important; transition: none; }
+}
+
+/* ============================================================================
+   ВИДЖЕТЫ ПОВЕРХ КАДРА
+   ============================================================================ */
+
+/* ---- years: крупное число ------------------------------------------------ */
+
+.origin-years {
+  position: absolute;
+  inset: auto 0 0 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: .35rem;
+  padding: 3.5rem 1.5rem 1.5rem;
+  background: linear-gradient(to top, rgba(10, 13, 17, .78) 0%, rgba(10, 13, 17, .5) 55%, rgba(10, 13, 17, 0) 100%);
+  pointer-events: none;
+}
+
+.origin-years__num {
+  font-family: var(--font-accent, var(--font-display));
+  font-style: italic;
+  font-size: clamp(4rem, 9vw, 7.5rem);
+  line-height: .9;
+  color: var(--gold);
+  font-variant-numeric: tabular-nums;
+}
+
+.origin-years__cap {
+  max-width: 24ch;
+  font-size: .9rem;
+  line-height: 1.4;
+  color: var(--on-dark);
+}
+
+/* ---- radius: круг-радиус ------------------------------------------------- */
+
+.origin-radius {
+  position: absolute;
+  inset: 0;
+  background: rgba(10, 13, 17, .28);
+  pointer-events: none;
+}
+
+/* Окружность во всю ширину кадра: кадр 4:5, поэтому по вертикали она
+   начинается на 10 % высоты. */
+.origin-radius__ring {
+  position: absolute;
+  top: 10%;
+  left: 0;
+  width: 100%;
+  aspect-ratio: 1;
+  border: 1px solid var(--gold);
+  border-radius: 50%;
+  transform: scale(0);
+  transform-origin: 50% 50%;
+}
+
+.origin-radius__label {
+  position: absolute;
+  top: 50%;
+  right: 1.1rem;
+  transform: translateY(-50%);
+  font-family: var(--font-accent, var(--font-display));
+  font-style: italic;
+  font-size: 2.4rem;
+  line-height: 1;
+  color: var(--on-dark);
+  opacity: 0;
+}
+
+.origin-radius.is-done .origin-radius__ring { transform: scale(1); }
+.origin-radius.is-done .origin-radius__label { opacity: 1; }
+
+/* ---- shell: зерно в разрезе ---------------------------------------------- */
+
+/* Квадрат 38 % ширины кадра; на узком кадре — не меньше 208px, иначе
+   переключатель из двух капсул в него не входит. */
+.origin-shell {
+  position: absolute;
+  right: 4%;
+  bottom: 4%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .55rem;
+  width: max(38%, 208px);
+  padding: .85rem .75rem .7rem;
+  border-radius: var(--radius-card-sm);
+  background: rgba(10, 13, 17, .7);
+}
+
+.origin-shell__svg {
+  width: 58%;
+  aspect-ratio: 1;
+  overflow: visible;
+}
+
+.origin-shell__core { fill: var(--void-2); }
+
+.origin-shell__skin {
+  fill: none;
+  stroke: var(--gold);
+  stroke-width: 1.5px;
+  vector-effect: non-scaling-stroke;
+  transition: stroke-width 500ms var(--ease-out);
+}
+
+.origin-shell__glint {
+  fill: var(--on-dark);
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: opacity 500ms var(--ease-out), transform 500ms var(--ease-out);
+}
+
+.origin-shell__glint--soft { opacity: .55; transform: scale(1); }
+.origin-shell__glint--sharp { opacity: 0; transform: scale(.6); }
+
+.origin-shell[data-state='live'] .origin-shell__skin { stroke-width: 5px; }
+.origin-shell[data-state='live'] .origin-shell__glint--soft { opacity: 0; transform: scale(.5); }
+.origin-shell[data-state='live'] .origin-shell__glint--sharp { opacity: .95; transform: scale(1); }
+
+.origin-shell__switch {
+  display: flex;
+  gap: .3rem;
+}
+
+.origin-shell__opt {
+  min-height: 34px;
+  padding: 0 .7rem;
+  border: 1px solid rgba(237, 238, 234, .28);
+  border-radius: var(--radius-pill);
+  font-size: .7rem;
+  font-weight: 500;
+  color: var(--on-dark-mute);
+  white-space: nowrap;
+  transition: color 300ms var(--ease-out), border-color 300ms var(--ease-out);
+}
+
+.origin-shell__opt:hover { color: var(--on-dark); }
+
+.origin-shell__opt[aria-checked='true'] {
+  border-color: var(--caspian);
+  color: var(--on-dark);
+}
+
+.origin-shell__note {
+  margin: 0;
+  font-size: .7rem;
+  line-height: 1.3;
+  color: var(--on-dark-mute);
+}
+
+/* ---- cites: крышка банки ------------------------------------------------- */
+
+.origin__media--cites { background: transparent; }
+
+.origin-cites {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.origin-cites__lid {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: .85rem;
+  width: 100%;
+  aspect-ratio: 1;
+  padding: 18% 8%;
+  border: 2px solid var(--gold);
+  border-radius: 50%;
+  background: var(--void-2);
+}
+
+.origin-cites__arc {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.origin-cites__arc text {
+  fill: var(--gold);
+  font-family: var(--font-body);
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 4px;
+}
+
+.origin-cites__code {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  column-gap: .15rem;
+  row-gap: .1rem;
+  font-family: var(--font-mono);
+  font-size: clamp(.8rem, 1.45vw, 1.1rem);
+  line-height: 1.2;
+}
+
+.origin-cites__group {
+  min-height: 40px;
+  padding: 0 .3rem;
+  border-bottom: 1px solid transparent;
+  font: inherit;
+  color: var(--on-dark);
+  white-space: nowrap;
+  transition: color 250ms var(--ease-out), border-color 250ms var(--ease-out);
+}
+
+.origin-cites__group.is-active {
+  color: var(--caspian-fg);
+  border-bottom-color: var(--caspian);
+}
+
+.origin-cites__sep { color: var(--on-dark-mute); }
+
+.origin-cites__note {
+  max-width: 26ch;
+  margin: 0;
+  font-size: .75rem;
+  line-height: 1.4;
+  color: var(--on-dark-mute);
+  text-align: center;
+}
+
+.origin-cites__explain {
+  min-height: 4.8em;
+  margin: 1.1rem 0 0;
+  font-size: .9rem;
+  line-height: 1.55;
+  color: var(--on-dark);
+  text-wrap: pretty;
+}
+
+/* Узкая: крышке с объяснением нужна своя высота — у кадра 4:5 шириной
+   335px под кругом остаётся 84px, а объяснение про AZ занимает пять строк. */
+@media (max-width: 1023px) {
+  .origin__media--cites {
+    aspect-ratio: auto;
+    overflow: visible;
+  }
+
+  .origin__media--cites .origin-cites { position: relative; }
+}

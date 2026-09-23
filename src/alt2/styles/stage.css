@@ -1,0 +1,429 @@
+/* ============================================================================
+   #hero на /alt2 — «Витрина разделов». ЧЕРНОВИК НА ВЫБРОС.
+
+   УЗКАЯ РАСКЛАДКА (правила вне медиазапроса): кадр во всю ширину сверху —
+   4:5 в портрете уже 768px, 1:1 в портрете от 768px, 16:9 на низком
+   горизонтальном экране; нижние 22 % кадра уходят в --void. Под кадром
+   полоса времени из шести сегментов, ниже текст и список. Высота секции —
+   по содержимому.
+
+   ШИРОКАЯ (от 1024×600, тот же запрос — WIDE в stage.js): высота
+   max(88svh, 640px), текст и список в колонках 1–5 на --void, кадр от
+   колонки 6 до правого края окна на всю высоту секции, радиус 0.
+
+   Секция заходит под прозрачную шапку отрицательным margin-top в обеих
+   раскладках — как первый экран основной главной.
+   ============================================================================ */
+
+.stage {
+  --stage-frame: 4 / 5;
+  --section-pad-top: 0px;
+  --section-pad-bottom: clamp(2.25rem, 8vw, 3.5rem);
+  margin-top: calc(-1 * var(--header-h));
+  overflow: hidden;
+}
+
+@media (orientation: portrait) and (min-width: 768px) {
+  .stage { --stage-frame: 1 / 1; }
+}
+
+@media (orientation: landscape) {
+  .stage { --stage-frame: 16 / 9; }
+}
+
+/* ---- Кадр ---------------------------------------------------------------- */
+
+.stage__media {
+  position: relative;
+  z-index: 0;
+  width: 100%;
+  aspect-ratio: var(--stage-frame);
+  overflow: hidden;
+  background: var(--void);
+}
+
+/* Стопка с запасом по краям: за курсором она смещается до 12px по
+   горизонтали и 8px по вертикали, и край кадра не обнажается. */
+/* z-index: 0 — свой контекст наложения: при смене кадра stage.js поднимает
+   новый кадр z-index-ом, и без этого кадры вылезали бы поверх затемнения. */
+.stage__frames {
+  position: absolute;
+  inset: -16px;
+  z-index: 0;
+}
+
+.stage__frame {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  transform-origin: 50% 50%;
+}
+
+.stage__frame .media { background: var(--void); }
+
+.stage__frame .media > img,
+.stage__frame .media > video {
+  transform: scale(var(--stage-zoom, 1));
+}
+
+/* Затемнение узкой раскладки: сверху под шапку, снизу переход в --void.
+
+   ПРО ВЕРХНИЙ СЛОЙ. В задании — .55 → 0, как у первого экрана основной
+   главной. На ролике этого хватало, на шести фотографиях — нет: у кадра
+   морепродуктов под шапкой белый фарфор, у шкатулки — блик петли, и шапка
+   даже при .62 давала 4,2:1 (95-й перцентиль яркости фона под элементом
+   шапки).
+   Плотная часть поднята до .72 → .6 и держится на всю высоту шапки
+   (у узкой раскладки шапка занимает верхние 12 % кадра), дальше слой
+   гаснет к 30 %. Худший кадр теперь 5,8:1. */
+.stage__scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    linear-gradient(to bottom, rgba(10, 13, 17, .72) 0%, rgba(10, 13, 17, .6) 12%, rgba(10, 13, 17, 0) 30%),
+    linear-gradient(to bottom, rgba(10, 13, 17, 0) 78%, var(--void) 100%);
+}
+
+/* Подпись заглушки — под шапку, внизу кадра стоит текст. */
+.stage__frame .media.is-missing { align-items: start; }
+.stage__frame .media.is-missing .media__note { padding-top: calc(var(--header-h) + 1.5rem); }
+
+/* ---- Полоса времени узкой раскладки -------------------------------------- */
+
+.stage__bars {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 6px;
+  margin-bottom: 1.5rem;
+}
+
+.stage__bar {
+  position: relative;
+  display: block;
+  height: 2px;
+  overflow: hidden;
+  background: var(--hairline);
+}
+
+.stage__bar-fill {
+  position: absolute;
+  inset: 0;
+  display: block;
+  background: var(--gold);
+  transform: scaleX(0);
+  transform-origin: left center;
+}
+
+/* ---- Текст --------------------------------------------------------------- */
+
+.stage .container {
+  position: relative;
+  z-index: 2;
+  margin-top: -1.25rem;
+}
+
+.stage__content {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.stage__heading {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.stage__eyebrow {
+  line-height: 1.5; /* на телефоне строка переносится */
+  will-change: clip-path;
+}
+
+/* 7.6vw: на 360–390px вторая строка «и гастрономия Европы» встаёт в одну. */
+.stage__title {
+  margin: 0;
+  font-size: clamp(1.6rem, 7.6vw, 2.6rem);
+  color: var(--fg);
+}
+
+/* Поправка на обрезку глифов маской — как .hero__line в hero.css:
+   бокс строки выше на .18em, межстрочный ритм тот же. */
+.stage__line {
+  display: inline-block;
+  max-width: 100%;
+  padding-block: .18em;
+  margin-block: -.18em;
+  will-change: clip-path;
+}
+
+.stage__lead {
+  max-width: 44ch;
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--fg-mute);
+  text-wrap: pretty;
+}
+
+/* ---- Список разделов ----------------------------------------------------- */
+
+.stage__nav { margin-top: 1.75rem; }
+
+.stage__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--hairline);
+}
+
+.stage__item { border-bottom: 1px solid var(--hairline); }
+
+.stage__row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 2.1rem minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: .75rem;
+  min-height: 56px;
+  padding-block: .7rem;
+  color: var(--fg-mute);
+}
+
+.stage__num {
+  font-family: var(--font-accent, var(--font-display));
+  font-style: italic;
+  font-size: 1.1rem;
+  line-height: 1;
+  color: var(--gold);
+}
+
+.stage__text {
+  display: flex;
+  flex-direction: column;
+  gap: .2rem;
+  min-width: 0;
+}
+
+.stage__name {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  line-height: 1.2;
+  color: var(--fg-mute);
+  transition: color 300ms var(--ease-out);
+}
+
+.stage__meta {
+  font-size: .8rem;
+  line-height: 1.35;
+  color: var(--fg-mute);
+}
+
+.stage__arrow {
+  font-size: 1rem;
+  line-height: 1;
+  color: var(--fg-mute);
+  transition: transform 350ms var(--ease-out), color 300ms var(--ease-out);
+}
+
+/* Линия под строкой: она же таймер автосмены. Во время автосмены её
+   масштаб ведёт stage.js; когда человек взялся за список (.is-manual),
+   линия растёт у активной строки сама. */
+.stage__track {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 1px;
+  background: var(--gold);
+  transform: scaleX(0);
+  transform-origin: left center;
+}
+
+.stage.is-manual .stage__track {
+  transition: transform 350ms var(--ease-out);
+}
+
+.stage.is-manual .stage__row.is-active .stage__track { transform: scaleX(1); }
+
+.stage__row.is-active .stage__name,
+.stage__row.is-active .stage__arrow { color: var(--fg); }
+
+.stage__row.is-active .stage__arrow { transform: translateX(6px); }
+
+.stage__row:focus-visible { outline-offset: 2px; }
+
+/* На узкой раскладке таймер — сегменты под кадром, линия у строки не нужна:
+   список здесь — ссылки, касание ведёт в раздел. */
+.stage__track { display: none; }
+
+/* ---- Весь каталог -------------------------------------------------------- */
+
+.stage__all {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  min-height: 44px;
+  margin-top: 1.1rem;
+  font-size: .8rem;
+  font-weight: 500;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--fg);
+  border-bottom: 1px solid var(--caspian);
+  transition: color var(--dur-line) var(--ease-out);
+}
+
+.stage__all:hover { color: var(--caspian-fg); }
+
+/* ============================================================================
+   ШИРОКАЯ РАСКЛАДКА
+   ============================================================================ */
+
+@media (min-width: 1024px) and (min-height: 600px) {
+  .stage {
+    --stage-h: max(88svh, 640px);
+    --section-pad-top: calc(var(--header-h) + clamp(1rem, 3vh, 2rem));
+    --section-pad-bottom: clamp(1.25rem, 4vh, 2.75rem);
+  }
+
+  .stage > .section__layer {
+    display: flex;
+    align-items: center;
+    min-height: var(--stage-h);
+  }
+
+  /* Кадр от начала колонки 6 контейнера до правого края окна. Левый край
+     посчитан от ширины секции тем же способом, что сетка контейнера:
+     поля окна + отступ контейнера + пять колонок с зазорами. 100vw здесь
+     не годится — в него входит полоса прокрутки. */
+  .stage__media {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: 0;
+    left: calc(
+      max(0px, (100% - var(--container)) / 2) + var(--gutter) +
+      (min(100%, var(--container)) - 2 * var(--gutter) + var(--gap)) * 5 / 12
+    );
+    width: auto;
+    aspect-ratio: auto;
+  }
+
+  /* Сверху под шапку — плотный слой .86 → .8 на высоту шапки (около 8 %
+     секции), прозрачный к 25 %. В задании .55 → 0 на 22 %; при нём строка
+     поиска над кадрами морепродуктов и шкатулки давала 4,0–4,1:1, теперь
+     худшая — 4,97:1. Слева — переход в --void на первых 12 % ширины кадра,
+     чтобы стык с текстом не читался линией. */
+  .stage__scrim {
+    background:
+      linear-gradient(to bottom, rgba(10, 13, 17, .86) 0%, rgba(10, 13, 17, .8) 9%, rgba(10, 13, 17, 0) 25%),
+      linear-gradient(to right, var(--void) 0%, rgba(10, 13, 17, 0) 12%);
+  }
+
+  .stage .container { margin-top: 0; }
+
+  .stage__inner {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    column-gap: var(--gap);
+  }
+
+  .stage__content { grid-column: 1 / span 5; }
+
+  .stage__bars { display: none; }
+
+  .stage__heading { gap: 1.1rem; }
+
+  /* На 1024px надзаголовок на 10px шире пяти колонок и переносил «ГОДА»
+     на вторую строку; без переноса он заходит в зазор перед кадром. */
+  .stage__eyebrow { white-space: nowrap; }
+
+  .stage__title { font-size: clamp(2.4rem, 3.4vw, 3.4rem); }
+
+  /* Каждая из двух строк — в одну строку. */
+  .stage__line { white-space: nowrap; }
+
+  .stage__nav { margin-top: clamp(1.25rem, 2.6vh, 2.25rem); }
+
+  .stage__row {
+    grid-template-columns: 2.4rem auto minmax(0, 1fr) auto;
+    min-height: 0;
+    padding-block: clamp(.5rem, 1.1vh, .85rem);
+  }
+
+  /* Название и вторая строка — в одну линию: вторая справа, перед стрелкой.
+     Название не режется никогда. Если вторая строка рядом с названием
+     не помещается в одну строку («Европейская гастрономия» и «Более
+     50 брендов · 557 позиций»), stage.js ставит строке .is-stacked,
+     и вторая строка уходит под название. */
+  .stage__text { display: contents; }
+
+  .stage__name {
+    grid-column: 2;
+    grid-row: 1;
+    font-size: clamp(1.25rem, 1.6vw, 1.6rem);
+    white-space: nowrap;
+  }
+
+  .stage__meta {
+    grid-column: 3;
+    grid-row: 1;
+    justify-self: end;
+    padding-left: 1rem;
+    text-align: right;
+  }
+
+  .stage__num,
+  .stage__arrow { grid-row: 1; }
+
+  .stage__row.is-stacked { row-gap: .2rem; }
+
+  .stage__row.is-stacked .stage__num { grid-row: 1 / span 2; }
+
+  .stage__row.is-stacked .stage__meta {
+    grid-column: 2 / span 2;
+    grid-row: 2;
+    justify-self: start;
+    padding-left: 0;
+    text-align: left;
+  }
+
+  .stage__row.is-stacked .stage__arrow { grid-row: 1 / span 2; }
+
+  .stage__arrow { grid-column: 4; margin-right: 6px; }
+
+  .stage__track { display: block; }
+
+  .stage__all { margin-top: clamp(.75rem, 2vh, 1.25rem); }
+}
+
+/* НЕВЫСОКИЕ ШИРОКИЕ ЭКРАНЫ (1366×768, 1280×720, 1024×768). Список из шести
+   строк и «Весь каталог» обязаны уместиться в первый экран — строки не
+   прячем, ужимаем шаг строк, H1 и зазоры. */
+@media (min-width: 1024px) and (min-height: 600px) and (max-height: 820px) {
+  .stage__heading { gap: .85rem; }
+  .stage__title { font-size: clamp(2.2rem, 3vw, 2.8rem); }
+  .stage__lead { font-size: .95rem; line-height: 1.5; }
+  .stage__nav { margin-top: 1rem; }
+  .stage__row { padding-block: .45rem; }
+  .stage__name { font-size: clamp(1.15rem, 1.4vw, 1.35rem); }
+  .stage__all { margin-top: .5rem; }
+}
+
+@media (min-width: 1024px) and (min-height: 600px) and (max-height: 700px) {
+  .stage__title { font-size: 2.1rem; }
+  .stage__row { padding-block: .35rem; }
+  .stage__name { font-size: 1.1rem; }
+}
+
+/* ---- Уменьшенное движение ------------------------------------------------ */
+
+@media (prefers-reduced-motion: reduce) {
+  .stage__name,
+  .stage__arrow,
+  .stage.is-manual .stage__track { transition: none; }
+}
