@@ -25,12 +25,20 @@ function gg(): array
     return $data;
 }
 
-/** Карта витрины: разделы сайта ← разделы инфоблока 4. */
+/**
+ * Карта витрины: разделы сайта ← разделы инфоблока 4.
+ *
+ * Поверх карты накладываются тексты из админки (инфоблок «Разделы витрины»,
+ * см. catalog-admin.php). Записи нет — карта работает как раньше, поэтому
+ * разделы переводятся на админку по одному.
+ */
 function gg_map(): array
 {
     static $map = null;
     if ($map === null) {
         $map = include __DIR__ . '/catalog-map.php';
+        require_once __DIR__ . '/catalog-admin.php';
+        $map = gg_map_apply_overrides($map);
     }
     return $map;
 }
