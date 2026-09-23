@@ -1,24 +1,26 @@
 /* ============================================================================
-   Ряд весов на карточке позиции в коробках (23.09.2026, src/data/boxes.js).
+   Селектор веса коробки на карточке (23.09.2026, src/data/boxes.js).
 
-   ДВА ВИДА НА ОДНО СОСТОЯНИЕ. Отмеченные коробки и число в степпере — одно
-   и то же: отметил вторую коробку — в степпере стало 2, нажал «+» — система
-   отметила ближайшую к номиналу из свободных, нажал «−» — сняла последнюю
-   отмеченную. Ни выключенных капсул, ни «выбрано 1 из 2»: состояние всегда
-   целое, и «В корзину» кладёт ровно то, что отмечено. Последнюю отмеченную
-   снять нельзя — коробок в корзине меньше одной не бывает.
+   ОДИН СЕЛЕКТОР, А НЕ РЯД ВЕСОВ. На действующем сайте все коробки выложены
+   на страницу кнопками — от этого и уходим: здесь под ценой стоит одна
+   строка «Коробка 202 г», она выпадает списком весов с ценами (общий
+   список — src/js/components/box-list.js, тот же, что в окне корзины).
+   Кому вес неважен, тот видит цену и «В корзину» и селектор не открывает.
 
-   Кому вес неважен: одна капсула отмечена, цена под названием — её цена,
-   «В корзину». Кому важен: отмечает свою, цена меняется на месте.
+   СКОЛЬКО КОРОБОК — РЕШАЕТ СТЕПЕР, КАКИЕ ИМЕННО — СЕЛЕКТОР. При одной
+   коробке список — радиокнопки, и выбор сразу закрывает панель. Поставили
+   в степпере 2 — в списке флажки, отметить нужно две; «+» отмечает
+   ближайшую к номиналу из свободных, «−» снимает последнюю отмеченную,
+   и подпись селектора становится «Коробка 202 и 238 г».
 
-   Капсулы — кнопки с aria-pressed, а не радиокнопки: отметить можно
-   несколько. Разметка ряда та же, что у «Фасовка» и «Упаковка» (.pbuy__row).
-   О корзине модуль не знает: отдаёт отмеченные id через onChange и value.
+   О корзине модуль не знает: отдаёт отмеченные id через onChange и state().
    ============================================================================ */
 
-import { packPrice, packsWord, pickPacks, weightsText } from '../../data/boxes.js'
+import { defaultPack, nearerTo, packPrice, packsWord, pickPacks, weightsText } from '../../data/boxes.js'
 import { productCopy } from '../../data/product-copy.js'
+import { createBoxList } from '../components/box-list.js'
 import { escapeHtml, formatPrice } from '../catalog/model.js'
+import { icons } from '../icons.js'
 
 const copy = productCopy.boxes
 
@@ -30,33 +32,34 @@ const fill = (template, values) => String(template).replace(/\{(\w+)\}/g, (_, ke
  * @param {number}   o.nominalG
  * @param {number}   o.pricePerKg
  * @param {string[]} [o.selected]  отмеченные при открытии; пусто — ближайшая к номиналу
- * @param {Function} o.onChange    ({ ids, packs, sum, count }) => void — после каждого изменения
+ * @param {Function} o.onChange    ({ ids, packs, count, sum, weights }) => void
  * @returns {{ node: HTMLElement, state: () => object, setCount: (n: number) => void }}
  */
 export function createBoxPicker({ free, nominalG, pricePerKg, selected = [], onChange }) {
   const byId = new Map(free.map((pack) => [pack.id, pack]))
   /** Отмеченные в порядке выбора. */
   let ids = selected.filter((id) => byId.has(id))
-  if (!ids.length) ids = pickPacks(free, 1, nominalG).map((pack) => pack.id)
+  if (!ids.length) {
+    const first = defaultPack(free, nominalG)
+    ids = first ? [first.id] : []
+  }
 
   const node = document.createElement('div')
   node.className = 'pbuy__row pbuy__row--boxes'
   node.innerHTML = `
-    <span class="pbuy__label" id="pbuy-boxes-label">${copy.row}</span>
-    <div class="pbuy__chips" role="group" aria-label="${copy.rowLabel}">
-      ${free
-        .map(
-          (pack) => `
-        <button type="button" class="chip" aria-pressed="false" data-pack="${escapeHtml(pack.id)}">
-          ${pack.weightG} г
-        </button>`,
-        )
-        .join('')}
-    </div>
-    <p class="pbuy__row-note" data-boxes-many hidden></p>`
+    <span class="pbuy__label" id="pbuy-box-label">${copy.row}</span>
+    <div class="boxsel" data-boxsel>
+      <button type="button" class="boxsel__trigger" data-boxsel-trigger
+              aria-expanded="false" aria-controls="pbuy-box-panel">
+        <span class="boxsel__value" data-boxsel-value></span>
+        <span class="boxsel__caret" aria-hidden="true">${icons.chevronDown}</span>
+      </button>
+      <div class="boxsel__panel" id="pbuy-box-panel" data-boxsel-panel hidden></div>
+    </div>`
 
-  const chips = new Map([...node.querySelectorAll('[data-pack]')].map((chip) => [chip.dataset.pack, chip]))
-  const many = node.querySelector('[data-boxes-many]')
+  const trigger = node.querySelector('[data-boxsel-trigger]')
+  const value = node.querySelector('[data-boxsel-value]')
+  const panel = node.querySelector('[data-boxsel-panel]')
 
   const state = () => {
     const packs = ids.map((id) => byId.get(id))
@@ -64,38 +67,97 @@ export function createBoxPicker({ free, nominalG, pricePerKg, selected = [], onC
       ids: ids.slice(),
       packs,
       count: ids.length,
-      sum: Math.round(packs.reduce((n, pack) => n + packPrice(pricePerKg, pack.weightG) * 100, 0)) / 100,
+      sum: packs.reduce((n, pack) => n + packPrice(pricePerKg, pack.weightG), 0),
       weights: weightsText(packs.map((pack) => pack.weightG)),
     }
   }
 
-  const paint = () => {
-    const on = new Set(ids)
-    chips.forEach((chip, id) => {
-      chip.classList.toggle('is-active', on.has(id))
-      chip.setAttribute('aria-pressed', String(on.has(id)))
-    })
-    many.hidden = ids.length < 2
-    many.textContent = ids.length < 2 ? '' : fill(copy.rowMany, { n: ids.length, word: packsWord(ids.length) })
+  /** Сколько коробок нужно — это число степпера, а не длина отметок. */
+  let want = Math.max(1, ids.length)
+
+  const list = createBoxList({
+    free,
+    pricePerKg,
+    texts: { listLabel: copy.listLabel, count: copy.count, hint: copy.hint },
+    onPick: (next) => {
+      ids = next
+      // Сняли одну из двух — состояние неполное: меняется только счётчик
+      // в списке, цена и степпер ждут, пока человек отметит вторую.
+      if (ids.length !== want) {
+        syncList()
+        return
+      }
+      paint()
+      onChange?.(state())
+      // Одна коробка: выбор сделан — панель закрывается сама.
+      if (want === 1) close({ focus: true })
+    },
+  })
+  panel.appendChild(list.node)
+
+  const isOpen = () => !panel.hidden
+
+  const syncList = () => list.update({ n: want, ids })
+
+  function paint() {
+    const weights = state().weights
+    value.textContent = fill(copy.trigger, { weights })
+    trigger.setAttribute('aria-label', fill(copy.triggerLabel, { weights }))
+    syncList()
   }
 
-  const emit = () => {
-    paint()
-    onChange?.(state())
+  /**
+   * Отметок меньше, чем нужно: недостающие подбираются по номиналу
+   * и дописываются в порядке близости к нему — уменьшат количество,
+   * останутся самые близкие.
+   */
+  function fillUp() {
+    if (ids.length >= want) return false
+    const add = pickPacks(free, want - ids.length, nominalG, ids).sort(nearerTo(nominalG))
+    ids = ids.concat(add.map((pack) => pack.id))
+    return true
   }
 
-  node.addEventListener('click', (event) => {
-    const chip = event.target.closest('[data-pack]')
-    if (!chip) return
-    const id = chip.dataset.pack
-    if (ids.includes(id)) {
-      // Последнюю отмеченную не снимаем: меньше одной коробки не бывает.
-      if (ids.length === 1) return
-      ids = ids.filter((item) => item !== id)
-    } else {
-      ids = ids.concat(id)
+  /* Панель закрывается кликом мимо и Esc; пока она открыта, слушатели
+     висят на документе, а не постоянно. */
+  const onDocClick = (event) => {
+    if (!node.contains(event.target)) close()
+  }
+  const onKeydown = (event) => {
+    if (event.key === 'Escape') {
+      event.stopPropagation()
+      close({ focus: true })
     }
-    emit()
+  }
+
+  function open() {
+    if (isOpen()) return
+    panel.hidden = false
+    trigger.setAttribute('aria-expanded', 'true')
+    document.addEventListener('click', onDocClick)
+    document.addEventListener('keydown', onKeydown)
+    panel.querySelector('input[name="pack"]:checked, input[name="pack"]')?.focus()
+  }
+
+  function close({ focus = false } = {}) {
+    if (!isOpen()) return
+    panel.hidden = true
+    trigger.setAttribute('aria-expanded', 'false')
+    document.removeEventListener('click', onDocClick)
+    document.removeEventListener('keydown', onKeydown)
+    // Закрыли с неполным выбором — недостающие коробки подбираются сами:
+    // в корзину уйдёт ровно столько, сколько стоит в степпере.
+    if (fillUp()) {
+      paint()
+      onChange?.(state())
+    }
+    if (focus) trigger.focus({ preventScroll: true })
+  }
+
+  trigger.addEventListener('click', (event) => {
+    event.stopPropagation()
+    if (isOpen()) close({ focus: true })
+    else open()
   })
 
   paint()
@@ -106,10 +168,12 @@ export function createBoxPicker({ free, nominalG, pricePerKg, selected = [], onC
     /** Степпер: «+» отмечает ближайшую к номиналу свободную, «−» снимает последнюю. */
     setCount(n) {
       const next = Math.max(1, Math.min(free.length, n))
-      if (next === ids.length) return
+      if (next === want && next === ids.length) return
+      want = next
       if (next < ids.length) ids = ids.slice(0, next)
-      else ids = ids.concat(pickPacks(free, next - ids.length, nominalG, ids).map((pack) => pack.id))
-      emit()
+      else fillUp()
+      paint()
+      onChange?.(state())
     },
   }
 }

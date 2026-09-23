@@ -34,7 +34,7 @@
    ============================================================================ */
 
 import { ROUTES } from '../../data/routes.js'
-import { isBox, pickPacks } from '../../data/boxes.js'
+import { isBox, nearerTo, pickPacks } from '../../data/boxes.js'
 import { KINDS, isOrderKind, kindOf, readyDateFor } from '../../data/fulfillment.js'
 import { currentUserId } from '../account/session.js'
 import { peekFreeCount, peekFreePacks } from './boxes.js'
@@ -87,7 +87,10 @@ function fitPacks(line) {
   const freeIds = new Set(free.map((pack) => pack.id))
   let ids = [...new Set(line.boxes.packIds)].filter((id) => freeIds.has(id)).slice(0, line.qty)
   if (ids.length < line.qty) {
-    ids = ids.concat(pickPacks(free, line.qty - ids.length, line.boxes.nominalG, ids).map((pack) => pack.id))
+    // Дополняем в порядке близости к номиналу: уменьшат количество —
+    // уйдут самые далёкие от него.
+    const add = pickPacks(free, line.qty - ids.length, line.boxes.nominalG, ids).sort(nearerTo(line.boxes.nominalG))
+    ids = ids.concat(add.map((pack) => pack.id))
   }
   return { ...line, boxes: { ...line.boxes, packIds: ids } }
 }

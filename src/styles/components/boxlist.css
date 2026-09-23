@@ -1,0 +1,77 @@
+/* ============================================================================
+   Список коробок с весами и ценами (src/js/components/box-list.js).
+
+   Два носителя: выпадающий селектор на карточке товара (.boxsel__panel,
+   pages/product.css) и окно выбора в корзине (.dialog--boxes, dialog.css).
+   Поэтому правила живут отдельным компонентом, а не внутри окна.
+
+   Строка списка — на основе .check (form.css): третья колонка под цену,
+   текст веса обычным цветом, выключенный флажок приглушён. Список
+   прокручивается внутри своего носителя, Lenis его не перехватывает
+   (data-lenis-prevent в разметке).
+   ============================================================================ */
+
+.boxlist {
+  max-height: min(50vh, 22rem);
+  /* Полоса прокрутки идёт внутри списка: без отступа справа она наезжает
+     на цену последней колонки. */
+  padding-right: .7rem;
+  overflow-y: auto;
+  border-top: 1px solid var(--hairline);
+  overscroll-behavior: contain;
+}
+
+.boxlist__row { border-bottom: 1px solid var(--hairline); }
+
+/* Компаунд с .check намеренно: файл списка и form.css попадают в разные
+   куски сборки, и порядок их загрузки не гарантирован — без этого колонка
+   цены иногда проигрывала правилу .check и уезжала на вторую строку. */
+.check.boxlist__label {
+  grid-template-columns: 20px minmax(0, 1fr) auto;
+  align-items: center;
+  width: 100%;
+  min-height: 44px;
+  padding-block: .55rem;
+  color: var(--fg);
+}
+
+.check.boxlist__label:has(input:disabled) {
+  opacity: .45;
+  cursor: not-allowed;
+}
+
+.boxlist__weight {
+  flex: 1 1 auto;
+  font-size: .92rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.boxlist__price {
+  flex: none;
+  font-size: .88rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-mute);
+}
+
+.check.boxlist__label input:checked ~ .boxlist__price { color: var(--fg); }
+
+.boxlist__hint { margin-top: .75rem; }
+
+.boxlist__hint[hidden] { display: none; }
+
+.boxlist__count {
+  margin-top: .75rem;
+  font-size: .82rem;
+  color: var(--fg-mute);
+  font-variant-numeric: tabular-nums;
+}
+
+.boxlist__count[hidden] { display: none; }
+
+/* «Подобрать автоматически» — только в окне корзины. */
+.boxlist__auto {
+  margin-top: 1rem;
+  text-align: center;
+}
+
+.boxlist__auto .link-btn { min-height: 44px; }

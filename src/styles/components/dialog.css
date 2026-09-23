@@ -52,74 +52,15 @@
 .dialog--login .dialog__body { padding-right: 2rem; }
 
 /* ---- Окно выбора коробок (корзина, src/js/cart/box-dialog.js) ------------
-   Список свободных коробок: флажки (или радиокнопки при одной коробке),
-   слева вес, справа точная цена. Список прокручивается внутри окна, если
-   коробок больше, чем помещается; Lenis его не перехватывает
-   (data-lenis-prevent). На телефоне окно на всю ширину с полями --gutter —
-   это ширина .dialog по умолчанию.                                          */
+   Сам список весов — общий компонент components/boxlist.css (он же
+   в селекторе карточки). Здесь только ширина окна: на телефоне оно на всю
+   ширину с полями --gutter — это ширина .dialog по умолчанию.             */
 
 .dialog--boxes {
   width: min(28rem, calc(100vw - 2 * var(--gutter)));
 }
 
-.boxlist {
-  max-height: min(50vh, 22rem);
-  margin-top: 1.25rem;
-  overflow-y: auto;
-  border-top: 1px solid var(--hairline);
-  overscroll-behavior: contain;
-}
-
-.boxlist__row { border-bottom: 1px solid var(--hairline); }
-
-/* Строка списка — на основе .check (form.css): третья колонка под цену,
-   текст веса обычным цветом, выключенный флажок приглушён. */
-.boxlist__label {
-  grid-template-columns: 20px minmax(0, 1fr) auto;
-  align-items: center;
-  width: 100%;
-  min-height: 44px;
-  padding-block: .55rem;
-  color: var(--fg);
-}
-
-.boxlist__label:has(input:disabled) {
-  opacity: .45;
-  cursor: not-allowed;
-}
-
-.boxlist__weight {
-  flex: 1 1 auto;
-  font-size: .92rem;
-  font-variant-numeric: tabular-nums;
-}
-
-.boxlist__price {
-  flex: none;
-  font-size: .88rem;
-  font-variant-numeric: tabular-nums;
-  color: var(--fg-mute);
-}
-
-.boxlist__label input:checked ~ .boxlist__price { color: var(--fg); }
-
-.boxlist__hint { margin-top: .75rem; }
-
-.boxlist__hint[hidden] { display: none; }
-
-.boxlist__count {
-  margin-top: .75rem;
-  font-size: .82rem;
-  color: var(--fg-mute);
-  font-variant-numeric: tabular-nums;
-}
-
-.boxlist__auto {
-  margin-top: 1rem;
-  text-align: center;
-}
-
-.boxlist__auto .link-btn { min-height: 44px; }
+.dialog--boxes .boxlist { margin-top: 1.25rem; }
 
 .dialog::backdrop {
   background: color-mix(in srgb, var(--void) 62%, transparent);

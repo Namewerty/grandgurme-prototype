@@ -97,11 +97,12 @@
 }
 
 /* ---- Коробки с разным весом (src/data/boxes.js) --------------------------
-   Цена выбранных коробок, точная, и мелко «за коробку 202 г» (под заказ —
-   «≈ 1 980 ₽ за коробку»); под ценой строка про цену за 100 г; ряд весов
-   .pbuy__row--boxes — те же капсулы, что у «Фасовка», только кнопки
-   с aria-pressed (отметить можно несколько, src/js/product/box-picker.js);
-   под кнопками — подпись, когда степпер упёрся в число свободных коробок. */
+   Цена выбранных коробок и мелко «за коробку 202 г» (под заказ —
+   «≈ 1 980 ₽ за коробку»); под ценой строка про цену за 100 г; ниже ОДИН
+   селектор .boxsel — строка «Коробка 202 г», которая выпадает списком весов
+   (src/js/product/box-picker.js, список — components/boxlist.css). Весь
+   список коробок на страницу не вываливается: это и была цель правки.
+   Под кнопками — подпись, когда степпер упёрся в число свободных коробок. */
 
 .pbuy__price-unit {
   font-family: var(--font-body);
@@ -112,14 +113,69 @@
 /* «за 2 коробки · 202 и 204 г» не должно рвать Prata посреди числа. */
 .pbuy__price { text-wrap: balance; }
 
-.pbuy__row-note {
-  margin: .5rem 0 0;
-  font-size: .78rem;
-  line-height: 1.45;
-  color: var(--fg-mute);
+/* Селектор веса. Закрытый — строка с волосяной рамкой и галочкой вниз,
+   ростом с капсулу фасовки; открытый — панель под ним, на подложке --bg
+   с той же рамкой и скруглением карточки. Теней нет, как и везде. */
+.boxsel {
+  position: relative;
+  display: inline-block;
 }
 
-.pbuy__row-note[hidden] { display: none; }
+.boxsel__trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: .6rem;
+  min-height: 44px;
+  padding: .4rem 1rem;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+  font-size: .85rem;
+  line-height: 1.2;
+  color: var(--fg);
+  font-variant-numeric: tabular-nums;
+  transition: border-color var(--dur-line) var(--ease-out);
+}
+
+.boxsel__trigger:hover { border-color: var(--gold); }
+.boxsel__trigger[aria-expanded='true'] { border-color: var(--ink); }
+
+.boxsel__caret {
+  display: flex;
+  color: var(--fg-mute);
+  transition: transform var(--dur-line) var(--ease-out);
+}
+
+.boxsel__caret svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.boxsel__trigger[aria-expanded='true'] .boxsel__caret { transform: rotate(180deg); }
+
+.boxsel__panel {
+  position: absolute;
+  z-index: 3;
+  top: calc(100% + .4rem);
+  left: 0;
+  width: max(100%, min(22rem, calc(100vw - 2 * var(--gutter))));
+  padding: .1rem 1rem 1rem;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-card);
+  background: var(--bg);
+}
+
+.boxsel__panel[hidden] { display: none; }
+
+/* Внутри панели список уже отделён её рамкой — своя линия сверху не нужна. */
+.boxsel__panel .boxlist {
+  max-height: min(42vh, 17rem);
+  border-top: 0;
+}
 
 .pbuy__boxes {
   max-width: 34rem;

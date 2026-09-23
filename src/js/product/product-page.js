@@ -264,15 +264,9 @@ function specs(product) {
     .filter((key) => product.attrs?.[key])
     .map((key) => ({ term: copy.specs.labels[key], value: product.attrs[key] }))
 
-  // У коробки в наличии — разброс весов на складе, под заказ — «около 200 г».
+  // У коробки вес стандартный: точный — в селекторе над характеристиками.
   if (isBox(product)) {
-    const range = product.weightRange
-    rows.push({
-      term: copy.boxes.specWeight,
-      value: range
-        ? fillText(copy.boxes.specWeightRange, range)
-        : fillText(copy.boxes.specWeightValue, { g: product.nominalG }),
-    })
+    rows.push({ term: copy.boxes.specWeight, value: fillText(copy.boxes.specWeightValue, { g: product.nominalG }) })
   } else if (product.weightG) {
     rows.push({ term: copy.specs.weight, value: `${product.weightG} г` })
   }
@@ -511,11 +505,11 @@ function wireGallery(root, product) {
 
 /**
  * Позиция в коробках (src/data/boxes.js): строка под ценой про цену за 100 г
- * и ряд весов (box-picker.js), связанный со степпером в обе стороны.
+ * и селектор веса (box-picker.js), связанный со степпером в обе стороны.
  * Коробки берутся через границу cart/boxes.js — список приходит асинхронно,
- * ряд появляется, когда он пришёл; до этого цена — коробки по умолчанию
+ * селектор появляется, когда он пришёл; до этого цена — коробки по умолчанию
  * из данных, та же. Под заказ (коробок нет): только строка про фасовку.
- * @param {{ onPick: (picked: object) => void }} o  ряд поменял число коробок — степперу
+ * @param {{ onPick: (picked: object) => void }} o  селектор поменял число коробок — степперу
  * @returns {Promise<{ ids: () => string[], setCount: (n: number) => void } | null>}
  */
 async function wireBoxes(root, product, { onPick }) {
@@ -693,7 +687,7 @@ export function initProductPage(mount) {
   // Количество живёт в степпере до нажатия «В корзину»: карточка ничего
   // не пишет в корзину, пока человек не решил. У коробок в наличии
   // максимум — число свободных коробок; упёрлись — подпись под кнопками;
-  // степпер и ряд весов — одно состояние (wireBoxes).
+  // степпер и селектор веса — одно состояние (wireBoxes).
   const boxMax = isBox(product) && product.inStock ? Math.min(MAX_QTY, peekFreeCount(product.slug)) : MAX_QTY
   const limitNote = mount.querySelector('[data-boxes-limit]')
   const paintLimit = (value) => {
@@ -716,7 +710,7 @@ export function initProductPage(mount) {
   mount.querySelector('[data-qty]')?.replaceWith(qty.node)
   paintLimit(qty.value)
   wireBoxes(mount, product, {
-    // Отметили или сняли капсулу — степпер следует за рядом; set() без onChange.
+    // Отметили другой вес — степпер следует за селектором; set() без onChange.
     onPick: (picked) => {
       if (qty.value === picked.count) return
       qty.set(picked.count)
