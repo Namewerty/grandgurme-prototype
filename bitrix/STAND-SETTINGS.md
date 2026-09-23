@@ -18,6 +18,9 @@
 | 21.09.2026 | `/media/video/hero-brand.webm`, `.mp4`, `hero-brand-portrait.webm`, `.mp4` | файловый менеджер частями + командная PHP-строка | ролики первого экрана; лимит nginx 1 МБ не поднят, части лежат в `gg-stand-archive/` |
 | 21.09.2026 | таблицы `gg_auth_code`, `gg_favorite`, `gg_address`, `gg_order_meta`; поле `UF_GG_MARKETING`; свойство `USER_ID` у `gg_requests` | скрипт `bitrix/install/gg-account-install.php` | вход, избранное, адреса и заказы кабинета |
 | 21.09.2026 | `/var/www/bitrix.1grandgourmet.ru/gg-stand-archive/` — архивы заливки вне корня сайта | командная PHP-строка | из `/upload/gg-stand/` архив скачивается без входа; после заливки он переезжает сюда. Там же части ролика `hero-brand.webm.00/.01` |
+| 23.09.2026 | пользователь `deploy` (uid 1000) в группе `www-data`, вход по ключу `~/.ssh/gg-stand`, хост `gg-stand` в `~/.ssh/config` | сервер, root | заливка стенда по SSH — `npm run stand:deploy` |
+| 23.09.2026 | на корне сайта `/var/www/bitrix.1grandgourmet.ru/www` — групповая запись и setgid (`drwxrwsr-x www-data:www-data`) | сервер, root | чтобы `deploy` мог писать файлы шаблона, а новые файлы оставались в группе `www-data` |
+| 23.09.2026 | ⚠ на `gg-stand-archive` групповой записи НЕТ (`750`): копии перед заливкой кладутся в `/home/deploy/gg-stand-archive/` | сервер, нужен root | вернуть копии в общую папку — `chmod g+ws` на неё |
 
 ## Как стенд настроен сейчас (снято 17.09.2026, сами не меняли)
 
