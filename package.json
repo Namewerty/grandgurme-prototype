@@ -18,7 +18,8 @@
     "stand": "npm run bitrix && node scripts/stand-pack.mjs",
     "stand:drift": "node scripts/stand-ssh.mjs drift",
     "stand:deploy": "node scripts/stand-ssh.mjs deploy",
-    "stand:pull": "node scripts/stand-ssh.mjs pull"
+    "stand:pull": "node scripts/stand-ssh.mjs pull",
+    "stand:php": "node scripts/stand-ssh.mjs php"
   },
   "dependencies": {
     "gsap": "^3.13.0",

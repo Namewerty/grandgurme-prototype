@@ -1,5 +1,5 @@
 /**
- * Заливка стенда Битрикса по SSH: `npm run stand:drift|stand:deploy|stand:pull`.
+ * Заливка стенда Битрикса по SSH: `npm run stand:drift|stand:deploy|stand:pull|stand:php`.
  *
  * ЗАЧЕМ. До 23.09.2026 стенд заливался архивом: npm run stand собирал zip,
  * человек прикладывал его к командной PHP-строке в админке, stand-deploy.php
@@ -475,6 +475,98 @@ function cmdDeploy({ yes, force }) {
   }
 }
 
+/**
+ * Запуск скрипта установки на стенде: `npm run stand:php -- <путь> [--mode=...]`.
+ *
+ * ЗАЧЕМ. Скрипты из bitrix/install/ до 23.09.2026 запускались только руками —
+ * «Настройки → Инструменты → Командная PHP-строка» в админке. Заливка по SSH
+ * кладёт файлы, но установку не делает, и пилот «Разделы витрины» из-за этого
+ * неделю пролежал на стенде невидимым: код был, инфоблока не было.
+ *
+ * ЧТО ДЕЛАЕТ. Берёт файл из ТЕКУЩЕГО КОММИТА (не из рабочей копии), при
+ * необходимости подменяет в нём режим, заворачивает в обёртку, поднимающую
+ * ядро Битрикса ровно как командная строка админки, и выполняет php из CLI.
+ * Обёртка живёт во временном файле ВНЕ корня сайта и удаляется после запуска
+ * в любом случае: в корне сайта исполняемому коду не место — nginx отдаёт
+ * оттуда всё подряд.
+ *
+ * Командная строка админки остаётся запасным путём: она работает от www-data
+ * и годится там, где SSH недоступен (боевой сайт).
+ */
+function cmdPhp(file, { mode }) {
+  if (!file) die('нужен путь к скрипту: npm run stand:php -- bitrix/install/gg-...-install.php')
+
+  const rel = file.split(sep).join('/').replace(/^\.\//, '')
+  const dirty = git(`status --porcelain -- "${rel}"`)
+  if (dirty) {
+    console.error('[stand-ssh] В рабочей копии есть незакоммиченные правки этого файла:')
+    console.error('  ' + dirty.split('\n').join('\n  '))
+    die('закоммитьте их и повторите: на стенде выполняется то, что лежит в истории.')
+  }
+
+  let body
+  try {
+    body = execSync(`git show HEAD:"${rel}"`, { cwd: ROOT, encoding: 'utf8' })
+  } catch {
+    die(`в коммите нет файла ${rel}`)
+  }
+
+  /* Режим — первая строка вида $mode = '...'; в теле скрипта. Подменяем её,
+     а не дописываем свою: скрипт мог прочитать $mode раньше, чем мы успели бы
+     его переопределить, и запустился бы не в том режиме, что показан в отчёте. */
+  if (mode !== null) {
+    const re = /^\s*\$mode\s*=\s*'[^']*'\s*;/m
+    if (!re.test(body)) {
+      die(`в ${rel} нет строки вида $mode = '...'; — передавать --mode нечему.`)
+    }
+    body = body.replace(re, `$mode = '${mode}';`)
+  }
+  const shown = (body.match(/^\s*\$mode\s*=\s*'([^']*)'\s*;/m) || [null, '(режима нет)'])[1]
+
+  const wrapper = [
+    '<?php',
+    `$_SERVER['DOCUMENT_ROOT'] = '${SITE}';`,
+    "define('NO_KEEP_STATISTIC', true);",
+    "define('NOT_CHECK_PERMISSIONS', true);",
+    "define('BX_CRONTAB', true);",
+    "define('BX_NO_ACCELERATOR_RESET', true);",
+    "require $_SERVER['DOCUMENT_ROOT'] . '/bitrix/modules/main/include/prolog_before.php';",
+    '',
+    body.replace(/^<\?php\s*/, ''),
+  ].join('\n')
+
+  const remote = `$HOME/gg-run-${Date.now()}.php`
+  say(`Запуск на стенде: ${rel}, режим ${shown}`)
+  say('')
+
+  const run = ssh(
+    `cat > ${remote} && cd ${SITE} && php ${remote}; rc=$?; rm -f ${remote}; exit $rc`,
+    { input: wrapper, allowFail: true, label: 'запуск скрипта' }
+  )
+  if (run.out) say(run.out.replace(/\s+$/, ''))
+  if (run.err.trim()) {
+    say('')
+    say('stderr:')
+    say(run.err.replace(/\s+$/, ''))
+  }
+
+  if (run.code !== 0) {
+    die(`php вернул код ${run.code}. Ничего не дочищаю: разберитесь с ошибкой выше.`)
+  }
+
+  /* Метка сброса кеша — всё, кроме проверки. Без неё сайт правку не увидит:
+     папки кеша на стенде без групповой записи, и чистит их первый хит
+     (см. CLAUDE.md и обработчик в /local/php_interface/init.php). */
+  if (shown !== 'check') {
+    ssh(`cd ${SITE} && mkdir -p local/gg-stand && : > local/gg-stand/cache-flush`, { label: 'метка сброса кеша' })
+    say('')
+    say('Метка сброса кеша поставлена — сайт подхватит правку на первом же хите.')
+  }
+
+  say('')
+  say(`Итог: коммит ${git('rev-parse --short HEAD')}, выполнен ${rel} в режиме ${shown}.`)
+}
+
 function cmdPull(path) {
   if (!path) die('нужен путь от корня сайта: npm run stand:pull -- /catalog/index.php')
   const serverPath = '/' + path.replace(/^\/+/, '')
@@ -518,12 +610,15 @@ const argv = process.argv.slice(2)
 const command = argv[0]
 const flags = new Set(argv.filter((a) => a.startsWith('--')))
 const rest = argv.slice(1).filter((a) => !a.startsWith('--'))
+/** --mode=install у команды php. Нет флага — режим остаётся тот, что в файле. */
+const modeArg = (argv.find((a) => a.startsWith('--mode=')) || '').slice('--mode='.length) || null
 
 try {
   if (command === 'drift') cmdDrift()
   else if (command === 'deploy') cmdDeploy({ yes: flags.has('--yes'), force: flags.has('--force') })
   else if (command === 'pull') cmdPull(rest[0])
-  else die('команда: drift | deploy [--yes] [--force] | pull <путь>')
+  else if (command === 'php') cmdPhp(rest[0], { mode: modeArg })
+  else die('команда: drift | deploy [--yes] [--force] | pull <путь> | php <путь> [--mode=...]')
 } finally {
   closeSsh()
 }
