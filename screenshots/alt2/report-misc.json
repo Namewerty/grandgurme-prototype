@@ -1,0 +1,428 @@
+[
+ {
+  "name": "chrome 1440: на первом экране шапка прозрачная, кольца и виджета нет",
+  "ok": true,
+  "info": {
+   "solid": false,
+   "ring": false,
+   "expert": false
+  }
+ },
+ {
+  "name": "chrome 1440: после первого экрана шапка плотная, кольцо и виджет видны",
+  "ok": true,
+  "info": {
+   "solid": true,
+   "ring": true,
+   "expert": true
+  }
+ },
+ {
+  "name": "chrome 1440: у подвала кольцо и виджет прячутся",
+  "ok": true,
+  "info": {
+   "solid": true,
+   "ring": false,
+   "expert": false
+  }
+ },
+ {
+  "name": "chrome 1440: в кольце девять остановок с названиями из задания",
+  "ok": true,
+  "info": [
+   "01 Начало",
+   "02 Характер икры",
+   "03 Происхождение",
+   "04 Ассортимент",
+   "05 О бренде",
+   "06 Доверие",
+   "07 Витрина",
+   "08 Офлайн",
+   "09 Журнал"
+  ]
+ },
+ {
+  "name": "chrome 1440: состав и ритм фонов",
+  "ok": true,
+  "info": [
+   "hero:dark",
+   "trust",
+   "character",
+   "origin:dark",
+   "categories",
+   "brand",
+   "proof:dark",
+   "shop",
+   "offline",
+   "journal"
+  ]
+ },
+ {
+  "name": "chrome 1440: на странице нет ссылок на #why и #types",
+  "ok": true,
+  "info": []
+ },
+ {
+  "name": "chrome 390: на первом экране шапка прозрачная, кольца и виджета нет",
+  "ok": true,
+  "info": {
+   "solid": false,
+   "ring": false,
+   "expert": false
+  }
+ },
+ {
+  "name": "chrome 390: после первого экрана шапка плотная, кольцо и виджет видны",
+  "ok": true,
+  "info": {
+   "solid": true,
+   "ring": true,
+   "expert": true
+  }
+ },
+ {
+  "name": "chrome 390: у подвала кольцо и виджет прячутся",
+  "ok": true,
+  "info": {
+   "solid": true,
+   "ring": false,
+   "expert": false
+  }
+ },
+ {
+  "name": "chrome 390: в кольце девять остановок с названиями из задания",
+  "ok": true,
+  "info": [
+   "01 Начало",
+   "02 Характер икры",
+   "03 Происхождение",
+   "04 Ассортимент",
+   "05 О бренде",
+   "06 Доверие",
+   "07 Витрина",
+   "08 Офлайн",
+   "09 Журнал"
+  ]
+ },
+ {
+  "name": "chrome 390: состав и ритм фонов",
+  "ok": true,
+  "info": [
+   "hero:dark",
+   "trust",
+   "character",
+   "origin:dark",
+   "categories",
+   "brand",
+   "proof:dark",
+   "shop",
+   "offline",
+   "journal"
+  ]
+ },
+ {
+  "name": "chrome 390: на странице нет ссылок на #why и #types",
+  "ok": true,
+  "info": []
+ },
+ {
+  "name": "switch / 1440: капсула нет",
+  "ok": true,
+  "info": null
+ },
+ {
+  "name": "switch / 375: капсула нет",
+  "ok": true,
+  "info": null
+ },
+ {
+  "name": "switch /alt 1440: капсула есть",
+  "ok": true,
+  "info": [
+   {
+    "t": "Основная",
+    "l": "Основная",
+    "cur": false
+   },
+   {
+    "t": "Альтернативная",
+    "l": "Альтернативная",
+    "cur": true
+   },
+   {
+    "t": "Альтернативная 2",
+    "l": "Альтернативная 2",
+    "cur": false
+   }
+  ]
+ },
+ {
+  "name": "switch /alt 375: капсула есть",
+  "ok": true,
+  "info": [
+   {
+    "t": "Основная",
+    "l": "Основная",
+    "cur": false
+   },
+   {
+    "t": "Альт.",
+    "l": "Альтернативная",
+    "cur": true
+   },
+   {
+    "t": "Альт. 2",
+    "l": "Альтернативная 2",
+    "cur": false
+   }
+  ]
+ },
+ {
+  "name": "switch /alt 375: помещается, не наезжает на кольцо и виджет",
+  "ok": true,
+  "info": {
+   "sw": 200,
+   "right": 216,
+   "ring": false,
+   "fab": false,
+   "vw": 375
+  }
+ },
+ {
+  "name": "switch /alt2 1440: капсула есть",
+  "ok": true,
+  "info": [
+   {
+    "t": "Основная",
+    "l": "Основная",
+    "cur": false
+   },
+   {
+    "t": "Альтернативная",
+    "l": "Альтернативная",
+    "cur": false
+   },
+   {
+    "t": "Альтернативная 2",
+    "l": "Альтернативная 2",
+    "cur": true
+   }
+  ]
+ },
+ {
+  "name": "switch /alt2 375: капсула есть",
+  "ok": true,
+  "info": [
+   {
+    "t": "Основная",
+    "l": "Основная",
+    "cur": false
+   },
+   {
+    "t": "Альт.",
+    "l": "Альтернативная",
+    "cur": false
+   },
+   {
+    "t": "Альт. 2",
+    "l": "Альтернативная 2",
+    "cur": true
+   }
+  ]
+ },
+ {
+  "name": "switch /alt2 375: помещается, не наезжает на кольцо и виджет",
+  "ok": true,
+  "info": {
+   "sw": 200,
+   "right": 216,
+   "ring": false,
+   "fab": false,
+   "vw": 375
+  }
+ },
+ {
+  "name": "до/после / 1440: страница совпадает",
+  "ok": true,
+  "info": {
+   "diff": 0,
+   "noise": 0
+  }
+ },
+ {
+  "name": "до/после / 390: страница совпадает",
+  "ok": true,
+  "info": {
+   "diff": 0,
+   "noise": 0
+  }
+ },
+ {
+  "name": "до/после /alt 1440: страница совпадает (без капсулы версий — она на /alt меняется по заданию)",
+  "ok": true,
+  "info": {
+   "diff": 0,
+   "noise": 0
+  }
+ },
+ {
+  "name": "до/после /alt 390: страница совпадает (без капсулы версий — она на /alt меняется по заданию)",
+  "ok": false,
+  "info": {
+   "diff": 0.0093,
+   "noise": 0
+  }
+ },
+ {
+  "name": "до/после /catalog/chernaya-ikra 1440: страница совпадает",
+  "ok": true,
+  "info": {
+   "diff": 0,
+   "noise": 0
+  }
+ },
+ {
+  "name": "до/после /catalog/chernaya-ikra 390: страница совпадает",
+  "ok": true,
+  "info": {
+   "diff": 0,
+   "noise": 0
+  }
+ },
+ {
+  "name": "overflow 1920x1080 light: нет горизонтальной прокрутки и исключений",
+  "ok": true,
+  "info": {
+   "maxOver": 0,
+   "errors": []
+  }
+ },
+ {
+  "name": "overflow 1440x900 light: нет горизонтальной прокрутки и исключений",
+  "ok": true,
+  "info": {
+   "maxOver": 0,
+   "errors": [],
+   "heights": {
+    "hero": 794,
+    "trust": 126,
+    "character": 1543,
+    "origin": 3502,
+    "categories": 461,
+    "brand": 791,
+    "proof": 587,
+    "shop": 814,
+    "offline": 609,
+    "journal": 641
+   }
+  }
+ },
+ {
+  "name": "overflow 1280x720 light: нет горизонтальной прокрутки и исключений",
+  "ok": true,
+  "info": {
+   "maxOver": 0,
+   "errors": []
+  }
+ },
+ {
+  "name": "overflow 1024x768 light: нет горизонтальной прокрутки и исключений",
+  "ok": true,
+  "info": {
+   "maxOver": 0,
+   "errors": []
+  }
+ },
+ {
+  "name": "overflow 768x1024 light: нет горизонтальной прокрутки и исключений",
+  "ok": true,
+  "info": {
+   "maxOver": 0,
+   "errors": []
+  }
+ },
+ {
+  "name": "overflow 390x844 light: нет горизонтальной прокрутки и исключений",
+  "ok": true,
+  "info": {
+   "maxOver": 0,
+   "errors": []
+  }
+ },
+ {
+  "name": "overflow 375x667 light: нет горизонтальной прокрутки и исключений",
+  "ok": true,
+  "info": {
+   "maxOver": 0,
+   "errors": []
+  }
+ },
+ {
+  "name": "overflow 1920x1080 dark: нет горизонтальной прокрутки и исключений",
+  "ok": true,
+  "info": {
+   "maxOver": 0,
+   "errors": []
+  }
+ },
+ {
+  "name": "overflow 1440x900 dark: нет горизонтальной прокрутки и исключений",
+  "ok": true,
+  "info": {
+   "maxOver": 0,
+   "errors": [],
+   "heights": {
+    "hero": 794,
+    "trust": 126,
+    "character": 1543,
+    "origin": 3502,
+    "categories": 461,
+    "brand": 791,
+    "proof": 587,
+    "shop": 814,
+    "offline": 609,
+    "journal": 641
+   }
+  }
+ },
+ {
+  "name": "overflow 1280x720 dark: нет горизонтальной прокрутки и исключений",
+  "ok": true,
+  "info": {
+   "maxOver": 0,
+   "errors": []
+  }
+ },
+ {
+  "name": "overflow 1024x768 dark: нет горизонтальной прокрутки и исключений",
+  "ok": true,
+  "info": {
+   "maxOver": 0,
+   "errors": []
+  }
+ },
+ {
+  "name": "overflow 768x1024 dark: нет горизонтальной прокрутки и исключений",
+  "ok": true,
+  "info": {
+   "maxOver": 0,
+   "errors": []
+  }
+ },
+ {
+  "name": "overflow 390x844 dark: нет горизонтальной прокрутки и исключений",
+  "ok": true,
+  "info": {
+   "maxOver": 0,
+   "errors": []
+  }
+ },
+ {
+  "name": "overflow 375x667 dark: нет горизонтальной прокрутки и исключений",
+  "ok": true,
+  "info": {
+   "maxOver": 0,
+   "errors": []
+  }
+ }
+]

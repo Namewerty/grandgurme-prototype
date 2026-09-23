@@ -1,0 +1,27 @@
+[
+ {
+  "name": "weight: из кадров первого экрана до автосмены грузится только первый",
+  "ok": true,
+  "info": [
+   "hero-chernaya-ikra.jpg@0.77"
+  ]
+ },
+ {
+  "name": "weight: кадры лупы — после load",
+  "ok": true,
+  "info": {
+   "loadAt": 1.11,
+   "lens": [
+    "caviar-osetra-detail.jpg@1.11",
+    "caviar-beluga-detail.jpg@1.11",
+    "caviar-sevruga-detail.jpg@1.11",
+    "caviar-sterlet-detail.jpg@1.11"
+   ]
+  }
+ },
+ {
+  "name": "weight: ролик не грузится при загрузке",
+  "ok": true,
+  "info": 0
+ }
+]

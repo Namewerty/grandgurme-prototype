@@ -1,0 +1,606 @@
+[
+ {
+  "name": "character light: Белуга Роял (tab) — паспорт без пустых строк, фасовки из учёта",
+  "ok": true,
+  "info": {
+   "facts": "Зерно,Цвет,Текстура,Вкус,Возраст рыбы,Фасовки,Способ",
+   "packs": "50 · 113 · 125 · 250 · 500 · 1000 г",
+   "expected": "50 · 113 · 125 · 250 · 500 · 1000 г",
+   "tab": "beluga",
+   "dot": "beluga-royal",
+   "url": null
+  }
+ },
+ {
+  "name": "character light: Белуга Даймонд (dot) — паспорт без пустых строк, фасовки из учёта",
+  "ok": true,
+  "info": {
+   "facts": "Зерно,Цвет,Текстура,Вкус,Возраст рыбы,Фасовки,Способ",
+   "packs": "50 · 113 · 125 · 250 · 500 · 1000 г",
+   "expected": "50 · 113 · 125 · 250 · 500 · 1000 г",
+   "tab": "beluga",
+   "dot": "beluga-diamond",
+   "url": "beluga-diamond"
+  }
+ },
+ {
+  "name": "character light: Белуга Премиум (tab) — паспорт без пустых строк, фасовки из учёта",
+  "ok": true,
+  "info": {
+   "facts": "Зерно,Цвет,Текстура,Вкус,Возраст рыбы,Фасовки,Способ",
+   "packs": "50 · 113 · 125 · 250 · 500 · 1000 г",
+   "expected": "50 · 113 · 125 · 250 · 500 · 1000 г",
+   "tab": "beluga",
+   "dot": "beluga-premium",
+   "url": "beluga-premium"
+  }
+ },
+ {
+  "name": "character light: Белуга и стерлядь SELECTED (dot) — паспорт без пустых строк, фасовки из учёта",
+  "ok": true,
+  "info": {
+   "facts": "Зерно,Цвет,Вкус,Фасовки,Способ",
+   "packs": "50 · 113 · 125 · 250 · 500 · 1000 г",
+   "expected": "50 · 113 · 125 · 250 · 500 · 1000 г",
+   "tab": "beluga-sterlyad",
+   "dot": "beluga-sterlyad-selected",
+   "url": "beluga-sterlyad-selected"
+  }
+ },
+ {
+  "name": "character light: Осётр персидский (tab) — паспорт без пустых строк, фасовки из учёта",
+  "ok": true,
+  "info": {
+   "facts": "Зерно,Текстура,Вкус,Возраст рыбы,Фасовки,Способ",
+   "packs": "50 · 113 · 125 · 250 · 500 · 1000 г",
+   "expected": "50 · 113 · 125 · 250 · 500 · 1000 г",
+   "tab": "osetr",
+   "dot": "osetr-persidskiy",
+   "url": "osetr-persidskiy"
+  }
+ },
+ {
+  "name": "character light: Осётр русский Премиум (dot) — паспорт без пустых строк, фасовки из учёта",
+  "ok": true,
+  "info": {
+   "facts": "Зерно,Текстура,Вкус,Возраст рыбы,Фасовки,Способ",
+   "packs": "50 · 113 · 125 · 250 · 500 · 1000 г",
+   "expected": "50 · 113 · 125 · 250 · 500 · 1000 г",
+   "tab": "osetr",
+   "dot": "osetr-russkiy-premium",
+   "url": "osetr-russkiy-premium"
+  }
+ },
+ {
+  "name": "character light: Осётр Премиум STURGEON (tab) — паспорт без пустых строк, фасовки из учёта",
+  "ok": true,
+  "info": {
+   "facts": "Зерно,Текстура,Возраст рыбы,Фасовки,Способ",
+   "packs": "50 · 113 · 125 · 250 · 500 · 1000 г",
+   "expected": "50 · 113 · 125 · 250 · 500 · 1000 г",
+   "tab": "osetr",
+   "dot": "osetr-premium-sturgeon",
+   "url": "osetr-premium-sturgeon"
+  }
+ },
+ {
+  "name": "character light: Севрюга (dot) — паспорт без пустых строк, фасовки из учёта",
+  "ok": true,
+  "info": {
+   "facts": "Зерно,Фасовки,Способ",
+   "packs": "50 · 113 · 125 · 250 · 500 · 1000 г",
+   "expected": "50 · 113 · 125 · 250 · 500 · 1000 г",
+   "tab": "sevruga",
+   "dot": "sevruga",
+   "url": "sevruga"
+  }
+ },
+ {
+  "name": "character light: Севрюга паюсная (tab) — паспорт без пустых строк, фасовки из учёта",
+  "ok": true,
+  "info": {
+   "facts": "Зерно,Фасовки,Способ",
+   "packs": "250 · 500 г",
+   "expected": "250 · 500 г",
+   "tab": "sevruga",
+   "dot": null,
+   "url": "sevruga-payusnaya"
+  }
+ },
+ {
+  "name": "character light: высота блока не прыгает между линейками",
+  "ok": true,
+  "info": [
+   1543,
+   1543,
+   1543,
+   1543,
+   1543,
+   1543,
+   1543,
+   1543,
+   1543
+  ]
+ },
+ {
+  "name": "character light: нет исключений",
+  "ok": true,
+  "info": []
+ },
+ {
+  "name": "character dark: Белуга Роял (tab) — паспорт без пустых строк, фасовки из учёта",
+  "ok": true,
+  "info": {
+   "facts": "Зерно,Цвет,Текстура,Вкус,Возраст рыбы,Фасовки,Способ",
+   "packs": "50 · 113 · 125 · 250 · 500 · 1000 г",
+   "expected": "50 · 113 · 125 · 250 · 500 · 1000 г",
+   "tab": "beluga",
+   "dot": "beluga-royal",
+   "url": null
+  }
+ },
+ {
+  "name": "character dark: Белуга Даймонд (dot) — паспорт без пустых строк, фасовки из учёта",
+  "ok": true,
+  "info": {
+   "facts": "Зерно,Цвет,Текстура,Вкус,Возраст рыбы,Фасовки,Способ",
+   "packs": "50 · 113 · 125 · 250 · 500 · 1000 г",
+   "expected": "50 · 113 · 125 · 250 · 500 · 1000 г",
+   "tab": "beluga",
+   "dot": "beluga-diamond",
+   "url": "beluga-diamond"
+  }
+ },
+ {
+  "name": "character dark: Белуга Премиум (tab) — паспорт без пустых строк, фасовки из учёта",
+  "ok": true,
+  "info": {
+   "facts": "Зерно,Цвет,Текстура,Вкус,Возраст рыбы,Фасовки,Способ",
+   "packs": "50 · 113 · 125 · 250 · 500 · 1000 г",
+   "expected": "50 · 113 · 125 · 250 · 500 · 1000 г",
+   "tab": "beluga",
+   "dot": "beluga-premium",
+   "url": "beluga-premium"
+  }
+ },
+ {
+  "name": "character dark: Белуга и стерлядь SELECTED (dot) — паспорт без пустых строк, фасовки из учёта",
+  "ok": true,
+  "info": {
+   "facts": "Зерно,Цвет,Вкус,Фасовки,Способ",
+   "packs": "50 · 113 · 125 · 250 · 500 · 1000 г",
+   "expected": "50 · 113 · 125 · 250 · 500 · 1000 г",
+   "tab": "beluga-sterlyad",
+   "dot": "beluga-sterlyad-selected",
+   "url": "beluga-sterlyad-selected"
+  }
+ },
+ {
+  "name": "character dark: Осётр персидский (tab) — паспорт без пустых строк, фасовки из учёта",
+  "ok": true,
+  "info": {
+   "facts": "Зерно,Текстура,Вкус,Возраст рыбы,Фасовки,Способ",
+   "packs": "50 · 113 · 125 · 250 · 500 · 1000 г",
+   "expected": "50 · 113 · 125 · 250 · 500 · 1000 г",
+   "tab": "osetr",
+   "dot": "osetr-persidskiy",
+   "url": "osetr-persidskiy"
+  }
+ },
+ {
+  "name": "character dark: Осётр русский Премиум (dot) — паспорт без пустых строк, фасовки из учёта",
+  "ok": true,
+  "info": {
+   "facts": "Зерно,Текстура,Вкус,Возраст рыбы,Фасовки,Способ",
+   "packs": "50 · 113 · 125 · 250 · 500 · 1000 г",
+   "expected": "50 · 113 · 125 · 250 · 500 · 1000 г",
+   "tab": "osetr",
+   "dot": "osetr-russkiy-premium",
+   "url": "osetr-russkiy-premium"
+  }
+ },
+ {
+  "name": "character dark: Осётр Премиум STURGEON (tab) — паспорт без пустых строк, фасовки из учёта",
+  "ok": true,
+  "info": {
+   "facts": "Зерно,Текстура,Возраст рыбы,Фасовки,Способ",
+   "packs": "50 · 113 · 125 · 250 · 500 · 1000 г",
+   "expected": "50 · 113 · 125 · 250 · 500 · 1000 г",
+   "tab": "osetr",
+   "dot": "osetr-premium-sturgeon",
+   "url": "osetr-premium-sturgeon"
+  }
+ },
+ {
+  "name": "character dark: Севрюга (dot) — паспорт без пустых строк, фасовки из учёта",
+  "ok": true,
+  "info": {
+   "facts": "Зерно,Фасовки,Способ",
+   "packs": "50 · 113 · 125 · 250 · 500 · 1000 г",
+   "expected": "50 · 113 · 125 · 250 · 500 · 1000 г",
+   "tab": "sevruga",
+   "dot": "sevruga",
+   "url": "sevruga"
+  }
+ },
+ {
+  "name": "character dark: Севрюга паюсная (tab) — паспорт без пустых строк, фасовки из учёта",
+  "ok": true,
+  "info": {
+   "facts": "Зерно,Фасовки,Способ",
+   "packs": "250 · 500 г",
+   "expected": "250 · 500 г",
+   "tab": "sevruga",
+   "dot": null,
+   "url": "sevruga-payusnaya"
+  }
+ },
+ {
+  "name": "character dark: высота блока не прыгает между линейками",
+  "ok": true,
+  "info": [
+   1543,
+   1543,
+   1543,
+   1543,
+   1543,
+   1543,
+   1543,
+   1543,
+   1543
+  ]
+ },
+ {
+  "name": "character dark: нет исключений",
+  "ok": true,
+  "info": []
+ },
+ {
+  "name": "lens 1440: линза видна и стоит под курсором",
+  "ok": true,
+  "info": {
+   "a": {
+    "op": 1,
+    "lx": 389,
+    "ly": 370,
+    "dist": 0,
+    "r": 270,
+    "cursor": "none",
+    "bg": "caviar-beluga-detail.jpg\")"
+   },
+   "bb": {
+    "op": 1,
+    "lx": 524,
+    "ly": 289,
+    "dist": 157.4,
+    "r": 270,
+    "cursor": "none",
+    "bg": "caviar-beluga-detail.jpg\")"
+   }
+  }
+ },
+ {
+  "name": "lens 1440: центр линзы не выходит за окружность",
+  "ok": true,
+  "info": {
+   "c": {
+    "op": 0,
+    "lx": 499,
+    "ly": 281,
+    "dist": 141.3,
+    "r": 270,
+    "cursor": "auto",
+    "bg": "caviar-beluga-detail.jpg\")"
+   },
+   "d": {
+    "op": 1,
+    "lx": 200,
+    "ly": 557,
+    "dist": 265.4,
+    "r": 270,
+    "cursor": "none",
+    "bg": "caviar-beluga-detail.jpg\")"
+   }
+  }
+ },
+ {
+  "name": "lens 1440: курсор над кругом скрыт, в линзе кадр вида",
+  "ok": true,
+  "info": {
+   "cursor": "none",
+   "bg": "caviar-beluga-detail.jpg\")"
+  }
+ },
+ {
+  "name": "lens 1440: линза гаснет, когда курсор уходит",
+  "ok": true,
+  "info": ""
+ },
+ {
+  "name": "lens 1440: у паюсной в линзе банка",
+  "ok": true,
+  "info": "tin-sevruga-payusnaya.jpg\")"
+ },
+ {
+  "name": "lens 1024: линза видна и стоит под курсором",
+  "ok": true,
+  "info": {
+   "a": {
+    "op": 1,
+    "lx": 276,
+    "ly": 405,
+    "dist": 0,
+    "r": 215.2890625,
+    "cursor": "none",
+    "bg": "caviar-beluga-detail.jpg\")"
+   },
+   "bb": {
+    "op": 1,
+    "lx": 384,
+    "ly": 341,
+    "dist": 125.5,
+    "r": 215.2890625,
+    "cursor": "none",
+    "bg": "caviar-beluga-detail.jpg\")"
+   }
+  }
+ },
+ {
+  "name": "lens 1024: центр линзы не выходит за окружность",
+  "ok": true,
+  "info": {
+   "c": {
+    "op": 0,
+    "lx": 365,
+    "ly": 336,
+    "dist": 112.9,
+    "r": 215.2890625,
+    "cursor": "auto",
+    "bg": "caviar-beluga-detail.jpg\")"
+   },
+   "d": {
+    "op": 1,
+    "lx": 126,
+    "ly": 554,
+    "dist": 211.6,
+    "r": 215.2890625,
+    "cursor": "none",
+    "bg": "caviar-beluga-detail.jpg\")"
+   }
+  }
+ },
+ {
+  "name": "lens 1024: курсор над кругом скрыт, в линзе кадр вида",
+  "ok": true,
+  "info": {
+   "cursor": "none",
+   "bg": "caviar-beluga-detail.jpg\")"
+  }
+ },
+ {
+  "name": "lens 1024: линза гаснет, когда курсор уходит",
+  "ok": true,
+  "info": ""
+ },
+ {
+  "name": "lens 1024: у паюсной в линзе банка",
+  "ok": true,
+  "info": "tin-sevruga-payusnaya.jpg\")"
+ },
+ {
+  "name": "touch 390: подсказка про касание",
+  "ok": true,
+  "info": "Коснитесь икры и ведите пальцем"
+ },
+ {
+  "name": "touch 390: линза появляется касанием и ведётся пальцем, страница стоит",
+  "ok": true,
+  "info": {
+   "during": {
+    "op": 1,
+    "y": 1982
+   },
+   "y0": 1982
+  }
+ },
+ {
+  "name": "touch 390: линза гаснет, когда палец отпущен",
+  "ok": true,
+  "info": 0
+ },
+ {
+  "name": "touch 390: жест на круге не прокручивает страницу, вне круга — прокручивает",
+  "ok": true,
+  "info": {
+   "onDisc": 0,
+   "offDisc": 235,
+   "ta": [
+    "none",
+    "auto"
+   ]
+  }
+ },
+ {
+  "name": "ruler 1920x1080: восемь кругов, без наложения, в поле линейки",
+  "ok": true,
+  "info": {
+   "n": 8,
+   "overlaps": 0,
+   "above": 0,
+   "sizes": "29,27,25,18,25,21,25,18",
+   "rulerScroll": 0,
+   "pageX": 0
+  }
+ },
+ {
+  "name": "ruler 1440x900: восемь кругов, без наложения, в поле линейки",
+  "ok": true,
+  "info": {
+   "n": 8,
+   "overlaps": 0,
+   "above": 0,
+   "sizes": "29,27,25,18,25,21,25,18",
+   "rulerScroll": 0,
+   "pageX": 0
+  }
+ },
+ {
+  "name": "ruler 1280x720: восемь кругов, без наложения, в поле линейки",
+  "ok": true,
+  "info": {
+   "n": 8,
+   "overlaps": 0,
+   "above": 0,
+   "sizes": "29,27,25,18,25,21,25,18",
+   "rulerScroll": 0,
+   "pageX": 0
+  }
+ },
+ {
+  "name": "ruler 1024x768: восемь кругов, без наложения, в поле линейки",
+  "ok": true,
+  "info": {
+   "n": 8,
+   "overlaps": 0,
+   "above": 0,
+   "sizes": "29,27,25,18,25,21,25,18",
+   "rulerScroll": 0,
+   "pageX": 0
+  }
+ },
+ {
+  "name": "ruler 768x1024: восемь кругов, без наложения, в поле линейки",
+  "ok": true,
+  "info": {
+   "n": 8,
+   "overlaps": 0,
+   "above": 0,
+   "sizes": "21,20,18,13,18,15,18,13",
+   "rulerScroll": 0,
+   "pageX": 0
+  }
+ },
+ {
+  "name": "ruler 390x844: восемь кругов, без наложения, в поле линейки",
+  "ok": true,
+  "info": {
+   "n": 8,
+   "overlaps": 0,
+   "above": 0,
+   "sizes": "21,20,18,13,18,15,18,13",
+   "rulerScroll": 0,
+   "pageX": 0
+  }
+ },
+ {
+  "name": "ruler 375x667: восемь кругов, без наложения, в поле линейки",
+  "ok": true,
+  "info": {
+   "n": 8,
+   "overlaps": 0,
+   "above": 0,
+   "sizes": "21,20,18,13,18,15,18,13",
+   "rulerScroll": 0,
+   "pageX": 0
+  }
+ },
+ {
+  "name": "action: Белуга Роял → раздел с сортом «Белуга Роял»",
+  "ok": true,
+  "info": "?grade=Белуга+Роял"
+ },
+ {
+  "name": "action: Белуга Роял — в выдаче только этот сорт",
+  "ok": true,
+  "info": {
+   "url": "?grade=Белуга+Роял",
+   "names": [
+    "Икра белуги Роял"
+   ],
+   "count": 6
+  }
+ },
+ {
+  "name": "action: Осётр персидский → раздел с сортом «Осётр персидский»",
+  "ok": true,
+  "info": "?grade=Осётр+персидский"
+ },
+ {
+  "name": "action: Осётр персидский — в выдаче только этот сорт",
+  "ok": true,
+  "info": {
+   "url": "?grade=Осётр+персидский",
+   "names": [
+    "Икра осетра персидского"
+   ],
+   "count": 6
+  }
+ },
+ {
+  "name": "action: Севрюга паюсная → раздел с сортом «Севрюга паюсная»",
+  "ok": true,
+  "info": "?grade=Севрюга+паюсная"
+ },
+ {
+  "name": "action: Севрюга паюсная — в выдаче только этот сорт",
+  "ok": true,
+  "info": {
+   "url": "?grade=Севрюга+паюсная",
+   "names": [
+    "Икра севрюги паюсная"
+   ],
+   "count": 2
+  }
+ },
+ {
+  "name": "payusnaya: открывается по адресу, нет малого круга, круга на линейке и шкалы возраста",
+  "ok": true,
+  "info": {
+   "name": "Севрюга паюсная",
+   "tin": true,
+   "dot": false,
+   "payDot": false,
+   "age": "hidden",
+   "h": 1543
+  }
+ },
+ {
+  "name": "payusnaya: высота блока та же",
+  "ok": true,
+  "info": {
+   "h": 1543,
+   "h0": 1543
+  }
+ },
+ {
+  "name": "keyboard: стрелки, Home и End переводят фокус и выбор вкладки",
+  "ok": true,
+  "info": [
+   "beluga-sterlyad:beluga-sterlyad",
+   "beluga:beluga",
+   "beluga-sterlyad:beluga-sterlyad",
+   "beluga:beluga",
+   "beluga-sterlyad:beluga-sterlyad"
+  ]
+ },
+ {
+  "name": "keyboard: круги линейки доступны табом и подписаны",
+  "ok": true,
+  "info": "character__dot"
+ },
+ {
+  "name": "event: gg:line-change несёт slug, species, cites, name",
+  "ok": true,
+  "info": {
+   "slug": "osetr-premium-sturgeon",
+   "species": "osetr",
+   "cites": "GUE x BAE",
+   "name": "Осётр Премиум STURGEON"
+  }
+ },
+ {
+  "name": "character: нет исключений",
+  "ok": true,
+  "info": []
+ }
+]

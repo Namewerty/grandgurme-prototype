@@ -1,0 +1,590 @@
+[
+ {
+  "name": "hero 1440x900-light: контраст текста на --void ≥ 4.5 (num крупный? нет — 1.1rem)",
+  "ok": true,
+  "info": {
+   "eyebrow": 5.79,
+   "h1": 16.71,
+   "lead": 7.52,
+   "name": 7.52,
+   "meta": 7.52,
+   "num": 5.79,
+   "all": 16.71
+  }
+ },
+ {
+  "name": "hero 1440x900-light: список и надзаголовок левее кадра",
+  "ok": true,
+  "info": {
+   "mediaLeft": 624,
+   "mediaBottom": 836,
+   "h1Right": 636,
+   "listRight": 595,
+   "eyebrowRight": 478,
+   "listTop": 426,
+   "eyebrowTop": 145
+  }
+ },
+ {
+  "name": "hero 1440x900-light: строка 1 — кадр 1 активен и загружен",
+  "ok": true,
+  "info": {
+   "af": 0,
+   "loaded": true
+  }
+ },
+ {
+  "name": "hero 1440x900-light: шапка над кадром 1 читается (≥ 4.5, худший элемент)",
+  "ok": true,
+  "info": {
+   "cr": 7.41,
+   "t": "Поиск по каталогу\n",
+   "n": 6
+  }
+ },
+ {
+  "name": "hero 1440x900-light: строка 2 — кадр 2 активен и загружен",
+  "ok": true,
+  "info": {
+   "af": 1,
+   "loaded": true
+  }
+ },
+ {
+  "name": "hero 1440x900-light: шапка над кадром 2 читается (≥ 4.5, худший элемент)",
+  "ok": true,
+  "info": {
+   "cr": 7.51,
+   "t": "Поиск по каталогу\n",
+   "n": 6
+  }
+ },
+ {
+  "name": "hero 1440x900-light: строка 3 — кадр 3 активен и загружен",
+  "ok": true,
+  "info": {
+   "af": 2,
+   "loaded": true
+  }
+ },
+ {
+  "name": "hero 1440x900-light: шапка над кадром 3 читается (≥ 4.5, худший элемент)",
+  "ok": true,
+  "info": {
+   "cr": 5.65,
+   "t": "Поиск по каталогу\n",
+   "n": 6
+  }
+ },
+ {
+  "name": "hero 1440x900-light: строка 4 — кадр 4 активен и загружен",
+  "ok": true,
+  "info": {
+   "af": 3,
+   "loaded": true
+  }
+ },
+ {
+  "name": "hero 1440x900-light: шапка над кадром 4 читается (≥ 4.5, худший элемент)",
+  "ok": true,
+  "info": {
+   "cr": 4.97,
+   "t": "Поиск по каталогу\n",
+   "n": 6
+  }
+ },
+ {
+  "name": "hero 1440x900-light: строка 5 — кадр 5 активен и загружен",
+  "ok": true,
+  "info": {
+   "af": 4,
+   "loaded": true
+  }
+ },
+ {
+  "name": "hero 1440x900-light: шапка над кадром 5 читается (≥ 4.5, худший элемент)",
+  "ok": true,
+  "info": {
+   "cr": 5.54,
+   "t": "Поиск по каталогу\n",
+   "n": 6
+  }
+ },
+ {
+  "name": "hero 1440x900-light: строка 6 — кадр 6 активен и загружен",
+  "ok": true,
+  "info": {
+   "af": 5,
+   "loaded": true
+  }
+ },
+ {
+  "name": "hero 1440x900-light: шапка над кадром 6 читается (≥ 4.5, худший элемент)",
+  "ok": true,
+  "info": {
+   "cr": 5.13,
+   "t": "Поиск по каталогу\n",
+   "n": 6
+  }
+ },
+ {
+  "name": "hero 1440x900-light: нет исключений",
+  "ok": true,
+  "info": []
+ },
+ {
+  "name": "hero 390x844-light: контраст текста на --void ≥ 4.5 (num крупный? нет — 1.1rem)",
+  "ok": true,
+  "info": {
+   "eyebrow": 5.79,
+   "h1": 16.71,
+   "lead": 7.52,
+   "name": 7.52,
+   "meta": 7.52,
+   "num": 5.79,
+   "all": 16.71
+  }
+ },
+ {
+  "name": "hero 390x844-light: текст под кадром",
+  "ok": true,
+  "info": {
+   "mediaLeft": 0,
+   "mediaBottom": 530,
+   "h1Right": 361,
+   "listRight": 370,
+   "eyebrowRight": 370,
+   "listTop": 794,
+   "eyebrowTop": 536
+  }
+ },
+ {
+  "name": "hero 390x844-light: строка 1 — кадр 1 активен и загружен",
+  "ok": true,
+  "info": {
+   "af": 0,
+   "loaded": true
+  }
+ },
+ {
+  "name": "hero 390x844-light: шапка над кадром 1 читается (≥ 4.5, худший элемент)",
+  "ok": true,
+  "info": {
+   "cr": 16.1,
+   "t": "№1 Гранд Гурмэ — н",
+   "n": 4
+  }
+ },
+ {
+  "name": "hero 390x844-light: строка 2 — кадр 2 активен и загружен",
+  "ok": true,
+  "info": {
+   "af": 1,
+   "loaded": true
+  }
+ },
+ {
+  "name": "hero 390x844-light: шапка над кадром 2 читается (≥ 4.5, худший элемент)",
+  "ok": true,
+  "info": {
+   "cr": 16.72,
+   "t": "Поиск по каталогу\n",
+   "n": 4
+  }
+ },
+ {
+  "name": "hero 390x844-light: строка 3 — кадр 3 активен и загружен",
+  "ok": true,
+  "info": {
+   "af": 2,
+   "loaded": true
+  }
+ },
+ {
+  "name": "hero 390x844-light: шапка над кадром 3 читается (≥ 4.5, худший элемент)",
+  "ok": true,
+  "info": {
+   "cr": 6.37,
+   "t": "Поиск по каталогу\n",
+   "n": 4
+  }
+ },
+ {
+  "name": "hero 390x844-light: строка 4 — кадр 4 активен и загружен",
+  "ok": true,
+  "info": {
+   "af": 3,
+   "loaded": true
+  }
+ },
+ {
+  "name": "hero 390x844-light: шапка над кадром 4 читается (≥ 4.5, худший элемент)",
+  "ok": true,
+  "info": {
+   "cr": 5.85,
+   "t": "Поиск по каталогу\n",
+   "n": 4
+  }
+ },
+ {
+  "name": "hero 390x844-light: строка 5 — кадр 5 активен и загружен",
+  "ok": true,
+  "info": {
+   "af": 4,
+   "loaded": true
+  }
+ },
+ {
+  "name": "hero 390x844-light: шапка над кадром 5 читается (≥ 4.5, худший элемент)",
+  "ok": true,
+  "info": {
+   "cr": 7.61,
+   "t": "0\n              Ко",
+   "n": 4
+  }
+ },
+ {
+  "name": "hero 390x844-light: строка 6 — кадр 6 активен и загружен",
+  "ok": true,
+  "info": {
+   "af": 5,
+   "loaded": true
+  }
+ },
+ {
+  "name": "hero 390x844-light: шапка над кадром 6 читается (≥ 4.5, худший элемент)",
+  "ok": true,
+  "info": {
+   "cr": 6.22,
+   "t": "0\n              Ко",
+   "n": 4
+  }
+ },
+ {
+  "name": "hero 390x844-light: нет исключений",
+  "ok": true,
+  "info": []
+ },
+ {
+  "name": "hero 1440x900-dark: контраст текста на --void ≥ 4.5 (num крупный? нет — 1.1rem)",
+  "ok": true,
+  "info": {
+   "eyebrow": 5.79,
+   "h1": 16.71,
+   "lead": 7.52,
+   "name": 7.52,
+   "meta": 7.52,
+   "num": 5.79,
+   "all": 16.71
+  }
+ },
+ {
+  "name": "hero 1440x900-dark: список и надзаголовок левее кадра",
+  "ok": true,
+  "info": {
+   "mediaLeft": 624,
+   "mediaBottom": 836,
+   "h1Right": 636,
+   "listRight": 595,
+   "eyebrowRight": 478,
+   "listTop": 426,
+   "eyebrowTop": 145
+  }
+ },
+ {
+  "name": "hero 1440x900-dark: строка 1 — кадр 1 активен и загружен",
+  "ok": true,
+  "info": {
+   "af": 0,
+   "loaded": true
+  }
+ },
+ {
+  "name": "hero 1440x900-dark: строка 2 — кадр 2 активен и загружен",
+  "ok": true,
+  "info": {
+   "af": 1,
+   "loaded": true
+  }
+ },
+ {
+  "name": "hero 1440x900-dark: строка 3 — кадр 3 активен и загружен",
+  "ok": true,
+  "info": {
+   "af": 2,
+   "loaded": true
+  }
+ },
+ {
+  "name": "hero 1440x900-dark: строка 4 — кадр 4 активен и загружен",
+  "ok": true,
+  "info": {
+   "af": 3,
+   "loaded": true
+  }
+ },
+ {
+  "name": "hero 1440x900-dark: строка 5 — кадр 5 активен и загружен",
+  "ok": true,
+  "info": {
+   "af": 4,
+   "loaded": true
+  }
+ },
+ {
+  "name": "hero 1440x900-dark: строка 6 — кадр 6 активен и загружен",
+  "ok": true,
+  "info": {
+   "af": 5,
+   "loaded": true
+  }
+ },
+ {
+  "name": "hero 1440x900-dark: нет исключений",
+  "ok": true,
+  "info": []
+ },
+ {
+  "name": "hero 390x844-dark: контраст текста на --void ≥ 4.5 (num крупный? нет — 1.1rem)",
+  "ok": true,
+  "info": {
+   "eyebrow": 5.79,
+   "h1": 16.71,
+   "lead": 7.52,
+   "name": 7.52,
+   "meta": 7.52,
+   "num": 5.79,
+   "all": 16.71
+  }
+ },
+ {
+  "name": "hero 390x844-dark: текст под кадром",
+  "ok": true,
+  "info": {
+   "mediaLeft": 0,
+   "mediaBottom": 530,
+   "h1Right": 361,
+   "listRight": 370,
+   "eyebrowRight": 370,
+   "listTop": 794,
+   "eyebrowTop": 536
+  }
+ },
+ {
+  "name": "hero 390x844-dark: строка 1 — кадр 1 активен и загружен",
+  "ok": true,
+  "info": {
+   "af": 0,
+   "loaded": true
+  }
+ },
+ {
+  "name": "hero 390x844-dark: строка 2 — кадр 2 активен и загружен",
+  "ok": true,
+  "info": {
+   "af": 1,
+   "loaded": true
+  }
+ },
+ {
+  "name": "hero 390x844-dark: строка 3 — кадр 3 активен и загружен",
+  "ok": true,
+  "info": {
+   "af": 2,
+   "loaded": true
+  }
+ },
+ {
+  "name": "hero 390x844-dark: строка 4 — кадр 4 активен и загружен",
+  "ok": true,
+  "info": {
+   "af": 3,
+   "loaded": true
+  }
+ },
+ {
+  "name": "hero 390x844-dark: строка 5 — кадр 5 активен и загружен",
+  "ok": true,
+  "info": {
+   "af": 4,
+   "loaded": true
+  }
+ },
+ {
+  "name": "hero 390x844-dark: строка 6 — кадр 6 активен и загружен",
+  "ok": true,
+  "info": {
+   "af": 5,
+   "loaded": true
+  }
+ },
+ {
+  "name": "hero 390x844-dark: нет исключений",
+  "ok": true,
+  "info": []
+ },
+ {
+  "name": "autoplay 1440: разделы сменяются по кругу каждые 5 с",
+  "ok": true,
+  "info": {
+   "t0": 0,
+   "t1": 1,
+   "t2": 2
+  }
+ },
+ {
+  "name": "autoplay 1440: полоса времени заполняется",
+  "ok": true,
+  "info": 0.8266
+ },
+ {
+  "name": "autoplay 1440: после наведения автосмена стоит",
+  "ok": true,
+  "info": {
+   "after": 4,
+   "manual": true
+  }
+ },
+ {
+  "name": "autoplay 1440: нет исключений",
+  "ok": true,
+  "info": []
+ },
+ {
+  "name": "autoplay 390: разделы сменяются по кругу каждые 5 с",
+  "ok": true,
+  "info": {
+   "t0": 0,
+   "t1": 1,
+   "t2": 2
+  }
+ },
+ {
+  "name": "autoplay 390: полоса времени заполняется",
+  "ok": true,
+  "info": [
+   0.8,
+   0,
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ {
+  "name": "autoplay 390: нет исключений",
+  "ok": true,
+  "info": []
+ },
+ {
+  "name": "video: ролик не создан до выбора строки «Рыба»",
+  "ok": true,
+  "info": ""
+ },
+ {
+  "name": "video: играет внутри отрезка 4,4–13,8",
+  "ok": true,
+  "info": {
+   "t": 8.21,
+   "paused": false,
+   "src": "hero-brand.webm"
+  }
+ },
+ {
+  "name": "video: после 13,8 возвращается на 4,4",
+  "ok": true,
+  "info": {
+   "t": 5.35,
+   "paused": false
+  }
+ },
+ {
+  "name": "video: пауза при уходе со строки",
+  "ok": true,
+  "info": ""
+ },
+ {
+  "name": "video: при Data Saver — постер hero-ryba.jpg",
+  "ok": true,
+  "info": {
+   "video": false,
+   "img": "hero-ryba.jpg",
+   "ok": true,
+   "op": "1"
+  }
+ },
+ {
+  "name": "video: при reduced motion — постер hero-ryba.jpg",
+  "ok": true,
+  "info": {
+   "video": false,
+   "img": "hero-ryba.jpg",
+   "ok": true,
+   "op": "1"
+  }
+ },
+ {
+  "name": "fit 1366x768: шесть строк и «Весь каталог» в первом экране",
+  "ok": true,
+  "info": {
+   "all": 684,
+   "last": 631,
+   "vh": 768,
+   "hero": 676,
+   "overflowX": 0
+  }
+ },
+ {
+  "name": "fit 1280x720: шесть строк и «Весь каталог» в первом экране",
+  "ok": true,
+  "info": {
+   "all": 670,
+   "last": 617,
+   "vh": 720,
+   "hero": 656,
+   "overflowX": 0
+  }
+ },
+ {
+  "name": "fit 1024x768: шесть строк и «Весь каталог» в первом экране",
+  "ok": true,
+  "info": {
+   "all": 686,
+   "last": 633,
+   "vh": 768,
+   "hero": 676,
+   "overflowX": 0
+  }
+ },
+ {
+  "name": "fit 1440x900: шесть строк и «Весь каталог» в первом экране",
+  "ok": true,
+  "info": {
+   "all": 800,
+   "last": 737,
+   "vh": 900,
+   "hero": 794,
+   "overflowX": 0
+  }
+ },
+ {
+  "name": "fit 1920x1080: шесть строк и «Весь каталог» в первом экране",
+  "ok": true,
+  "info": {
+   "all": 907,
+   "last": 842,
+   "vh": 1080,
+   "hero": 950,
+   "overflowX": 0
+  }
+ },
+ {
+  "name": "reduced: автосмены нет, всё видно сразу",
+  "ok": true,
+  "info": {
+   "active": 0,
+   "manual": true,
+   "hidden": 0
+  }
+ }
+]

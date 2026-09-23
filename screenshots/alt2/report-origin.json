@@ -1,0 +1,513 @@
+[
+ {
+  "name": "origin light: шаг 1 в середине экрана — его кадр",
+  "ok": true,
+  "info": {
+   "on": [
+    0
+   ],
+   "vis": [
+    0
+   ],
+   "step": 0,
+   "frameTop": 159,
+   "frameH": 776,
+   "cites": false
+  }
+ },
+ {
+  "name": "origin light: шаг 2 в середине экрана — его кадр",
+  "ok": true,
+  "info": {
+   "on": [
+    1
+   ],
+   "vis": [
+    1
+   ],
+   "step": 1,
+   "frameTop": 100,
+   "frameH": 776,
+   "cites": false
+  }
+ },
+ {
+  "name": "origin light: шаг 3 в середине экрана — его кадр",
+  "ok": true,
+  "info": {
+   "on": [
+    2
+   ],
+   "vis": [
+    2
+   ],
+   "step": 2,
+   "frameTop": 100,
+   "frameH": 776,
+   "cites": false
+  }
+ },
+ {
+  "name": "origin light: шаг 4 в середине экрана — его кадр",
+  "ok": true,
+  "info": {
+   "on": [
+    3
+   ],
+   "vis": [
+    3
+   ],
+   "step": 3,
+   "frameTop": 100,
+   "frameH": 776,
+   "cites": false
+  }
+ },
+ {
+  "name": "origin light: шаг 5 в середине экрана — его кадр",
+  "ok": true,
+  "info": {
+   "on": [
+    4
+   ],
+   "vis": [
+    4
+   ],
+   "step": 4,
+   "frameTop": -9,
+   "frameH": 776,
+   "cites": true
+  }
+ },
+ {
+  "name": "origin light: последний шаг икры — крышка банки",
+  "ok": true,
+  "info": {
+   "on": [
+    4
+   ],
+   "vis": [
+    4
+   ],
+   "step": 4,
+   "frameTop": -9,
+   "frameH": 776,
+   "cites": true
+  }
+ },
+ {
+  "name": "origin light: кадр липкий — стоит на месте при прокрутке шагов",
+  "ok": true,
+  "info": [
+   159,
+   100,
+   100,
+   100,
+   -9
+  ]
+ },
+ {
+  "name": "origin light: смена ровно при переходе середины экрана",
+  "ok": true,
+  "info": {
+   "before": 1,
+   "after": 2
+  }
+ },
+ {
+  "name": "origin light: неактивные шаги приглушены до .35",
+  "ok": true,
+  "info": [
+   "0.35",
+   "0.35",
+   "1",
+   "0.35",
+   "0.35"
+  ]
+ },
+ {
+  "name": "origin light: нет исключений",
+  "ok": true,
+  "info": []
+ },
+ {
+  "name": "origin dark: шаг 1 в середине экрана — его кадр",
+  "ok": true,
+  "info": {
+   "on": [
+    0
+   ],
+   "vis": [
+    0
+   ],
+   "step": 0,
+   "frameTop": 159,
+   "frameH": 776,
+   "cites": false
+  }
+ },
+ {
+  "name": "origin dark: шаг 2 в середине экрана — его кадр",
+  "ok": true,
+  "info": {
+   "on": [
+    1
+   ],
+   "vis": [
+    1
+   ],
+   "step": 1,
+   "frameTop": 100,
+   "frameH": 776,
+   "cites": false
+  }
+ },
+ {
+  "name": "origin dark: шаг 3 в середине экрана — его кадр",
+  "ok": true,
+  "info": {
+   "on": [
+    2
+   ],
+   "vis": [
+    2
+   ],
+   "step": 2,
+   "frameTop": 100,
+   "frameH": 776,
+   "cites": false
+  }
+ },
+ {
+  "name": "origin dark: шаг 4 в середине экрана — его кадр",
+  "ok": true,
+  "info": {
+   "on": [
+    3
+   ],
+   "vis": [
+    3
+   ],
+   "step": 3,
+   "frameTop": 100,
+   "frameH": 776,
+   "cites": false
+  }
+ },
+ {
+  "name": "origin dark: шаг 5 в середине экрана — его кадр",
+  "ok": true,
+  "info": {
+   "on": [
+    4
+   ],
+   "vis": [
+    4
+   ],
+   "step": 4,
+   "frameTop": -9,
+   "frameH": 776,
+   "cites": true
+  }
+ },
+ {
+  "name": "origin dark: последний шаг икры — крышка банки",
+  "ok": true,
+  "info": {
+   "on": [
+    4
+   ],
+   "vis": [
+    4
+   ],
+   "step": 4,
+   "frameTop": -9,
+   "frameH": 776,
+   "cites": true
+  }
+ },
+ {
+  "name": "origin dark: кадр липкий — стоит на месте при прокрутке шагов",
+  "ok": true,
+  "info": [
+   159,
+   100,
+   100,
+   100,
+   -9
+  ]
+ },
+ {
+  "name": "origin dark: смена ровно при переходе середины экрана",
+  "ok": true,
+  "info": {
+   "before": 1,
+   "after": 2
+  }
+ },
+ {
+  "name": "origin dark: неактивные шаги приглушены до .35",
+  "ok": true,
+  "info": [
+   "0.35",
+   "0.35",
+   "1",
+   "0.35",
+   "0.35"
+  ]
+ },
+ {
+  "name": "origin dark: нет исключений",
+  "ok": true,
+  "info": []
+ },
+ {
+  "name": "tabs: смена вкладки из глубины секции возвращает к её началу",
+  "ok": true,
+  "info": {
+   "top": 93,
+   "header": 77,
+   "ikraHidden": true,
+   "rybaHidden": false,
+   "selected": "ryba",
+   "url": ""
+  }
+ },
+ {
+  "name": "tabs: икра до переключений — кадры по шагам",
+  "ok": true,
+  "info": [
+   "ok",
+   "ok",
+   "ok",
+   "ok",
+   "ok"
+  ]
+ },
+ {
+  "name": "tabs: рыба после переключения — кадры по шагам",
+  "ok": true,
+  "info": [
+   "ok",
+   "ok",
+   "ok",
+   "ok"
+  ]
+ },
+ {
+  "name": "tabs: икра после возврата — кадры по шагам",
+  "ok": true,
+  "info": [
+   "ok",
+   "ok",
+   "ok",
+   "ok",
+   "ok"
+  ]
+ },
+ {
+  "name": "tabs: рыба второй раз — кадры по шагам",
+  "ok": true,
+  "info": [
+   "ok",
+   "ok",
+   "ok",
+   "ok"
+  ]
+ },
+ {
+  "name": "tabs: стрелки переводят фокус и выбор",
+  "ok": true,
+  "info": "chernaya-ikra:chernaya-ikra"
+ },
+ {
+  "name": "tabs: нет исключений",
+  "ok": true,
+  "info": []
+ },
+ {
+  "name": "years: до шага — 0, считает до 30 за 1,6 с",
+  "ok": true,
+  "info": {
+   "pre": "0",
+   "mid": "20",
+   "done": "30"
+  }
+ },
+ {
+  "name": "years: срабатывает один раз",
+  "ok": true,
+  "info": {
+   "text": "30",
+   "mut": 0
+  }
+ },
+ {
+  "name": "radius: окружность растёт до края кадра, подпись «800 км»",
+  "ok": true,
+  "info": {
+   "ring0": 0,
+   "ring1": {
+    "a": 1,
+    "done": true,
+    "label": 1
+   }
+  }
+ },
+ {
+  "name": "radius: срабатывает один раз",
+  "ok": true,
+  "info": 0
+ },
+ {
+  "name": "widgets: нет исключений",
+  "ok": true,
+  "info": []
+ },
+ {
+  "name": "shell: по умолчанию «Забойная», тонкая оболочка",
+  "ok": true,
+  "info": {
+   "state": "slaughter",
+   "w": "1.5px"
+  }
+ },
+ {
+  "name": "shell: «Прижизненная» — оболочка 5px, блик маленький и резкий",
+  "ok": true,
+  "info": {
+   "state": "live",
+   "w": "5px",
+   "checked": "true",
+   "soft": "0",
+   "sharp": "0.95"
+  }
+ },
+ {
+  "name": "shell: стрелки переключают radiogroup",
+  "ok": true,
+  "info": {
+   "state": "slaughter",
+   "focus": "slaughter",
+   "w": "1.5px"
+  }
+ },
+ {
+  "name": "cites: по умолчанию подсвечена AZ, код HUS",
+  "ok": true,
+  "info": {
+   "active": "country",
+   "explain": "AZ — страна, где выросла рыба: Азербайджан. Если икру расфасовали в другой стране, её код будет дальше, в номере завода, а здесь останется страна происхождения.",
+   "code": "HUS / C / AZ / 2025 / AZ-0000 / 0001"
+  }
+ },
+ {
+  "name": "cites: STURGEON в #character → первая группа GUE x BAE",
+  "ok": true,
+  "info": "GUE x BAE"
+ },
+ {
+  "name": "cites: наведение подсвечивает группу и объясняет вид с латынью",
+  "ok": true,
+  "info": {
+   "active": "species",
+   "explain": "GUE x BAE — Acipenser gueldenstaedtii × Acipenser baerii: вид рыбы. У гибридов два кода через x.",
+   "color": "rgb(63, 169, 167)"
+  }
+ },
+ {
+  "name": "cites: стрелки и таб переводят фокус и подсветку",
+  "ok": true,
+  "info": {
+   "seq": [
+    "source:source",
+    "country:country",
+    "source:source"
+   ],
+   "tabbed": "country:country"
+  }
+ },
+ {
+  "name": "cites/shell: нет исключений",
+  "ok": true,
+  "info": []
+ },
+ {
+  "name": "cites: касание подсвечивает группу",
+  "ok": true,
+  "info": {
+   "active": "year",
+   "explain": "Год, когда получена икра."
+  }
+ },
+ {
+  "name": "narrow 390: кадр у каждого шага, липкого кадра нет, виджеты на своих кадрах",
+  "ok": true,
+  "info": {
+   "inSlots": true,
+   "sticky": "none",
+   "widgets": true,
+   "overflowX": 0
+  }
+ },
+ {
+  "name": "narrow 390: нет исключений",
+  "ok": true,
+  "info": []
+ },
+ {
+  "name": "narrow 768: кадр у каждого шага, липкого кадра нет, виджеты на своих кадрах",
+  "ok": true,
+  "info": {
+   "inSlots": true,
+   "sticky": "none",
+   "widgets": true,
+   "overflowX": 0
+  }
+ },
+ {
+  "name": "narrow 768: нет исключений",
+  "ok": true,
+  "info": []
+ },
+ {
+  "name": "narrow 375: кадр у каждого шага, липкого кадра нет, виджеты на своих кадрах",
+  "ok": true,
+  "info": {
+   "inSlots": true,
+   "sticky": "none",
+   "widgets": true,
+   "overflowX": 0
+  }
+ },
+ {
+  "name": "narrow 375: нет исключений",
+  "ok": true,
+  "info": []
+ },
+ {
+  "name": "reduced: счётчик сразу 30, окружность стоит, шаги непрозрачны",
+  "ok": true,
+  "info": {
+   "years": "30",
+   "ring": 1,
+   "dims": 0
+  }
+ },
+ {
+  "name": "reduced: липкий кадр переключается без анимации",
+  "ok": true,
+  "info": {
+   "on": [
+    3
+   ],
+   "vis": [
+    3
+   ],
+   "step": 3,
+   "frameTop": 100,
+   "frameH": 776,
+   "cites": false
+  }
+ }
+]
