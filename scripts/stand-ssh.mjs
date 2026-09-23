@@ -399,11 +399,20 @@ function cmdDeploy({ yes, force }) {
   }
 
   // 9. Тег.
-  const tag = `stand-${date}`
-  const existing = spawnSync('git', ['rev-list', '-n', '1', tag], { cwd: ROOT, encoding: 'utf8' })
-  if (existing.status === 0 && existing.stdout.trim() && existing.stdout.trim() !== manifest.commit) {
-    say(`Тег ${tag} уже стоит на ${existing.stdout.trim().slice(0, 7)} — не переставляю, поставьте руками.`)
-  } else if (existing.status !== 0) {
+  // За день стенд заливают не по разу. Уже стоящий тег не переставляем —
+  // он отмечает другой коммит, который тоже когда-то был на стенде; берём
+  // следующий номер, как это уже заведено у тегов vercel-<дата>-2.
+  let tag = `stand-${date}`
+  const tagged = (t) => spawnSync('git', ['rev-list', '-n', '1', t], { cwd: ROOT, encoding: 'utf8' })
+  let n = 1
+  let at = tagged(tag)
+  while (at.status === 0 && at.stdout.trim() && at.stdout.trim() !== manifest.commit) {
+    tag = `stand-${date}-${++n}`
+    at = tagged(tag)
+  }
+  if (at.status === 0 && at.stdout.trim() === manifest.commit) {
+    say(`Тег ${tag} на этом коммите уже стоит.`)
+  } else {
     git(`tag ${tag} ${manifest.commit}`)
     const push = spawnSync('git', ['push', '--tags'], { cwd: ROOT, encoding: 'utf8' })
     say(push.status === 0 ? `Тег ${tag} поставлен и отправлен.` : `Тег ${tag} поставлен, push не прошёл: ${push.stderr.trim()}`)
