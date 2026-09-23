@@ -71,8 +71,13 @@ function createLenis() {
   gsap.ticker.lagSmoothing(0)
 
   // Якорные ссылки тоже должны идти через Lenis, иначе прыжок ломает инерцию.
-  // offset на высоту липкой шапки: без него надзаголовок секции оказывается
+  // Отступ на высоту липкой шапки: без него надзаголовок секции оказывается
   // под ней — это видно на переходах из подвала в #why и #journal.
+  //
+  // ЦЕЛЬ — ЧИСЛОМ, А НЕ ЭЛЕМЕНТОМ. Lenis 1.3 в scrollTo(элемент) сам вычитает
+  // scroll-margin-top цели, а у .section он уже равен шапке + 1rem
+  // (layout.css — для нативного перехода без Lenis). С элементом и offset
+  // отступ складывался дважды, и секция вставала на ~92px ниже шапки.
   document.addEventListener('click', (event) => {
     const link = event.target.closest('a[href^="#"]')
     if (!link) return
@@ -83,8 +88,8 @@ function createLenis() {
     event.preventDefault()
 
     const header = document.querySelector('[data-header]')
-    const offset = header ? -(header.offsetHeight + 16) : 0
-    lenis.scrollTo(target, { offset, duration: 1.2 })
+    const top = window.scrollY + target.getBoundingClientRect().top
+    lenis.scrollTo(top - (header ? header.offsetHeight + 16 : 0), { duration: 1.2 })
   })
 }
 
