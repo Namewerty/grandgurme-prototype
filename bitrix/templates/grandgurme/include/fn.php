@@ -171,6 +171,13 @@ function gg_catalog_tree(): array
     }
 
     $map = gg_map();
+    /* Витрины («Икра») в дерево не идут: страница у них есть, а раздела
+       каталога — нет. Каталог состоит из разделов, и панель, подвал, сетка
+       на /catalog и карта разделов для поиска перечисляют именно их. */
+    $map['categories'] = array_values(array_filter(
+        $map['categories'],
+        static fn(array $cat): bool => empty($cat['showcase'])
+    ));
     $ids = [];
     foreach ($map['categories'] as $cat) {
         foreach ($cat['sections'] as $id) {

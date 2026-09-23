@@ -291,11 +291,18 @@ if ($items && $page['ids']) {
        название, вес и цена, как на grandgurme.ru: упаковка, артикул
        и прочие признаки из 1С сюда не выводятся. */
     $ggGoods = gg_goods_info_for_ids(array_column($items, 'ID'));
+    /* Цена и признак «товар с предложениями» — тоже одним запросом на страницу:
+       дальше gg_item_price и gg_item_kind берут их из кеша gg_products_live. */
+    gg_products_live(array_column($items, 'ID'));
     foreach ($items as $item):
         $goods = $ggGoods[(int)$item['ID']] ?? ['name' => (string)$item['NAME'], 'weight' => '', 'weighed' => false];
         $price = gg_shelf_price(gg_item_price($item), $goods['weighed']);
         $title = $goods['name'];
-        $kind = gg_item_kind($item, $cat);
+        /* На витрине вид считается по разделу самого товара: красная икра
+           без остатка — «под заказ», чёрная — «через менеджера». У раздела
+           витрина одна на двоих, и передать её сюда значило бы приписать
+           всей странице один способ доставки. */
+        $kind = gg_item_kind($item, empty($cat['showcase']) ? $cat : null);
         $href = gg_product_url($item);
         $alt = $title . ($goods['weight'] !== '' ? ', ' . $goods['weight'] : '');
 ?>

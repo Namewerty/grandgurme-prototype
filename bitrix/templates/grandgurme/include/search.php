@@ -139,6 +139,10 @@ function gg_search_showcase_filter(): array
     $sections = [];
     $extra = [];
     foreach (gg_map()['categories'] as $cat) {
+        /* Витрины не перечисляем: их разделы уже пришли от настоящих разделов. */
+        if (!empty($cat['showcase'])) {
+            continue;
+        }
         foreach ($cat['sections'] as $id) {
             $sections[] = (int)$id;
         }
@@ -151,6 +155,47 @@ function gg_search_showcase_filter(): array
     $scope = ['SECTION_ID' => array_values(array_unique($sections)), 'INCLUDE_SUBSECTIONS' => 'Y'];
     $filter[] = $extra ? ['LOGIC' => 'OR', $scope, ['ID' => array_values(array_unique($extra))]] : $scope;
     return $filter;
+}
+
+/**
+ * Значения справочника «Рыба», подходящие под основу слова (23.09.2026).
+ *
+ * Вид рыбы в поисковый индекс инфоблока не входит: свойство RYBA заведено
+ * с SEARCHABLE = N, а индекс собран из рабочего наименования и названия для
+ * печати. Сейчас вид стоит в самом названии («Икра красная Кета …»), и «кета»
+ * находится случайно. Но название для печати 1С может поправить в любой
+ * выгрузке — «Икра кеты» слова «кета» уже не содержит, — и тогда поиск по виду
+ * пропал бы молча. Поэтому вид ищется ещё и по свойству.
+ *
+ * @return int[] ID значений справочника
+ */
+function gg_search_species_enum_ids(string $stem): array
+{
+    static $values = null;
+    if ($values === null) {
+        $values = [];
+        if (CModule::IncludeModule('iblock')) {
+            $res = CIBlockPropertyEnum::GetList([], ['IBLOCK_ID' => gg_map()['iblockId'], 'CODE' => 'RYBA']);
+            while ($row = $res->Fetch()) {
+                $values[(int)$row['ID']] = mb_strtoupper(str_replace(['ё', 'Ё'], 'Е', (string)$row['VALUE']));
+            }
+        }
+    }
+    $ids = [];
+    foreach ($values as $id => $text) {
+        if ($stem !== '' && mb_strpos($text, $stem) !== false) {
+            $ids[] = $id;
+        }
+    }
+    return $ids;
+}
+
+/** Условие «слово нашлось в тексте позиции ИЛИ в её виде рыбы». */
+function gg_search_term_filter(array $term): array
+{
+    $byText = ['%SEARCHABLE_CONTENT' => $term['stem']];
+    $species = gg_search_species_enum_ids($term['stem']);
+    return $species ? ['LOGIC' => 'OR', $byText, ['PROPERTY_RYBA' => $species]] : $byText;
 }
 
 /** ID товаров, у которых артикул или код 1С совпадает с запросом целиком. */
@@ -207,14 +252,14 @@ function gg_search_ids(string $q): array
     if ($byCode) {
         $textFilter = ['LOGIC' => 'AND'];
         foreach ($terms as $term) {
-            $textFilter[] = ['%SEARCHABLE_CONTENT' => $term['stem']];
+            $textFilter[] = gg_search_term_filter($term);
         }
         $filter[] = count($textFilter) > 1
             ? ['LOGIC' => 'OR', ['ID' => $byCode], $textFilter]
             : ['ID' => $byCode];
     } else {
         foreach ($terms as $term) {
-            $filter[] = ['%SEARCHABLE_CONTENT' => $term['stem']];
+            $filter[] = gg_search_term_filter($term);
         }
     }
 

@@ -189,7 +189,7 @@ function gg_catalog_filter(array $cat, array $picked = []): array
             if ($option['slug'] !== $slug) {
                 continue;
             }
-            if (empty($option['sections']) && empty($option['names'])) {
+            if (empty($option['sections']) && empty($option['names']) && empty($option['elements'])) {
                 $ids = gg_prop_enum_ids($facet['prop'], $option['values']);
                 /* Значения нет в справочнике — показываем пустую выдачу, а не весь
                    раздел: молча снятый фильтр хуже честного «ничего не нашлось». */
@@ -215,6 +215,8 @@ function gg_catalog_filter(array $cat, array $picked = []): array
  *
  *   values   — значения списочного свойства facet['prop'], как у икры;
  *   sections — ID разделов 1С (подраздел «Рыба холодного копчения»);
+ *   elements — ID отдельных позиций (паюсная икра лежит в корне инфоблока,
+ *              а на витрине «Икра» относится к чёрной);
  *   names    — подстроки рабочего наименования («х/к», «лосос»). Сравнение
  *              в базе не различает регистр и «ё» (utf8mb4_0900_ai_ci).
  *
@@ -233,6 +235,9 @@ function gg_facet_option_filter(array $facet, array $option): array
     }
     if (!empty($option['sections'])) {
         $or[] = ['SECTION_ID' => array_map('intval', $option['sections']), 'INCLUDE_SUBSECTIONS' => 'Y'];
+    }
+    if (!empty($option['elements'])) {
+        $or[] = ['ID' => array_map('intval', $option['elements'])];
     }
     foreach ($option['names'] ?? [] as $needle) {
         $needle = trim((string)$needle);
@@ -653,7 +658,16 @@ function gg_item_price(array $item): ?float
             }
         }
     }
-    return null;
+
+    /* ТОВАР С ТОРГОВЫМИ ПРЕДЛОЖЕНИЯМИ (23.09.2026). У коробок рыбы
+       (19 позиций, CATALOG_TYPE = 3) цена «Интернет-магазин» стоит у самого
+       товара — её кладёт обмен с 1С, — но каталожные компоненты цену родителя
+       не отдают: по их модели цена живёт в предложениях. Получалось, что
+       подсказка поиска (она читает цену прямо из базы, gg_products_live)
+       писала «1 290 ₽», а карточка и сетка — «Цена по запросу». Читаем
+       из того же места, что и поиск, чтобы три места не спорили. */
+    $id = (int)($item['ID'] ?? 0);
+    return $id ? (gg_products_live([$id])[$id]['price'] ?? null) : null;
 }
 
 /** Свойства как «код → читаемая строка». */
@@ -963,6 +977,11 @@ function gg_item_category_slug(int $id): string
         $groups[] = ['left' => (int)$row['LEFT_MARGIN'], 'right' => (int)$row['RIGHT_MARGIN']];
     }
     foreach (gg_map()['categories'] as $cat) {
+        /* Витрина — не раздел товара: у карточки в крошках должен стоять
+           «Чёрная икра», а не «Икра». */
+        if (!empty($cat['showcase'])) {
+            continue;
+        }
         if (in_array($id, array_map('intval', $cat['extraElements'] ?? []), true)) {
             return $cat['slug'];
         }
@@ -1012,38 +1031,72 @@ function gg_price_group_id(): int
  */
 function gg_products_live(array $ids): array
 {
-    $out = [];
+    static $cache = [];
     $ids = array_values(array_unique(array_filter(array_map('intval', $ids))));
     if (!$ids) {
-        return $out;
+        return [];
     }
-    foreach ($ids as $id) {
-        $out[$id] = ['id' => $id, 'price' => null, 'quantity' => 0.0, 'canBuy' => false];
-    }
-    if (!CModule::IncludeModule('catalog')) {
-        return $out;
-    }
+    $missing = array_values(array_diff($ids, array_keys($cache)));
 
-    $res = \Bitrix\Catalog\ProductTable::getList([
-        'filter' => ['@ID' => $ids],
-        'select' => ['ID', 'QUANTITY', 'AVAILABLE'],
-    ]);
-    while ($row = $res->fetch()) {
-        $out[(int)$row['ID']]['quantity'] = (float)$row['QUANTITY'];
-        $out[(int)$row['ID']]['canBuy'] = ($row['AVAILABLE'] ?? 'N') === 'Y';
-    }
+    if ($missing) {
+        foreach ($missing as $id) {
+            $cache[$id] = ['id' => $id, 'price' => null, 'quantity' => 0.0, 'canBuy' => false, 'sku' => false];
+        }
+        if (CModule::IncludeModule('catalog')) {
+            $res = \Bitrix\Catalog\ProductTable::getList([
+                'filter' => ['@ID' => $missing],
+                'select' => ['ID', 'QUANTITY', 'AVAILABLE', 'TYPE'],
+            ]);
+            while ($row = $res->fetch()) {
+                $id = (int)$row['ID'];
+                /* TYPE = 3 — товар с торговыми предложениями. Битрикс такой
+                   товар в корзину не принимает вовсе: «только конкретное
+                   предложение» (проверено сухим прогоном 23.09.2026). */
+                $sku = (int)($row['TYPE'] ?? 0) === \Bitrix\Catalog\ProductTable::TYPE_SKU;
+                $cache[$id]['quantity'] = (float)$row['QUANTITY'];
+                $cache[$id]['sku'] = $sku;
+                $cache[$id]['canBuy'] = !$sku && ($row['AVAILABLE'] ?? 'N') === 'Y';
+            }
 
-    $group = gg_price_group_id();
-    if ($group) {
-        $res = \Bitrix\Catalog\PriceTable::getList([
-            'filter' => ['@PRODUCT_ID' => $ids, '=CATALOG_GROUP_ID' => $group],
-            'select' => ['PRODUCT_ID', 'PRICE'],
-        ]);
-        while ($row = $res->fetch()) {
-            if ((float)$row['PRICE'] > 0) {
-                $out[(int)$row['PRODUCT_ID']]['price'] = (float)$row['PRICE'];
+            $group = gg_price_group_id();
+            if ($group) {
+                $res = \Bitrix\Catalog\PriceTable::getList([
+                    'filter' => ['@PRODUCT_ID' => $missing, '=CATALOG_GROUP_ID' => $group],
+                    'select' => ['PRODUCT_ID', 'PRICE'],
+                ]);
+                while ($row = $res->fetch()) {
+                    if ((float)$row['PRICE'] > 0) {
+                        $cache[(int)$row['PRODUCT_ID']]['price'] = (float)$row['PRICE'];
+                    }
+                }
             }
         }
+    }
+
+    $out = [];
+    foreach ($ids as $id) {
+        $out[$id] = $cache[$id];
+    }
+    return $out;
+}
+
+/**
+ * Товары с торговыми предложениями (23.09.2026).
+ *
+ * У «Гранд Гурмэ» это коробки рыбы: 19 позиций, у каждой десяток предложений —
+ * конкретных партий с весом в коде серии. Битрикс не даёт положить такой товар
+ * в корзину («Нельзя добавить в корзину товар с торговыми предложениями —
+ * только конкретное предложение»), поэтому вид у них всегда «через менеджера»,
+ * сколько бы цены и остатка ни стояло у родителя. Это временно: когда коробки
+ * доедут (PERENOS-korobki.md), покупать будут предложение, а не родителя.
+ *
+ * @return array ID товара => bool
+ */
+function gg_sku_parents(array $ids): array
+{
+    $out = [];
+    foreach (gg_products_live($ids) as $id => $live) {
+        $out[$id] = (bool)($live['sku'] ?? false);
     }
     return $out;
 }
@@ -1079,6 +1132,11 @@ function gg_item_kind(array $item, ?array $cat = null): string
     }
     /* Битрикс эту позицию в корзину не примет. */
     if ($canBuy === false) {
+        return 'request';
+    }
+    /* Товар с торговыми предложениями — тоже не примет, и компонент об этом
+       не говорит: CAN_BUY он у родителя не заполняет вовсе (gg_sku_parents). */
+    if ($id && ($item['sku'] ?? null) !== false && (gg_sku_parents([$id])[$id] ?? false)) {
         return 'request';
     }
     if ($quantity > 0) {
