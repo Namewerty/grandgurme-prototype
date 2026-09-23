@@ -127,7 +127,11 @@ if ($items && $page['ids']) {
       <span class="crumbs__current" aria-current="page"><?= gg_e($cat['name']) ?></span>
     </nav>
 
-    <div class="catalog__head">
+<?php /* id появляется только у разделов, тексты которых заведены в админке,
+         и только в режиме правки: при наведении на заголовок Битрикс рисует
+         кнопку «Изменить тексты раздела». Разметка от этого не меняется. */
+      $ggEditArea = gg_catalog_admin_edit_area($cat); ?>
+    <div class="catalog__head"<?= $ggEditArea ? ' id="' . $ggEditArea . '"' : '' ?>>
       <h1 class="catalog__title"><?= gg_e($cat['name']) ?></h1>
       <p class="catalog__lead"><?= gg_e($cat['lead']) ?></p>
     </div>

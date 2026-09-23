@@ -75,8 +75,13 @@ if ($slug === '') {
         $sort = gg_catalog_sorts()[$sortKey];
         $page = gg_catalog_page($cat, $picked, $sortKey);
 
-        $APPLICATION->SetTitle($cat['name'] . ' — купить в №1 Гранд Гурмэ');
-        $APPLICATION->SetPageProperty('description', $cat['lead']);
+        /* Заголовок окна и описание для поиска берутся из админки, если они
+           там заполнены (инфоблок «Разделы витрины»); иначе собираются из
+           названия и лида, как раньше. */
+        $seoTitle = trim((string)($cat['seoTitle'] ?? ''));
+        $seoDesc = trim((string)($cat['seoDesc'] ?? ''));
+        $APPLICATION->SetTitle($seoTitle !== '' ? $seoTitle : $cat['name'] . ' — купить в №1 Гранд Гурмэ');
+        $APPLICATION->SetPageProperty('description', $seoDesc !== '' ? $seoDesc : $cat['lead']);
 
         /* Фильтр уезжает компоненту глобальной переменной: так работают все
            родные компоненты каталога, и свой велосипед здесь не нужен.
