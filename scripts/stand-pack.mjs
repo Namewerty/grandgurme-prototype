@@ -1,6 +1,11 @@
 /**
  * Архив для стенда Битрикса из текущего коммита: `npm run stand`.
  *
+ * ЗАПАСНОЙ ПУТЬ. С 23.09.2026 основная заливка — по SSH (`npm run stand:deploy`,
+ * scripts/stand-ssh.mjs). Архив остаётся для случая, когда SSH недоступен,
+ * и для боевого сайта, куда доступа пока нет. Список файлов у обоих путей
+ * один — scripts/stand-files.mjs.
+ *
  * ЗАЧЕМ. До 17.09.2026 архивы собирались руками, из разных коммитов,
  * а контрольные суммы переписывались в промпты таблицами. В итоге на стенде
  * оказался архив из старой базы с патчем, которого не было в GitHub, и три
@@ -8,13 +13,9 @@
  * несёт список файлов с суммами — сверять и заливать по нему умеет
  * bitrix/install/stand-deploy.php.
  *
- * ЧТО ВХОДИТ. Всё, что уезжает на сервер, целиком, а не только изменённое:
- *   bitrix/templates/grandgurme/**  → /bitrix/templates/grandgurme/** (без README.md)
- *   deploy-src/**                   → /**
- *   bitrix/server/**                → /**  (файлы ядра сайта: /local/php_interface/init.php, /urlrewrite.php)
- * Плюс stand-manifest.json: коммит, дата, md5 каждого файла.
- * md5 считается по содержимому с концами строк, приведёнными к LF, —
- * тем же способом, что и на сервере.
+ * ЧТО ВХОДИТ. Всё, что уезжает на сервер, целиком, а не только изменённое;
+ * состав — в scripts/stand-files.mjs. Плюс stand-manifest.json: коммит, дата,
+ * md5 каждого файла.
  *
  * НЕЗАКОММИЧЕННЫЕ ПРАВКИ. Если в рабочей копии есть изменения в этих путях
  * или в src/, архив не собирается: на стенд уезжает только то, что есть
@@ -24,85 +25,33 @@
  * Лимит nginx стенда на загрузку — около 1 МБ; скрипт предупреждает, если больше.
  */
 
-import { execSync } from 'node:child_process'
-import { createHash } from 'node:crypto'
-import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
-import { join, posix, relative, sep } from 'node:path'
+import { writeFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { deflateRawSync } from 'node:zlib'
 
-const ROOT = process.cwd()
+import { ROOT, buildManifest, collectEntries, dateStamp, dirtyList, requireBuild } from './stand-files.mjs'
+
 const allowDirty = process.argv.includes('--dirty')
 
-const git = (cmd) => execSync(`git ${cmd}`, { cwd: ROOT, encoding: 'utf8' }).trim()
-
-const commit = git('rev-parse HEAD')
-const short = commit.slice(0, 7)
-const branch = git('rev-parse --abbrev-ref HEAD')
-const dirtyList = git('status --porcelain -- src bitrix deploy-src scripts package.json vite.bitrix.config.js')
-  .split('\n')
-  .filter(Boolean)
-  // Результаты сборки в .gitignore и в статус не попадают; на всякий случай отсекаем.
-  .filter((line) => !/assets\/|generated\.php/.test(line))
-
-if (dirtyList.length && !allowDirty) {
+const dirty = dirtyList()
+if (dirty.length && !allowDirty) {
   console.error('[stand] В рабочей копии есть незакоммиченные правки — архив не собран:')
-  console.error(dirtyList.map((l) => '  ' + l).join('\n'))
+  console.error(dirty.map((l) => '  ' + l).join('\n'))
   console.error('[stand] Закоммитьте их или соберите пробный архив: npm run stand -- --dirty')
   process.exit(1)
 }
 
-const walk = (dir) =>
-  readdirSync(dir).flatMap((name) => {
-    const full = join(dir, name)
-    return statSync(full).isDirectory() ? walk(full) : [full]
-  })
+requireBuild()
 
-const toPosix = (p) => p.split(sep).join(posix.sep)
-
-/** [путь на сервере, файл в репозитории] */
-const entries = []
-const add = (srcDir, serverPrefix, skip = () => false) => {
-  const abs = join(ROOT, srcDir)
-  if (!existsSync(abs)) return
-  for (const file of walk(abs)) {
-    const rel = toPosix(relative(abs, file))
-    if (skip(rel)) continue
-    entries.push([posix.join(serverPrefix, rel), file])
-  }
-}
-add('bitrix/templates/grandgurme', '/bitrix/templates/grandgurme', (rel) => rel === 'README.md')
-add('deploy-src', '/')
-add('bitrix/server', '/')
-
-for (const required of ['assets/css/app.css', 'assets/js/app.js', 'include/generated.php']) {
-  if (!existsSync(join(ROOT, 'bitrix/templates/grandgurme', required))) {
-    console.error(`[stand] Нет ${required} — сначала npm run bitrix (npm run stand делает это сам)`)
-    process.exit(1)
-  }
-}
-
-entries.sort(([a], [b]) => a.localeCompare(b))
-
-const md5lf = (buf) => createHash('md5').update(buf.toString('binary').replace(/\r\n/g, '\n'), 'binary').digest('hex')
-
-const files = {}
-const payload = entries.map(([serverPath, file]) => {
-  const data = readFileSync(file)
-  files[serverPath] = md5lf(data)
-  return [serverPath.replace(/^\//, ''), data]
-})
-
+const entries = collectEntries()
 const today = new Date()
-const pad = (n) => String(n).padStart(2, '0')
-const date = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`
+const { manifest, payload: files } = buildManifest(entries, { dirty: dirty.length > 0, builtAt: today })
 
-const manifest = {
-  commit,
-  branch,
-  dirty: dirtyList.length > 0,
-  builtAt: today.toISOString(),
-  files,
-}
+const short = manifest.commit.slice(0, 7)
+const date = dateStamp(today)
+
+/** [имя в архиве, содержимое] — пути в zip без ведущего слеша. */
+const payload = files.map(([serverPath, data]) => [serverPath.replace(/^\//, ''), data])
 payload.push(['stand-manifest.json', Buffer.from(JSON.stringify(manifest, null, 2) + '\n')])
 
 /* ---- Минимальный ZIP (deflate), без зависимостей ----------------------- */
@@ -172,7 +121,10 @@ const zip = Buffer.concat([...locals, centralBuf, end])
 const out = `grandgurme-stand-${date}-${short}${manifest.dirty ? '-dirty' : ''}.zip`
 writeFileSync(join(ROOT, out), zip)
 
-console.log(`[stand] ${out} — ${(zip.length / 1024).toFixed(0)} КБ, файлов ${entries.length}, коммит ${short} (${branch})`)
+console.log(
+  `[stand] ${out} — ${(zip.length / 1024).toFixed(0)} КБ, файлов ${entries.length}, коммит ${short} (${manifest.branch})`
+)
 if (manifest.dirty) console.log('[stand] ВНИМАНИЕ: пробный архив с незакоммиченными правками')
 if (zip.length > 1024 * 1024) console.log('[stand] ВНИМАНИЕ: больше 1 МБ — nginx стенда такой файл не пропустит')
+console.log('[stand] Это запасной путь. Основной — npm run stand:deploy (по SSH).')
 console.log('[stand] Дальше: bitrix/install/stand-deploy.php в командной PHP-строке (сначала $mode = \'check\').')

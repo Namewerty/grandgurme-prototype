@@ -15,7 +15,10 @@
     "postbuild": "node scripts/after-build.mjs",
     "bitrix:data": "node scripts/build-bitrix-data.mjs",
     "bitrix": "node scripts/build-bitrix-data.mjs && vite build --config vite.bitrix.config.js",
-    "stand": "npm run bitrix && node scripts/stand-pack.mjs"
+    "stand": "npm run bitrix && node scripts/stand-pack.mjs",
+    "stand:drift": "node scripts/stand-ssh.mjs drift",
+    "stand:deploy": "node scripts/stand-ssh.mjs deploy",
+    "stand:pull": "node scripts/stand-ssh.mjs pull"
   },
   "dependencies": {
     "gsap": "^3.13.0",
