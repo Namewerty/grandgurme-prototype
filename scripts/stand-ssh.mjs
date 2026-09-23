@@ -34,6 +34,7 @@ import { dirname, join, relative, sep } from 'node:path'
 import { gzipSync } from 'node:zlib'
 
 import {
+  ADMIN_EDITED,
   ROOT,
   buildManifest,
   collectEntries,
@@ -244,9 +245,15 @@ function cmdDrift() {
     return
   }
   const { changed, gone } = drift(last)
-  for (const p of changed) say('ИЗМЕНЁН     ' + p)
+  /* Страницы, которые правят в админке, — не расхождение, а норма
+     (ADMIN_EDITED в stand-files.mjs). Но сказать о них надо: человек должен
+     знать, что на стенде лежит не то, что в репозитории, и почему. */
+  const admin = changed.filter((p) => ADMIN_EDITED.includes(p))
+  const real = changed.filter((p) => !ADMIN_EDITED.includes(p))
+  for (const p of real) say('ИЗМЕНЁН     ' + p)
   for (const p of gone) say('УДАЛЁН      ' + p)
-  const total = changed.length + gone.length
+  for (const p of admin) say('правится в админке  ' + p)
+  const total = real.length + gone.length
   say('')
   say(
     total
@@ -268,7 +275,8 @@ function cmdDeploy({ yes, force }) {
 
   // 1. Правки на стенде мимо репозитория.
   if (last) {
-    const { changed, gone } = drift(last, manifest.files)
+    const { changed: changedAll, gone } = drift(last, manifest.files)
+    const changed = changedAll.filter((p) => !ADMIN_EDITED.includes(p))
     if (changed.length || gone.length) {
       for (const p of changed) say('ИЗМЕНЁН НА СТЕНДЕ  ' + p)
       for (const p of gone) say('УДАЛЁН НА СТЕНДЕ   ' + p)
@@ -290,11 +298,28 @@ function cmdDeploy({ yes, force }) {
     ...payload.map(([serverPath, data]) => [serverPath.replace(/^\//, ''), data]),
     ['_stand-files.txt', Buffer.from(listText)],
   ])
-  const archiveDir = ssh(
+  /* Страницу, которую правят в админке, заливаем только если её на стенде
+     ещё нет: иначе заливка молча затёрла бы правку контент-менеджера.
+     Убираем её из сборки до сухого прогона, чтобы «что изменится» не обещало
+     того, чего не будет. */
+  const keepAdmin = ADMIN_EDITED.map((p) => p.replace(/^\//, ''))
+    .map(
+      (f) =>
+        `if [ -e "${SITE}/${f}" ]; then rm -f "${STAGE}/${f}"; grep -vxF "${f}" ${LIST} > ${LIST}.tmp && mv ${LIST}.tmp ${LIST}; echo "ADMIN ${f}"; fi`
+    )
+    .join('; ')
+
+  const upload = ssh(
     `rm -rf ${STAGE} && mkdir -p ${STAGE} && tar -xzf - -C ${STAGE} && mv ${STAGE}/_stand-files.txt ${LIST} && ` +
+      (keepAdmin ? keepAdmin + '; ' : '') +
       `if ( touch ${ARCHIVE}/.w && rm -f ${ARCHIVE}/.w ) 2>/dev/null; then echo ${ARCHIVE}; else mkdir -p ${ARCHIVE_FALLBACK} && echo ${ARCHIVE_FALLBACK}; fi`,
     { input: tar, label: 'отправка сборки' }
-  ).out.trim()
+  ).out
+  const lines = upload.split('\n').map((l) => l.trim()).filter(Boolean)
+  const archiveDir = lines[lines.length - 1]
+  for (const line of lines.filter((l) => l.startsWith('ADMIN '))) {
+    say('правится в админке  /' + line.slice(6) + ' — на стенде уже есть, не трогаем')
+  }
   if (archiveDir !== ARCHIVE) {
     say(`ВНИМАНИЕ: в ${ARCHIVE} нет записи для пользователя deploy — копии кладутся в ${archiveDir}.`)
     say('')
