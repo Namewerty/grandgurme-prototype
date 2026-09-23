@@ -1,0 +1,139 @@
+// =============================================================================
+// Сверка и заливка стенда по архиву из npm run stand.
+//
+// КАК ЗАПУСКАТЬ. Настройки → Инструменты → Командная PHP-строка, вставить
+// файл целиком (строки <?php нет намеренно) и выполнить.
+//
+// ГДЕ ИСКАТЬ АРХИВ. По порядку:
+//   1) файл, приложенный к запросу командной строки ($_FILES) — так заливает
+//      агент в браузере;
+//   2) самый свежий grandgurme-stand-*.zip в /upload/gg-stand/ — туда его можно
+//      положить руками через «Контент → Структура сайта → Файлы и папки».
+//
+// ТРИ РЕЖИМА — переменная $mode ниже:
+//   check  — ничего не пишет. Показывает по каждому файлу, что с ним будет,
+//            и главное — ИЗМЕНЁН ЛИ ФАЙЛ НА СТЕНДЕ после прошлой заливки.
+//   deploy — то же, и если правок на стенде нет, пишет файлы, запоминает
+//            манифест в /local/gg-stand/manifest.json и сбрасывает кеш.
+//   drift  — без архива: какие файлы из прошлого манифеста правили на стенде.
+//            Эти файлы надо забрать в репозиторий ДО следующей заливки.
+//
+// ПРАВКИ НА СТЕНДЕ. Если файл на сервере не совпадает ни с прошлой заливкой,
+// ни с новым архивом, его правили руками в админке. Заливка останавливается:
+// сначала эти правки переносятся в репозиторий, потом собирается новый архив.
+// $force = true пишет поверх — только когда правки заведомо не нужны.
+//
+// ФАЙЛЫ НЕ УДАЛЯЮТСЯ. Если файл был в прошлой заливке, а в новом архиве его
+// нет, скрипт это печатает; удалить его — решение человека.
+// =============================================================================
+
+$mode = 'deploy'; // check | deploy | drift
+$force = false;
+
+$root = rtrim($_SERVER['DOCUMENT_ROOT'], '/');
+$stateFile = $root . '/local/gg-stand/manifest.json';
+$md5lf = static fn(string $s): string => md5(str_replace("\r\n", "\n", $s));
+$say = static function (string $line): void { echo $line . "\n"; };
+
+$last = is_file($stateFile) ? json_decode((string)file_get_contents($stateFile), true) : null;
+$say('Сейчас на стенде: ' . ($last ? 'коммит ' . substr($last['commit'], 0, 7) . ' от ' . $last['builtAt'] . ($last['dirty'] ? ' (ПРОБНЫЙ, с незакоммиченными правками)' : '') : 'манифеста нет — заливка через stand-deploy ещё не делалась'));
+
+if ($mode === 'drift') {
+    if (!$last) { $say('Не с чем сравнивать.'); return; }
+    $changed = 0;
+    foreach ($last['files'] as $path => $md5) {
+        $f = $root . $path;
+        $cur = is_file($f) ? $md5lf((string)file_get_contents($f)) : '';
+        if ($cur !== $md5) {
+            $changed++;
+            $say(($cur === '' ? 'УДАЛЁН      ' : 'ИЗМЕНЁН     ') . $path . ($cur !== '' ? '  (изменён ' . date('d.m.Y H:i', filemtime($f)) . ')' : ''));
+        }
+    }
+    $say($changed ? "Правок на стенде: {$changed}. Перенести в репозиторий до следующей заливки." : 'Правок на стенде нет: файлы совпадают с последней заливкой.');
+    return;
+}
+
+// ---- Архив ------------------------------------------------------------------
+
+$zipPath = '';
+foreach ($_FILES as $upload) {
+    if (is_array($upload) && ($upload['error'] ?? 1) === 0 && preg_match('/^grandgurme-stand-.*\.zip$/', (string)$upload['name'])) {
+        $zipPath = $upload['tmp_name'];
+        $say('Архив: ' . $upload['name'] . ' (приложен к запросу)');
+        break;
+    }
+}
+if ($zipPath === '') {
+    $list = glob($root . '/upload/gg-stand/grandgurme-stand-*.zip') ?: [];
+    usort($list, static fn($a, $b) => filemtime($b) <=> filemtime($a));
+    if ($list) {
+        $zipPath = $list[0];
+        $say('Архив: ' . basename($zipPath) . ' (из /upload/gg-stand/)');
+    }
+}
+if ($zipPath === '') { $say('Архив не найден.'); return; }
+
+$zip = new ZipArchive();
+if ($zip->open($zipPath) !== true) { $say('Архив не открывается.'); return; }
+$manifest = json_decode((string)$zip->getFromName('stand-manifest.json'), true);
+if (!is_array($manifest) || empty($manifest['files'])) { $say('В архиве нет stand-manifest.json — это не архив npm run stand.'); return; }
+$say('В архиве: коммит ' . substr($manifest['commit'], 0, 7) . ' (' . $manifest['branch'] . '), собран ' . $manifest['builtAt'] . ($manifest['dirty'] ? ' — ПРОБНЫЙ' : ''));
+$say('');
+
+// ---- Сверка -----------------------------------------------------------------
+
+$toWrite = [];
+$drift = [];
+$broken = [];
+foreach ($manifest['files'] as $path => $newMd5) {
+    $data = $zip->getFromName(ltrim($path, '/'));
+    if ($data === false || $md5lf($data) !== $newMd5) { $broken[] = $path; continue; }
+    $f = $root . $path;
+    $cur = is_file($f) ? $md5lf((string)file_get_contents($f)) : '';
+    $prev = $last['files'][$path] ?? null;
+
+    if ($cur === $newMd5) { $state = 'без изменений'; }
+    elseif ($cur === '') { $state = 'новый'; $toWrite[$path] = $data; }
+    elseif ($prev !== null && $cur === $prev) { $state = 'обновится'; $toWrite[$path] = $data; }
+    else {
+        $state = $prev === null ? 'РАСХОДИТСЯ (нет прошлой заливки для сравнения)' : 'ИЗМЕНЁН НА СТЕНДЕ';
+        $drift[] = $path;
+        $toWrite[$path] = $data;
+    }
+    if ($state !== 'без изменений') { $say(str_pad($state, 16) . ' ' . $path); }
+}
+$zip->close();
+
+if ($last) {
+    foreach (array_diff(array_keys($last['files']), array_keys($manifest['files'])) as $gone) {
+        $say('НЕТ В АРХИВЕ    ' . $gone . ' — был в прошлой заливке; удалить руками, если он больше не нужен');
+    }
+}
+$say('Без изменений: ' . (count($manifest['files']) - count($toWrite) - count($broken)) . ' из ' . count($manifest['files']));
+
+if ($broken) { $say("\nАРХИВ ПОВРЕЖДЁН, суммы не сходятся: " . implode(', ', $broken)); return; }
+if ($drift && !$force) {
+    $say("\nСТОП: на стенде правки, которых нет в архиве (" . count($drift) . '). Перенесите их в репозиторий, соберите новый архив.');
+    $say('Если правки заведомо не нужны — $force = true.');
+    if ($mode === 'deploy') { return; }
+}
+if ($mode !== 'deploy') { $say("\nРежим check: ничего не записано."); return; }
+
+// ---- Заливка ----------------------------------------------------------------
+
+foreach ($toWrite as $path => $data) {
+    $f = $root . $path;
+    if (!is_dir(dirname($f))) { mkdir(dirname($f), 0775, true); }
+    file_put_contents($f, $data, LOCK_EX);
+    if ($md5lf((string)file_get_contents($f)) !== $manifest['files'][$path]) { $say('НЕ ЗАПИСАЛСЯ ' . $path); return; }
+}
+if (!is_dir(dirname($stateFile))) { mkdir(dirname($stateFile), 0775, true); }
+file_put_contents($stateFile, json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), LOCK_EX);
+
+if (function_exists('opcache_reset')) { opcache_reset(); }
+BXClearCache(true);
+$GLOBALS['CACHE_MANAGER']->CleanAll();
+$GLOBALS['stackCacheManager']->CleanAll();
+
+$say("\nЗАЛИТО: файлов " . count($toWrite) . ', кеш сброшен. На стенде коммит ' . substr($manifest['commit'], 0, 7) . '.');
+$say('Поставьте тег в репозитории: git tag stand-' . date('Y-m-d') . ' ' . substr($manifest['commit'], 0, 7) . ' && git push --tags');

@@ -1,0 +1,1560 @@
+From 1d177281e2e4166fe332a138e2a010ec67ff5d79 Mon Sep 17 00:00:00 2001
+From: "Claude (Cowork)" <noreply@anthropic.com>
+Date: Wed, 16 Sep 2026 12:51:06 +0000
+Subject: [PATCH] =?UTF-8?q?=D0=91=D0=B8=D1=82=D1=80=D0=B8=D0=BA=D1=81:=20?=
+ =?UTF-8?q?=D0=B6=D0=B8=D0=B2=D0=BE=D0=B9=20=D0=BF=D0=BE=D0=B8=D1=81=D0=BA?=
+ =?UTF-8?q?,=20=D0=BD=D0=B0=D0=B7=D0=B2=D0=B0=D0=BD=D0=B8=D0=B5=20=D0=B4?=
+ =?UTF-8?q?=D0=BB=D1=8F=20=D0=BF=D0=B5=D1=87=D0=B0=D1=82=D0=B8,=20=D0=B2?=
+ =?UTF-8?q?=D0=B5=D1=81=20=D0=B8=20=D0=B0=D1=80=D1=82=D0=B8=D0=BA=D1=83?=
+ =?UTF-8?q?=D0=BB=20=D0=BA=D0=B0=D0=BA=20=D0=BD=D0=B0=20grandgurme.ru?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Поиск в шапке и /search/ ищут по товарам витрины на сервере (include/search.php,
+/search/suggest.php) вместо данных прототипа и демо-страницы search.page.
+Сетка, поиск, корзина и заявка показывают название для печати (PREVIEW_TEXT
+из ПолноеНаименование) и вес по одному правилу; весовой товар — «100 г»
+и цена за 100 г. Карточка — артикул над названием и вес под ним; упаковка,
+коды и признаки 1С с витрины убраны.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01QHSRiXpbjAcUNzZmwFqwN9
+---
+ bitrix/templates/grandgurme/README.md         |  53 +++
+ .../bitrix/catalog.element/gg/template.php    | 111 ++---
+ .../bitrix/catalog.section/gg/template.php    |  21 +-
+ bitrix/templates/grandgurme/include/cart.php  |   9 +-
+ .../templates/grandgurme/include/catalog.php  |   2 +
+ .../grandgurme/include/product-info.php       | 170 ++++++++
+ .../templates/grandgurme/include/requests.php |   7 +-
+ .../templates/grandgurme/include/search.php   | 380 ++++++++++++++++++
+ deploy-src/order-success/index.php            |   7 +-
+ deploy-src/product/index.php                  |   4 +-
+ deploy-src/search/index.php                   | 144 +++++++
+ deploy-src/search/suggest.php                 |  26 ++
+ src/bitrix/main.js                            |   1 +
+ src/data/search.js                            |   4 +
+ src/js/nav/search.js                          | 149 ++++++-
+ src/js/sections/header.js                     |   2 +
+ src/styles/pages/product.css                  |  10 +
+ src/styles/pages/search.css                   |  62 +++
+ 18 files changed, 1040 insertions(+), 122 deletions(-)
+ create mode 100644 bitrix/templates/grandgurme/include/product-info.php
+ create mode 100644 bitrix/templates/grandgurme/include/search.php
+ create mode 100644 deploy-src/search/index.php
+ create mode 100644 deploy-src/search/suggest.php
+ create mode 100644 src/styles/pages/search.css
+
+diff --git a/bitrix/templates/grandgurme/README.md b/bitrix/templates/grandgurme/README.md
+index b1040fc..3e8d85c 100644
+--- a/bitrix/templates/grandgurme/README.md
++++ b/bitrix/templates/grandgurme/README.md
+@@ -234,3 +234,56 @@ require($_SERVER['DOCUMENT_ROOT'].'/bitrix/header.php');
+ боевой сайт grandgurme.ru. Сайт s1 целиком на новый шаблон не переключён:
+ добавлено правило шаблона на папку `/gg/` (сортировка 90, условие
+ `CSite::InDir('/gg/')`), демка осталась рядом для сравнения.
++
++## Поиск, название для печати, вес и артикул (16.09.2026)
++
++Сделано в Cowork по разбору стенда через админку.
++
++**Поиск был сломан в двух местах.** Подсказки в шапке искали по данным
++прототипа, зашитым в `app.js`: у чёрной икры там нет цен, отрисовка падала
++на первой же позиции, и на «икра белуги» панель оставалась пустой; ссылки
++вели на слаги прототипа. «Показать все результаты» открывал `/search/` —
++страницу демо-магазина с `bitrix:search.page`, настроенным на инфоблоки
++демо-одежды (`iblock_catalog`), и на любой запрос отвечал «ничего не найдено».
++
++| Файл | Что в нём |
++|---|---|
++| `include/search.php` | поиск по витрине: основы слов морфологией модуля `search`, подстрока в `SEARCHABLE_CONTENT` (рабочее наименование, название для печати, описание), точное совпадение артикула и кода 1С, ранжирование |
++| `/search/suggest.php` | JSON подсказок для шапки, без шаблона, `NO_KEEP_STATISTIC` |
++| `/search/index.php` | страница результатов в разметке каталога; демо-страница заменена |
++| `src/js/nav/search.js` | параметр `remote`: на Битриксе выдача с сервера, задержка 250 мс, кеш и отмена устаревших ответов, последние запросы в `localStorage` |
++| `include/product-info.php` | название для печати, вес, весовой товар, артикул, цена на витрине |
++
++Полнотекстовый индекс модуля поиска не используется: он находит только целые
++слова, а подсказкам нужно недописанное («икра бел»). Товаров меньше тысячи,
++запрос подстрокой — десятки миллисекунд. Сравнение в базе
++(`utf8mb4_0900_ai_ci`) не различает регистр и «ё».
++
++**Витрина — как на grandgurme.ru.** В сетке каталога, поиске и подсказках
++у товара название, вес и цена, больше ничего. В карточке над названием мелко
++«Артикул …», под названием вес. Характеристик, упаковки, кодов 1С и капсул
++«Фасовка» на витрине нет: в выгрузке признаки заведены разными словами
++(«х/к» и «Холодное копчение», «Коробка» и «Банка стекло 180 г»), и выведенные
++как есть они дают разнобой подписей. Раньше подпись под названием в сетке
++была то упаковкой, то артикулом — это убрано. Характеристики появятся, когда
++их заведут единообразно. Текст «Хранение» про осетровую икру — только у
++чёрной икры.
++
++**Название для печати.** 1С отдаёт его полем «ПолноеНаименование», модуль
++обмена кладёт в «Описание для анонса» (`PREVIEW_TEXT`). Заполнено у всех 924,
++у 162 отличается от рабочего наименования. Показывается целиком — в карточке,
++сетке, корзине, заявке, поиске и `<title>`. Запасной вариант — рабочее
++наименование — только для брака: пусто, служебная строка «<Рабочее
++наименование будет сформировано по шаблону>», одно слово при рабочем из трёх
++и больше (20 позиций на 16.09, в основном чай NINA’S PARIS).
++
++**Вес.** Одно правило: число с единицей берётся из первого источника, где
++оно есть, — «Вес нетто», «Нетто», «Упаковка», название для печати, рабочее
++наименование — и пишется одинаково: «50 г», «0,5 л», «60 × 2 г». Веса нет
++нигде (140 позиций на 16.09, в основном бакалея и напитки) — строки веса нет.
++
++**Весовой товар** — базовая единица «кг» (179 позиций, почти вся рыба). Цена
++в 1С за килограмм; витрина, как grandgurme.ru, пишет «100 г» и цену за 100 г.
++Корзина Битрикса при этом считает килограммами: в строке корзины «1 кг»
++и цена за килограмм. ⚠ Шаг продажи (100 г или 1 кг) решается вместе
++с весовым сценарием; до него витрина и корзина говорят о разных количествах.
+diff --git a/bitrix/templates/grandgurme/components/bitrix/catalog.element/gg/template.php b/bitrix/templates/grandgurme/components/bitrix/catalog.element/gg/template.php
+index 2b2d943..dbfd93b 100644
+--- a/bitrix/templates/grandgurme/components/bitrix/catalog.element/gg/template.php
++++ b/bitrix/templates/grandgurme/components/bitrix/catalog.element/gg/template.php
+@@ -6,12 +6,13 @@
+  * Галерея здесь одна и сразу собрана сервером: фотографий в выгрузке 1С нет
+  * ни у одной позиции, переключать нечего, и лента миниатюр не рисуется.
+  *
+- * Характеристики берутся из заполненных свойств — список и порядок задаёт
+- * карта витрины (ключ specs). Свойств у чёрной икры четыре плюс артикул;
+- * остальные сто двадцать свойств стандарта GS1 в выгрузке пустые, и строки
+- * с прочерками карточке только мешают. Строки «В наличии — N шт» здесь
+- * больше нет: статус стоит под ценой, а число банок на складе покупателю
+- * ничего не решает.
++ * НАЗВАНИЕ, ВЕС И АРТИКУЛ (16.09.2026) — include/product-info.php.
++ * Как на grandgurme.ru: над заголовком мелко артикул, заголовок — название
++ * для печати, под ним вес («50 г», у весового товара «100 г»), цена — за
++ * этот вес. Характеристик, упаковки и кодов из 1С карточка не показывает:
++ * в выгрузке они заведены разными словами, характеристики будут заводиться
++ * отдельно. Фасовки соседних позиций капсулами убраны по той же причине —
++ * подписями капсул были сырые значения «Упаковки».
+  *
+  * ВИД ПОЗИЦИИ (16.09.2026) — gg_item_kind: метка и одно предложение под
+  * ценой. «В наличии» и «под заказ» кладутся в корзину (action=ADD2BASKET,
+@@ -34,12 +35,9 @@ require_once $_SERVER['DOCUMENT_ROOT'] . SITE_TEMPLATE_PATH . '/include/catalog.
+ 
+ $cat = gg_catalog_category((string)($arParams['GG_CATEGORY_SLUG'] ?? ''));
+ 
+-/** Значение свойства как читаемая строка. */
+-$ggProps = gg_item_props($arResult)
+-    + (gg_props_for_ids([(int)$arResult['ID']], ['RYBA', 'KATEGORIYA', 'UPAKOVKA', 'ATRIBUT', 'CML2_ARTICLE'])[(int)$arResult['ID']] ?? []);
+-$val = static function (string $code) use ($ggProps): string {
+-    return trim((string)($ggProps[$code] ?? ''));
+-};
++/* Название для печати, вес, весовой ли товар и артикул (product-info.php). */
++$goods = gg_goods_info_for_ids([(int)$arResult['ID']])[(int)$arResult['ID']]
++    ?? ['name' => (string)$arResult['NAME'], 'weight' => '', 'weighed' => false, 'article' => ''];
+ 
+ $price = gg_item_price($arResult);
+ 
+@@ -53,47 +51,9 @@ $kindText = [
+     'request' => 'Менеджер уточнит цену и срок поставки и свяжется с вами. Оплатить этот товар на сайте нельзя.',
+ ][$kind];
+ 
+-$species = $val('RYBA');
+-$line = $val('KATEGORIYA');
+-$pack = $val('UPAKOVKA');
+-$attr = $val('ATRIBUT');
+-$subtitle = implode(' · ', array_filter([$species, $line]));
+-
+-/* Соседние фасовки той же линейки: у икры человек выбирает между банкой 50 г
+-   и банкой на килограмм, и это единственная ось, по которой позиции внутри
+-   линейки различаются. Запрос один, без цен — здесь нужны только адреса. */
+-$siblings = [];
+-if ($cat && $species !== '' && CModule::IncludeModule('iblock')) {
+-    $filter = gg_catalog_filter($cat);
+-    $filter['IBLOCK_ID'] = gg_map()['iblockId'];
+-    $filter['PROPERTY_RYBA'] = gg_prop_enum_ids('RYBA', [$species]);
+-    if ($line !== '') {
+-        $filter['PROPERTY_KATEGORIYA'] = gg_prop_enum_ids('KATEGORIYA', [$line]);
+-    }
+-    $res = CIBlockElement::GetList(
+-        ['NAME' => 'ASC'],
+-        $filter,
+-        false,
+-        ['nTopCount' => 12],
+-        ['ID', 'NAME', 'CODE', 'PROPERTY_UPAKOVKA']
+-    );
+-    while ($row = $res->Fetch()) {
+-        $label = trim((string)($row['PROPERTY_UPAKOVKA_VALUE'] ?? ''));
+-        if ($label === '') {
+-            continue;
+-        }
+-        $siblings[] = [
+-            'label' => $label,
+-            'href' => gg_product_url($row),
+-            'current' => (int)$row['ID'] === (int)$arResult['ID'],
+-        ];
+-    }
+-}
+-
+-$alt = $arResult['NAME'] . ($pack !== '' ? ', ' . $pack : '');
+-
+-/* Заголовок без хвоста фасовки: она стоит строкой ниже капсулами. */
+-$title = gg_item_title((string)$arResult['NAME'], $pack);
++/* Заголовок — название для печати целиком, как на grandgurme.ru. */
++$title = $goods['name'];
++$alt = $title . ($goods['weight'] !== '' ? ', ' . $goods['weight'] : '');
+ 
+ /* Вторая кнопка. У позиции без цены она называется «Узнать цену» и ведёт
+    туда же: виджета эксперта на Битриксе пока нет, заявку принимают
+@@ -104,13 +64,6 @@ $secondLabel = $price === null ? 'Узнать цену' : 'Спросить э
+    обработки адресов вернул бы физический /product/index.php. */
+ $formAction = (string)parse_url((string)($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH);
+ 
+-$specs = [];
+-foreach (($cat['specs'] ?? []) as $spec) {
+-    $value = $val($spec['prop']);
+-    if ($value !== '') {
+-        $specs[] = ['term' => $spec['label'], 'value' => $value];
+-    }
+-}
+ ?>
+ <div class="product-page">
+   <div class="container">
+@@ -132,27 +85,19 @@ foreach (($cat['specs'] ?? []) as $spec) {
+       </div>
+ 
+       <div class="pbuy">
++<?php if ($goods['article'] !== ''): ?>
++        <p class="pbuy__article">Артикул <?= gg_e($goods['article']) ?></p>
++<?php endif; ?>
+         <h1 class="pbuy__title"><?= gg_e($title) ?></h1>
+-<?php if ($subtitle !== ''): ?>
+-        <p class="pbuy__line"><?= gg_e($subtitle . ($attr !== '' ? ' · ' . $attr : '')) ?></p>
++<?php if ($goods['weight'] !== ''): ?>
++        <p class="pbuy__line"><?= gg_e($goods['weight']) ?></p>
+ <?php endif; ?>
+-        <p class="pbuy__price"><?= gg_e(gg_price($price)) ?></p>
++        <p class="pbuy__price"><?= gg_e(gg_price(gg_shelf_price($price, $goods['weighed']))) ?></p>
+         <div class="pbuy__kind">
+           <?= gg_stock_tag($kind) ?>
+           <p class="pbuy__kind-text"><?= gg_e($kindText) ?></p>
+         </div>
+ 
+-<?php if (count($siblings) > 1): ?>
+-        <div class="pbuy__row">
+-          <span class="pbuy__label">Фасовка</span>
+-          <div class="pbuy__chips" role="group" aria-label="Фасовка">
+-<?php foreach ($siblings as $sibling): ?>
+-            <a class="chip<?= $sibling['current'] ? ' is-active' : '' ?>" href="<?= gg_e($sibling['href']) ?>"><?= gg_e($sibling['label']) ?></a>
+-<?php endforeach; ?>
+-          </div>
+-        </div>
+-<?php endif; ?>
+-
+         <?php /* Одна форма на оба пути: «в корзину» — ADD2BASKET, «в заявку» —
+                  request_add. POST с проверкой сессии; без JS работает как есть. */ ?>
+         <form class="pbuy__actions" method="post" action="<?= gg_e($formAction) ?>">
+@@ -193,26 +138,16 @@ foreach (($cat['specs'] ?? []) as $spec) {
+     </div>
+ 
+     <div class="pblocks">
+-<?php if ($specs): ?>
+-      <section class="pblock">
+-        <h2 class="pblock__title">Характеристики</h2>
+-        <dl class="pspecs">
+-<?php foreach ($specs as $row): ?>
+-          <div class="pspecs__row">
+-            <dt><?= gg_e($row['term']) ?></dt>
+-            <dd><?= gg_e($row['value']) ?></dd>
+-          </div>
+-<?php endforeach; ?>
+-        </dl>
+-      </section>
+-<?php endif; ?>
+-
++<?php if (($cat['slug'] ?? '') === 'chernaya-ikra'): ?>
++      <?php /* Текст про осетровую икру — только ей. До 16.09 он стоял на всех
++               карточках, включая шоколад и чай. */ ?>
+       <section class="pblock">
+         <h2 class="pblock__title">Хранение</h2>
+         <div class="pblock__text">
+           <p>Осетровую икру держат при температуре от −4 до −2 °С. Открытую банку съедают в течение трёх суток и не хранят в морозильной камере: кристаллы льда рвут оболочку икринки.</p>
+         </div>
+       </section>
++<?php endif; ?>
+     </div>
+   </div>
+ </div>
+diff --git a/bitrix/templates/grandgurme/components/bitrix/catalog.section/gg/template.php b/bitrix/templates/grandgurme/components/bitrix/catalog.section/gg/template.php
+index b4d28f2..978adda 100644
+--- a/bitrix/templates/grandgurme/components/bitrix/catalog.section/gg/template.php
++++ b/bitrix/templates/grandgurme/components/bitrix/catalog.section/gg/template.php
+@@ -265,17 +265,18 @@ if ($items && $page['ids']) {
+ <?php else: ?>
+     <div class="catalog__grid">
+ <?php
+-    /* Свойства для всей страницы выдачи — одним запросом, см. gg_props_for_ids. */
+-    $ggPagePropsById = gg_props_for_ids(array_column($items, 'ID'), ['UPAKOVKA', 'RYBA', 'KATEGORIYA', 'CML2_ARTICLE']);
++    /* Название для печати, вес и признак весового товара — одним запросом
++       на страницу (include/product-info.php). В карточке сетки только
++       название, вес и цена, как на grandgurme.ru: упаковка, артикул
++       и прочие признаки из 1С сюда не выводятся. */
++    $ggGoods = gg_goods_info_for_ids(array_column($items, 'ID'));
+     foreach ($items as $item):
+-        $price = gg_item_price($item);
+-        $props = gg_item_props($item) + ($ggPagePropsById[(int)$item['ID']] ?? []);
+-        $pack = $props['UPAKOVKA'] ?? '';
+-        $title = gg_item_title((string)$item['NAME'], $pack);
+-        $note = $pack !== '' ? $pack : ($props['CML2_ARTICLE'] ?? '');
++        $goods = $ggGoods[(int)$item['ID']] ?? ['name' => (string)$item['NAME'], 'weight' => '', 'weighed' => false];
++        $price = gg_shelf_price(gg_item_price($item), $goods['weighed']);
++        $title = $goods['name'];
+         $kind = gg_item_kind($item, $cat);
+         $href = gg_product_url($item);
+-        $alt = $item['NAME'] . ($pack !== '' ? ', ' . $pack : '');
++        $alt = $title . ($goods['weight'] !== '' ? ', ' . $goods['weight'] : '');
+ ?>
+       <article class="product">
+         <div class="product__frame">
+@@ -283,7 +284,9 @@ if ($items && $page['ids']) {
+         </div>
+         <div class="product__body">
+           <h3 class="product__name"><a href="<?= gg_e($href) ?>"><?= gg_e($title) ?></a></h3>
+-          <p class="product__note"><?= gg_e($note) ?></p>
++<?php   if ($goods['weight'] !== ''): ?>
++          <p class="product__note"><?= gg_e($goods['weight']) ?></p>
++<?php   endif; ?>
+           <p class="product__price"><?= gg_e(gg_price($price)) ?></p>
+ <?php   if ($kind !== 'stock'): ?>
+           <p class="product__tag"><?= gg_stock_tag($kind) ?></p>
+diff --git a/bitrix/templates/grandgurme/include/cart.php b/bitrix/templates/grandgurme/include/cart.php
+index ec904cc..db253d7 100644
+--- a/bitrix/templates/grandgurme/include/cart.php
++++ b/bitrix/templates/grandgurme/include/cart.php
+@@ -81,12 +81,13 @@ function gg_basket_lines(): array
+     $props = gg_props_for_ids($productIds, ['UPAKOVKA', 'CML2_ARTICLE']);
+     $elements = gg_elements_for_ids($productIds);
+     $live = gg_products_live($productIds);
++    /* Название для печати и вес — как в каталоге и карточке (product-info.php). */
++    $goods = gg_goods_info_for_ids($productIds);
+ 
+     $lines = [];
+     foreach ($items as $item) {
+         $pid = (int)$item->getProductId();
+-        $pack = trim((string)($props[$pid]['UPAKOVKA'] ?? ''));
+-        $name = (string)($elements[$pid]['NAME'] ?? $item->getField('NAME'));
++        $name = (string)($goods[$pid]['name'] ?? ($elements[$pid]['NAME'] ?? $item->getField('NAME')));
+         $code = (string)($elements[$pid]['CODE'] ?? '');
+         $price = (float)$item->getPrice();
+         $data = $live[$pid] ?? ['id' => $pid, 'price' => null, 'quantity' => 0.0, 'canBuy' => false];
+@@ -95,8 +96,8 @@ function gg_basket_lines(): array
+             'id' => (int)$item->getId(),
+             'productId' => $pid,
+             'code' => $code,
+-            'name' => gg_item_title($name, $pack),
+-            'note' => $pack !== '' ? $pack : trim((string)($props[$pid]['CML2_ARTICLE'] ?? '')),
++            'name' => $name,
++            'note' => gg_line_weight($goods[$pid] ?? null),
+             'article' => trim((string)($props[$pid]['CML2_ARTICLE'] ?? '')),
+             'href' => $code !== '' ? '/product/' . $code : '/catalog',
+             'price' => $price > 0 ? $price : null,
+diff --git a/bitrix/templates/grandgurme/include/catalog.php b/bitrix/templates/grandgurme/include/catalog.php
+index fca053c..1fd3dd4 100644
+--- a/bitrix/templates/grandgurme/include/catalog.php
++++ b/bitrix/templates/grandgurme/include/catalog.php
+@@ -27,6 +27,8 @@
+ if (!defined('B_PROLOG_INCLUDED') || B_PROLOG_INCLUDED !== true) die();
+ 
+ require_once __DIR__ . '/fn.php';
++/* Название для печати, характеристики и код товара (16.09.2026). */
++require_once __DIR__ . '/product-info.php';
+ 
+ /** Сколько дней везём то, чего нет на складе. Подтверждено заказчиком. */
+ const GG_PREORDER_DAYS = 7;
+diff --git a/bitrix/templates/grandgurme/include/product-info.php b/bitrix/templates/grandgurme/include/product-info.php
+new file mode 100644
+index 0000000..e511077
+--- /dev/null
++++ b/bitrix/templates/grandgurme/include/product-info.php
+@@ -0,0 +1,170 @@
++<?php
++/**
++ * Что витрина показывает о товаре из выгрузки 1С: название, вес, цену, артикул.
++ *
++ * ПРАВИЛО ВИТРИНЫ — КАК НА grandgurme.ru. В сетке каталога у товара только
++ * название, вес и цена. Весовой товар (базовая единица «кг») показывается
++ * «100 г» с ценой за 100 г. В карточке над названием мелкой строкой артикул.
++ * Характеристики, упаковку, коды и прочие признаки на витрину не выводим:
++ * в 1С они заведены разными словами («х/к» и «Холодное копчение», «Коробка»
++ * и «Банка стекло 180 г»), и показанные как есть они превращают каталог
++ * в набор разнородных подписей. Характеристики появятся, когда их заведут
++ * единообразно (требования — claude/trebovaniya-k-vygruzke-1c.md в проекте).
++ *
++ * НАЗВАНИЕ ДЛЯ ПЕЧАТИ. 1С отдаёт его в обмене полем «ПолноеНаименование»,
++ * модуль обмена Битрикса кладёт его в «Описание для анонса» (PREVIEW_TEXT).
++ * Рабочее наименование (NAME) собрано под склад: «Сиг Тушка г/к Вакуум фас.»;
++ * название для печати — под человека: «Сиг горячего копчения». Запасной
++ * вариант — рабочее наименование — только для явного брака: пусто, служебная
++ * строка «<Рабочее наименование будет сформировано по шаблону>», одно слово
++ * («Чай») при рабочем наименовании из трёх слов и больше.
++ *
++ * ВЕС. Одно правило для всех разделов: число с единицей (г, кг, мл, л,
++ * «60х2 г») берётся из первого источника, где оно есть: свойство «Вес нетто»,
++ * свойство «Нетто», свойство «Упаковка», название для печати, рабочее
++ * наименование. Пишется всегда одинаково: «50 г», «0,5 л», «60 × 2 г».
++ * Веса нет нигде — строки веса у товара нет, выдумывать её нельзя.
++ */
++if (!defined('B_PROLOG_INCLUDED') || B_PROLOG_INCLUDED !== true) die();
++
++/** Пробелы, пустые скобки и хвостовые пробелы из учётных строк. */
++function gg_clean_text(string $value): string
++{
++    $value = str_replace('()', '', $value);
++    $value = preg_replace('/\s+/u', ' ', $value);
++    return trim((string)$value);
++}
++
++/** Название для печати годится на витрину. */
++function gg_print_name_usable(string $print, string $name): bool
++{
++    $print = gg_clean_text($print);
++    if ($print === '' || mb_strpos($print, '<') !== false || mb_stripos($print, 'будет сформировано') !== false) {
++        return false;
++    }
++    $printWords = count(preg_split('/\s+/u', $print));
++    $nameWords = count(preg_split('/\s+/u', gg_clean_text($name)));
++    return !($printWords === 1 && $nameWords >= 3);
++}
++
++/** Название товара для витрины: для печати, если годится, иначе рабочее. */
++function gg_display_name(string $name, ?string $print): string
++{
++    $print = (string)$print;
++    return gg_print_name_usable($print, $name) ? gg_clean_text($print) : gg_clean_text($name);
++}
++
++/**
++ * Названия для витрины по списку ID — одним запросом.
++ *
++ * @return array ID → название
++ */
++function gg_display_names_for_ids(array $ids): array
++{
++    $out = [];
++    foreach (gg_goods_info_for_ids($ids) as $id => $info) {
++        $out[$id] = $info['name'];
++    }
++    return $out;
++}
++
++/** Вес из строки: «Банка металл 50 г» → «50 г», «саше 60х2г» → «60 × 2 г». */
++function gg_weight_from_text(string $text): string
++{
++    $text = str_replace(['×', '*'], 'х', $text);
++    if (!preg_match('/(\d+(?:[.,]\d+)?)\s*(?:[xх]\s*(\d+(?:[.,]\d+)?)\s*)?(кг|гр|г|мл|л)(?!\p{L})/iu', $text, $m)) {
++        return '';
++    }
++    $number = static function (string $value): string {
++        $value = str_replace('.', ',', $value);
++        return (string)preg_replace('/,0+$/', '', $value);
++    };
++    $unit = mb_strtolower($m[3]);
++    if ($unit === 'гр') {
++        $unit = 'г';
++    }
++    return ($m[2] ?? '') !== ''
++        ? $number($m[1]) . ' × ' . $number($m[2]) . ' ' . $unit
++        : $number($m[1]) . ' ' . $unit;
++}
++
++/**
++ * Название, вес, признак весового товара и артикул по списку ID — одним запросом.
++ *
++ * @return array ID → ['name' => …, 'weight' => «50 г»|«100 г»|'', 'weighed' => bool, 'article' => …]
++ */
++function gg_goods_info_for_ids(array $ids): array
++{
++    static $cache = [];
++    $ids = array_values(array_unique(array_filter(array_map('intval', $ids))));
++    $missing = array_values(array_diff($ids, array_keys($cache)));
++
++    if ($missing && CModule::IncludeModule('iblock')) {
++        $res = CIBlockElement::GetList(
++            [],
++            ['IBLOCK_ID' => gg_map()['iblockId'], 'ID' => $missing],
++            false,
++            false,
++            ['ID', 'NAME', 'PREVIEW_TEXT', 'PROPERTY_VES_NETTO', 'PROPERTY_OBYEM', 'PROPERTY_UPAKOVKA',
++                'PROPERTY_CML2_BASE_UNIT', 'PROPERTY_CML2_ARTICLE']
++        );
++        while ($row = $res->Fetch()) {
++            $id = (int)$row['ID'];
++            $weighed = mb_strtolower(trim((string)$row['PROPERTY_CML2_BASE_UNIT_VALUE'])) === 'кг';
++
++            $weight = '';
++            if ($weighed) {
++                $weight = '100 г';
++            } else {
++                foreach (['PROPERTY_VES_NETTO_VALUE', 'PROPERTY_OBYEM_VALUE', 'PROPERTY_UPAKOVKA_VALUE', 'PREVIEW_TEXT', 'NAME'] as $key) {
++                    $weight = gg_weight_from_text((string)($row[$key] ?? ''));
++                    if ($weight !== '') {
++                        break;
++                    }
++                }
++            }
++
++            $cache[$id] = [
++                'name' => gg_display_name((string)$row['NAME'], (string)$row['PREVIEW_TEXT']),
++                'weight' => $weight,
++                'weighed' => $weighed,
++                'article' => trim((string)$row['PROPERTY_CML2_ARTICLE_VALUE']),
++            ];
++        }
++    }
++
++    $out = [];
++    foreach ($ids as $id) {
++        if (isset($cache[$id])) {
++            $out[$id] = $cache[$id];
++        }
++    }
++    return $out;
++}
++
++/**
++ * Цена на витрине. У весового товара цена в 1С стоит за килограмм,
++ * а витрина показывает 100 г — делим на десять, как на grandgurme.ru.
++ */
++function gg_shelf_price(?float $price, bool $weighed): ?float
++{
++    if ($price === null) {
++        return null;
++    }
++    return $weighed ? round($price / 10, 2) : $price;
++}
++
++/**
++ * Вес в строке корзины, заявки и заказа. У весового товара количество
++ * в корзине Битрикса считается килограммами, и цена строки — за килограмм,
++ * поэтому здесь «1 кг», а не «100 г» витрины.
++ * ⚠ ПОДТВЕРДИТЬ У ЗАКАЗЧИКА: шаг продажи весовых товаров (100 г или 1 кг) —
++ * это решение весового сценария, до него корзина продаёт килограммами.
++ */
++function gg_line_weight(?array $goods): string
++{
++    if (!$goods) {
++        return '';
++    }
++    return $goods['weighed'] ? '1 кг' : $goods['weight'];
++}
+diff --git a/bitrix/templates/grandgurme/include/requests.php b/bitrix/templates/grandgurme/include/requests.php
+index dfc8d0a..efa3a36 100644
+--- a/bitrix/templates/grandgurme/include/requests.php
++++ b/bitrix/templates/grandgurme/include/requests.php
+@@ -201,20 +201,21 @@ function gg_request_lines(): array
+     $elements = gg_elements_for_ids($ids);
+     $props = gg_props_for_ids($ids, ['UPAKOVKA', 'CML2_ARTICLE']);
+     $live = gg_products_live($ids);
++    /* Название для печати и вес — как в каталоге и карточке (product-info.php). */
++    $goods = gg_goods_info_for_ids($ids);
+ 
+     $lines = [];
+     foreach ($list as $id => $qty) {
+         if (!isset($elements[$id])) {
+             continue;
+         }
+-        $pack = trim((string)($props[$id]['UPAKOVKA'] ?? ''));
+         $code = (string)($elements[$id]['CODE'] ?? '');
+         $lines[] = [
+             'id' => $id,
+             'productId' => $id,
+             'code' => $code,
+-            'name' => gg_item_title((string)$elements[$id]['NAME'], $pack),
+-            'note' => $pack !== '' ? $pack : trim((string)($props[$id]['CML2_ARTICLE'] ?? '')),
++            'name' => (string)($goods[$id]['name'] ?? $elements[$id]['NAME']),
++            'note' => gg_line_weight($goods[$id] ?? null),
+             'article' => trim((string)($props[$id]['CML2_ARTICLE'] ?? '')),
+             'href' => $code !== '' ? '/product/' . $code : '/catalog',
+             'price' => $live[$id]['price'] ?? null,
+diff --git a/bitrix/templates/grandgurme/include/search.php b/bitrix/templates/grandgurme/include/search.php
+new file mode 100644
+index 0000000..210d748
+--- /dev/null
++++ b/bitrix/templates/grandgurme/include/search.php
+@@ -0,0 +1,380 @@
++<?php
++/**
++ * Поиск по витрине: подсказки в шапке и страница /search/.
++ *
++ * ЧТО БЫЛО СЛОМАНО (16.09.2026).
++ * 1. Подсказки в шапке искали не по сайту, а по данным прототипа, зашитым
++ *    в app.js: там 74 выдуманных и снятых с выгрузки 20.08 позиций, у чёрной
++ *    икры нет цен, и на первой же такой позиции отрисовка падала — панель
++ *    оставалась пустой («икра белуги» не предлагала ничего). Ссылки подсказок
++ *    вели на слаги прототипа, которых на стенде нет.
++ * 2. «Показать все результаты» открывал /search/ — страницу демо-магазина
++ *    с компонентом search.page, настроенным на инфоблоки демо-одежды. Товары
++ *    1С (тип инфоблока 1c_catalog) в его фильтр не входили вовсе, поэтому
++ *    «ничего не найдено» было ответом на любой запрос.
++ *
++ * КАК ИЩЕМ ТЕПЕРЬ. Запрос режется на слова, у каждого слова берётся основа
++ * морфологией модуля поиска («белуги» → «белуг», «осетровая» → «осетр»),
++ * и товар подходит, если каждая основа встречается в его тексте: рабочем
++ * наименовании, названии для печати или описании (SEARCHABLE_CONTENT
++ * инфоблока), либо в артикуле или коде 1С. Сравнение в базе не различает
++ * регистр и «ё». Основа ищется подстрокой, поэтому недописанное слово
++ * («икра бел») уже находит белугу — это и нужно подсказкам.
++ *
++ * Полнотекстовый индекс модуля поиска здесь не используется: он ищет только
++ * целые слова и не видит недописанное, а подсказки работают именно на нём.
++ * Товаров меньше тысячи, запрос по ним подстрокой занимает миллисекунды.
++ *
++ * Ищем только по витрине: разделы из карты (catalog-map.php) и отдельные
++ * позиции оттуда же. «Канцтовары» и служебные позиции в выдачу не попадают.
++ */
++if (!defined('B_PROLOG_INCLUDED') || B_PROLOG_INCLUDED !== true) die();
++
++require_once __DIR__ . '/catalog.php';
++
++/** Сколько карточек на странице результатов. */
++const GG_SEARCH_PAGE_SIZE = 24;
++
++/**
++ * Прилагательные, основа которых не совпадает с названием в учёте:
++ * «осетровая икра» лежит в 1С как «Икра чёрная Осётр».
++ */
++function gg_search_synonyms(): array
++{
++    return [
++        'ОСЕТРОВ' => 'ОСЕТР',
++        'ОСЕТРИН' => 'ОСЕТР',
++        'БЕЛУЖ' => 'БЕЛУГ',
++        'СЕВРЮЖ' => 'СЕВРЮГ',
++        'ЛОСОСЕВ' => 'ЛОСОС',
++        'ЩУЧ' => 'ЩУК',
++        'КРАБОВ' => 'КРАБ',
++        'КРЕВЕТОЧ' => 'КРЕВЕТК',
++        'ГРЕБЕШК' => 'ГРЕБЕШ',
++        'СЕМГ' => 'СЕМГ',
++    ];
++}
++
++/** Иконка раздела в подсказках — те же знаки, что в каталожной панели. */
++function gg_search_category_icon(string $slug): string
++{
++    $icons = [
++        'chernaya-ikra' => 'catCaviarBlack',
++        'krasnaya-ikra' => 'catCaviarRed',
++        'ryba' => 'catFish',
++        'moreprodukty-kraby' => 'catCrab',
++        'podarochnye-nabory' => 'catGift',
++        'bakaleya' => 'catGrocery',
++        'napitki' => 'catDrink',
++        'sladosti' => 'catDessert',
++        'sneki-orehi' => 'catSnack',
++        'tovary-dlya-doma' => 'catHome',
++    ];
++    return $icons[$slug] ?? 'search';
++}
++
++/** По каким ещё словам находится раздел. */
++function gg_search_category_words(): array
++{
++    return [
++        'chernaya-ikra' => 'икра осетр белуга севрюга стерлядь паюсная caviar',
++        'krasnaya-ikra' => 'икра лосось кета горбуша нерка кижуч щука вобла',
++        'ryba' => 'рыба лосось семга форель палтус осетр сиг омуль нерка копченая слабосоленая вяленая балык филе',
++        'moreprodukty-kraby' => 'краб креветка гребешок морепродукты',
++        'podarochnye-nabory' => 'подарок набор подарочный',
++        'bakaleya' => 'масло соус специи мед варенье джем оливки маслины каперсы артишоки консервы аджика хрен горчица майонез кетчуп',
++        'napitki' => 'сок морс смузи чай напитки',
++        'sladosti' => 'печенье вафли шоколад конфеты мармелад зефир пастила сладости',
++        'sneki-orehi' => 'чипсы снеки сухарики крекеры хлебцы орехи сухофрукты',
++        'tovary-dlya-doma' => 'стирка посуда аромат диффузор дом',
++    ];
++}
++
++/** Запрос как его видит поиск: без лишних пробелов и знаков, до 100 символов. */
++function gg_search_query(string $q): string
++{
++    $q = preg_replace('/[^\p{L}\p{N}\-\/\s]+/u', ' ', $q);
++    $q = preg_replace('/\s+/u', ' ', (string)$q);
++    return mb_substr(trim((string)$q), 0, 100);
++}
++
++/**
++ * Слова запроса и их основы. Слово короче двух знаков отбрасывается;
++ * число остаётся числом («113», «50»), код вида «ЦБ-00002077» — целиком.
++ *
++ * @return array [['word' => исходное в верхнем регистре, 'stem' => основа], …]
++ */
++function gg_search_terms(string $q): array
++{
++    $terms = [];
++    $hasStemming = CModule::IncludeModule('search') && function_exists('stemming');
++    $synonyms = gg_search_synonyms();
++
++    foreach (preg_split('/\s+/u', gg_search_query($q)) as $word) {
++        $upper = mb_strtoupper(str_replace(['ё', 'Ё'], ['е', 'Е'], $word));
++        if (mb_strlen($upper) < 2) {
++            continue;
++        }
++
++        $stem = $upper;
++        if (preg_match('/^\p{L}+$/u', $upper) && mb_strlen($upper) > 3 && $hasStemming) {
++            $stems = array_keys((array)stemming($word, 'ru'));
++            $candidate = $stems ? (string)$stems[0] : '';
++            $candidate = str_replace('Ё', 'Е', $candidate);
++            /* Основа короче трёх букв цепляет что попало («ИК» в «ИКЕБАНА»). */
++            if (mb_strlen($candidate) >= 3) {
++                $stem = $candidate;
++            }
++        }
++        $stem = $synonyms[$stem] ?? $stem;
++
++        $terms[] = ['word' => $upper, 'stem' => $stem];
++    }
++    return $terms;
++}
++
++/** Фильтр «всё, что есть на витрине». */
++function gg_search_showcase_filter(): array
++{
++    $sections = [];
++    $extra = [];
++    foreach (gg_map()['categories'] as $cat) {
++        foreach ($cat['sections'] as $id) {
++            $sections[] = (int)$id;
++        }
++        foreach (($cat['extraElements'] ?? []) as $id) {
++            $extra[] = (int)$id;
++        }
++    }
++
++    $filter = ['IBLOCK_ID' => gg_map()['iblockId'], 'ACTIVE' => 'Y'];
++    $scope = ['SECTION_ID' => array_values(array_unique($sections)), 'INCLUDE_SUBSECTIONS' => 'Y'];
++    $filter[] = $extra ? ['LOGIC' => 'OR', $scope, ['ID' => array_values(array_unique($extra))]] : $scope;
++    return $filter;
++}
++
++/** ID товаров, у которых артикул или код 1С совпадает с запросом целиком. */
++function gg_search_by_code(string $q): array
++{
++    global $DB;
++    $q = trim($q);
++    if (mb_strlen($q) < 4 || !preg_match('/\d/u', $q)) {
++        return [];
++    }
++    $safe = $DB->ForSql(mb_strtoupper($q));
++    $iblockId = (int)gg_map()['iblockId'];
++    $ids = [];
++    $res = $DB->Query(
++        "SELECT DISTINCT ep.IBLOCK_ELEMENT_ID ID
++           FROM b_iblock_element_property ep
++           JOIN b_iblock_property p ON p.ID = ep.IBLOCK_PROPERTY_ID AND p.IBLOCK_ID = {$iblockId}
++          WHERE p.CODE IN ('CML2_ARTICLE', 'CML2_TRAITS')
++            AND UPPER(ep.VALUE) = '{$safe}'"
++    );
++    while ($row = $res->Fetch()) {
++        $ids[] = (int)$row['ID'];
++    }
++    return $ids;
++}
++
++/**
++ * Найденные товары, лучшие первыми.
++ *
++ * Порядок: совпадение в названии важнее совпадения в описании; название,
++ * которое начинается с первого слова запроса, — выше; то, что есть на
++ * складе и с ценой, — выше того, что под заказ. Дальше по алфавиту.
++ *
++ * @return int[]
++ */
++function gg_search_ids(string $q): array
++{
++    static $cache = [];
++    $key = gg_search_query($q);
++    if (isset($cache[$key])) {
++        return $cache[$key];
++    }
++    if (!CModule::IncludeModule('iblock')) {
++        return [];
++    }
++
++    $terms = gg_search_terms($q);
++    $byCode = gg_search_by_code($key);
++    if (!$terms && !$byCode) {
++        return $cache[$key] = [];
++    }
++
++    $filter = gg_search_showcase_filter();
++    if ($byCode) {
++        $textFilter = ['LOGIC' => 'AND'];
++        foreach ($terms as $term) {
++            $textFilter[] = ['%SEARCHABLE_CONTENT' => $term['stem']];
++        }
++        $filter[] = count($textFilter) > 1
++            ? ['LOGIC' => 'OR', ['ID' => $byCode], $textFilter]
++            : ['ID' => $byCode];
++    } else {
++        foreach ($terms as $term) {
++            $filter[] = ['%SEARCHABLE_CONTENT' => $term['stem']];
++        }
++    }
++
++    $rows = [];
++    $res = CIBlockElement::GetList([], $filter, false, ['nTopCount' => 500], ['ID', 'NAME', 'PREVIEW_TEXT']);
++    while ($row = $res->Fetch()) {
++        $rows[(int)$row['ID']] = $row;
++    }
++    if (!$rows) {
++        return $cache[$key] = [];
++    }
++
++    $ids = array_keys($rows);
++    $live = gg_products_live($ids);
++    $codeHits = array_flip($byCode);
++
++    $scored = [];
++    $anyInName = false;
++    foreach ($rows as $id => $row) {
++        $name = mb_strtoupper(str_replace(['ё', 'Ё'], 'е', gg_display_name((string)$row['NAME'], (string)$row['PREVIEW_TEXT'])
++            . ' ' . (string)$row['NAME']));
++        $score = isset($codeHits[$id]) ? 100 : 0;
++        $inName = true;
++        foreach ($terms as $i => $term) {
++            $stem = $term['stem'];
++            if (preg_match('/(^|[^\p{L}])' . preg_quote($stem, '/') . '/u', $name)) {
++                $score += 6;
++                if ($i === 0 && mb_strpos($name, $stem) === 0) {
++                    $score += 5;
++                }
++            } elseif (mb_strpos($name, $stem) !== false) {
++                $score += 3;
++            } else {
++                $score += 1;
++                $inName = false;
++            }
++        }
++        $inName = $inName || isset($codeHits[$id]);
++        $anyInName = $anyInName || $inName;
++        if (($live[$id]['quantity'] ?? 0) > 0) {
++            $score += 4;
++        }
++        if (($live[$id]['price'] ?? null) !== null) {
++            $score += 2;
++        }
++        $scored[] = ['id' => $id, 'score' => $score, 'name' => $name, 'inName' => $inName];
++    }
++
++    /* Совпадение только в описании — шум, если есть совпадения в названии:
++       «оливки» иначе приводили бы всё, в составе чего оливковое масло. */
++    if ($anyInName) {
++        $scored = array_values(array_filter($scored, static fn($row) => $row['inName']));
++    }
++
++    usort($scored, static function ($a, $b) {
++        return [$b['score'], $a['name']] <=> [$a['score'], $b['name']];
++    });
++
++    return $cache[$key] = array_column($scored, 'id');
++}
++
++/**
++ * Карточки для подсказок и страницы результатов в заданном порядке.
++ * Как в сетке каталога: название, вес, цена и вид позиции — ничего больше.
++ *
++ * @return array [['id', 'name', 'note', 'price', 'href', 'kind', 'row'], …]
++ */
++function gg_search_cards(array $ids): array
++{
++    $ids = array_values(array_map('intval', $ids));
++    if (!$ids || !CModule::IncludeModule('iblock')) {
++        return [];
++    }
++
++    $elements = [];
++    $res = CIBlockElement::GetList(
++        [],
++        ['IBLOCK_ID' => gg_map()['iblockId'], 'ID' => $ids],
++        false,
++        false,
++        ['ID', 'NAME', 'CODE']
++    );
++    while ($row = $res->Fetch()) {
++        $elements[(int)$row['ID']] = $row;
++    }
++
++    $goods = gg_goods_info_for_ids($ids);
++    $live = gg_products_live($ids);
++
++    $cards = [];
++    foreach ($ids as $id) {
++        if (!isset($elements[$id])) {
++            continue;
++        }
++        $row = $elements[$id];
++        $info = $goods[$id] ?? ['name' => (string)$row['NAME'], 'weight' => '', 'weighed' => false];
++        $data = $live[$id] ?? ['id' => $id, 'price' => null, 'quantity' => 0.0, 'canBuy' => false];
++        $cards[] = [
++            'id' => $id,
++            'name' => $info['name'],
++            'note' => $info['weight'],
++            'price' => gg_price(gg_shelf_price($data['price'], $info['weighed'])),
++            'href' => gg_product_url($row),
++            'kind' => gg_item_kind($data),
++            'row' => $row,
++        ];
++    }
++    return $cards;
++}
++
++/** Разделы витрины, подходящие под запрос: по названию и словам раздела. */
++function gg_search_categories(string $q): array
++{
++    $terms = gg_search_terms($q);
++    if (!$terms) {
++        return [];
++    }
++    $words = gg_search_category_words();
++    $out = [];
++    foreach (gg_catalog_tree() as $cat) {
++        $haystack = mb_strtoupper(str_replace(['ё', 'Ё'], 'е', $cat['name'] . ' ' . ($words[$cat['slug']] ?? '')));
++        $all = true;
++        foreach ($terms as $term) {
++            if (mb_strpos($haystack, $term['stem']) === false && mb_strpos($haystack, $term['word']) === false) {
++                $all = false;
++                break;
++            }
++        }
++        if ($all) {
++            $out[] = [
++                'name' => $cat['name'],
++                'href' => gg_category_url($cat['slug']),
++                'icon' => gg_search_category_icon($cat['slug']),
++            ];
++        }
++    }
++    return $out;
++}
++
++/** Ответ подсказок: пять товаров, до четырёх разделов, общее число. */
++function gg_search_suggest(string $q): array
++{
++    $query = gg_search_query($q);
++    if (mb_strlen($query) < 2) {
++        return ['query' => $query, 'products' => [], 'categories' => [], 'total' => 0, 'url' => '/search/'];
++    }
++
++    $ids = gg_search_ids($query);
++    $categories = gg_search_categories($query);
++    $products = [];
++    foreach (gg_search_cards(array_slice($ids, 0, 5)) as $card) {
++        unset($card['row']);
++        $products[] = $card;
++    }
++
++    return [
++        'query' => $query,
++        'products' => $products,
++        'categories' => array_slice($categories, 0, 4),
++        'total' => count($ids),
++        'url' => '/search/?q=' . rawurlencode($query),
++    ];
++}
+diff --git a/deploy-src/order-success/index.php b/deploy-src/order-success/index.php
+index 24027b0..bfb3e25 100644
+--- a/deploy-src/order-success/index.php
++++ b/deploy-src/order-success/index.php
+@@ -68,13 +68,12 @@ if ($own && CModule::IncludeModule('sale')) {
+             foreach ($order->getBasket() as $item) {
+                 $ids[] = (int)$item->getProductId();
+             }
+-            $props = gg_props_for_ids($ids, ['UPAKOVKA']);
++            $goods = gg_goods_info_for_ids($ids);
+             foreach ($order->getBasket() as $item) {
+                 $pid = (int)$item->getProductId();
+-                $pack = trim((string)($props[$pid]['UPAKOVKA'] ?? ''));
+                 $items[] = [
+-                    'name' => gg_item_title((string)$item->getField('NAME'), $pack),
+-                    'note' => $pack,
++                    'name' => (string)($goods[$pid]['name'] ?? $item->getField('NAME')),
++                    'note' => gg_line_weight($goods[$pid] ?? null),
+                     'qty' => (int)$item->getQuantity(),
+                     'sum' => (float)$item->getPrice() * (int)$item->getQuantity(),
+                 ];
+diff --git a/deploy-src/product/index.php b/deploy-src/product/index.php
+index ffbe5f6..98cc085 100644
+--- a/deploy-src/product/index.php
++++ b/deploy-src/product/index.php
+@@ -36,7 +36,7 @@ if ($code !== '' && CModule::IncludeModule('iblock')) {
+         ['IBLOCK_ID' => gg_map()['iblockId'], 'ACTIVE' => 'Y', 'CODE' => $code],
+         false,
+         ['nTopCount' => 1],
+-        ['ID', 'NAME', 'CODE', 'IBLOCK_SECTION_ID']
++        ['ID', 'NAME', 'CODE', 'IBLOCK_SECTION_ID', 'PREVIEW_TEXT']
+     );
+     $element = $res->Fetch() ?: null;
+ }
+@@ -60,7 +60,7 @@ if (!$element) {
+     /** Раздел витрины, которому принадлежит товар. */
+     $slug = gg_item_category_slug((int)$element['ID']);
+ 
+-    $APPLICATION->SetTitle($element['NAME'] . ' — №1 Гранд Гурмэ');
++    $APPLICATION->SetTitle(gg_display_name((string)$element['NAME'], (string)$element['PREVIEW_TEXT']) . ' — №1 Гранд Гурмэ');
+ 
+     $APPLICATION->IncludeComponent(
+         'bitrix:catalog.element',
+diff --git a/deploy-src/search/index.php b/deploy-src/search/index.php
+new file mode 100644
+index 0000000..a5ecc71
+--- /dev/null
++++ b/deploy-src/search/index.php
+@@ -0,0 +1,144 @@
++<?php
++/**
++ * Результаты поиска: /search/?q=…
++ *
++ * Раньше здесь стояла страница демо-магазина с компонентом search.page,
++ * настроенным на инфоблоки демо-одежды: товары 1С в него не попадали,
++ * и на любой запрос он отвечал «ничего не найдено». Теперь выдача та же,
++ * что у подсказок в шапке (include/search.php), а карточки — те же, что
++ * в каталоге.
++ */
++define('GG_PAGE_CLASS', 'page-catalog');
++
++require($_SERVER['DOCUMENT_ROOT'] . '/bitrix/header.php');
++require_once $_SERVER['DOCUMENT_ROOT'] . SITE_TEMPLATE_PATH . '/include/search.php';
++
++$APPLICATION->SetPageProperty('robots', 'noindex, follow');
++
++$query = gg_search_query((string)($_GET['q'] ?? ''));
++$ids = mb_strlen($query) >= 2 ? gg_search_ids($query) : [];
++$categories = mb_strlen($query) >= 2 ? gg_search_categories($query) : [];
++
++$total = count($ids);
++$pages = max(1, (int)ceil($total / GG_SEARCH_PAGE_SIZE));
++$page = max(1, min($pages, (int)($_GET['page'] ?? 1)));
++$cards = gg_search_cards(array_slice($ids, ($page - 1) * GG_SEARCH_PAGE_SIZE, GG_SEARCH_PAGE_SIZE));
++
++$APPLICATION->SetTitle($query !== '' ? 'Поиск: ' . $query . ' — №1 Гранд Гурмэ' : 'Поиск — №1 Гранд Гурмэ');
++
++$pageUrl = static function (int $n) use ($query): string {
++    $params = ['q' => $query];
++    if ($n > 1) {
++        $params['page'] = $n;
++    }
++    return '?' . http_build_query($params);
++};
++
++/* Популярные запросы для пустой выдачи — только те, что точно находят товары. */
++$popular = ['икра белуги', 'осётр', 'красная икра', 'лосось', 'краб', 'оливки', 'чай'];
++?>
++<div class="catalog search-page">
++  <div class="container">
++    <nav class="crumbs" aria-label="Хлебные крошки">
++      <a href="/">Главная</a>
++      <span class="crumbs__sep" aria-hidden="true"></span>
++      <span class="crumbs__current" aria-current="page">Поиск</span>
++    </nav>
++
++    <div class="catalog__head">
++      <h1 class="catalog__title"><?= $query !== '' ? '«' . gg_e($query) . '»' : 'Поиск' ?></h1>
++    </div>
++
++    <form class="search-page__form" action="/search/" method="get" role="search">
++      <label class="visually-hidden" for="search-page-q">Поиск по каталогу</label>
++      <span class="search-page__icon" aria-hidden="true"><?= gg_icon('search') ?></span>
++      <input class="search-page__input" id="search-page-q" type="search" name="q"
++             value="<?= gg_e($query) ?>" placeholder="Икра, рыба, крабы, подарочные наборы…"
++             autocomplete="off" spellcheck="false" enterkeyhint="search">
++      <button class="btn btn--solid search-page__submit" type="submit">Найти</button>
++    </form>
++
++<?php if ($categories): ?>
++    <div class="facets">
++      <div class="facets__row">
++        <span class="facets__label">Разделы</span>
++        <div class="facets__rail chips">
++<?php   foreach ($categories as $cat): ?>
++          <a class="chip" href="<?= gg_e($cat['href']) ?>"><?= gg_e($cat['name']) ?></a>
++<?php   endforeach; ?>
++        </div>
++      </div>
++    </div>
++<?php endif; ?>
++
++<?php if ($query !== '' && $total > 0): ?>
++    <div class="catalog__status">
++      <p class="catalog__found">Найдено <b><?= gg_e(gg_plural_goods($total)) ?></b></p>
++      <div></div>
++    </div>
++
++    <div class="catalog__grid">
++<?php   foreach ($cards as $card):
++            $alt = $card['name'] . ($card['note'] !== '' ? ', ' . $card['note'] : '');
++?>
++      <article class="product">
++        <div class="product__frame">
++          <a class="product__shot" href="<?= gg_e($card['href']) ?>" tabindex="-1" aria-hidden="true"><?= gg_product_shot($card['row'], $alt) ?></a>
++        </div>
++        <div class="product__body">
++          <h3 class="product__name"><a href="<?= gg_e($card['href']) ?>"><?= gg_e($card['name']) ?></a></h3>
++<?php     if ($card['note'] !== ''): ?>
++          <p class="product__note"><?= gg_e($card['note']) ?></p>
++<?php     endif; ?>
++          <p class="product__price"><?= gg_e($card['price']) ?></p>
++<?php     if ($card['kind'] !== 'stock'): ?>
++          <p class="product__tag"><?= gg_stock_tag($card['kind']) ?></p>
++<?php     endif; ?>
++        </div>
++      </article>
++<?php   endforeach; ?>
++    </div>
++
++<?php   if ($pages > 1): ?>
++    <div class="catalog__more">
++      <nav class="pager" aria-label="Страницы результатов">
++<?php     if ($page > 1): ?>
++        <a class="chip pager__link" rel="prev" href="<?= gg_e($pageUrl($page - 1)) ?>">Назад</a>
++<?php     endif; ?>
++<?php     for ($n = 1; $n <= $pages; $n++): ?>
++<?php       if ($n === $page): ?>
++        <span class="chip is-active" aria-current="page"><?= $n ?></span>
++<?php       else: ?>
++        <a class="chip pager__link" href="<?= gg_e($pageUrl($n)) ?>"><?= $n ?></a>
++<?php       endif; ?>
++<?php     endfor; ?>
++<?php     if ($page < $pages): ?>
++        <a class="chip pager__link" rel="next" href="<?= gg_e($pageUrl($page + 1)) ?>">Вперёд</a>
++<?php     endif; ?>
++      </nav>
++    </div>
++<?php   endif; ?>
++
++<?php else: ?>
++    <div class="catalog__grid is-empty">
++      <div class="empty">
++<?php   if ($query === ''): ?>
++        <h2 class="empty__title">Что ищем?</h2>
++        <p class="empty__hint">Название, вид рыбы, бренд, артикул или код товара</p>
++<?php   else: ?>
++        <h2 class="empty__title">Ничего не нашлось</h2>
++        <p class="empty__hint">Проверьте раскладку и опечатки или посмотрите весь ассортимент — в каталоге есть фильтры по сорту и фасовке.</p>
++<?php   endif; ?>
++        <div class="chips search-page__popular">
++<?php   foreach ($popular as $item): ?>
++          <a class="chip" href="?<?= gg_e(http_build_query(['q' => $item])) ?>"><?= gg_e($item) ?></a>
++<?php   endforeach; ?>
++        </div>
++        <a class="btn" href="/catalog">Открыть каталог</a>
++      </div>
++    </div>
++<?php endif; ?>
++  </div>
++</div>
++<?php
++require($_SERVER['DOCUMENT_ROOT'] . '/bitrix/footer.php');
+diff --git a/deploy-src/search/suggest.php b/deploy-src/search/suggest.php
+new file mode 100644
+index 0000000..772d154
+--- /dev/null
++++ b/deploy-src/search/suggest.php
+@@ -0,0 +1,26 @@
++<?php
++/**
++ * Подсказки поиска в шапке: /search/suggest.php?q=…, ответ — JSON.
++ *
++ * Страница без шаблона: только ядро и функции поиска. Скрипт шапки
++ * (src/js/nav/search.js) зовёт её с задержкой после ввода.
++ *
++ * NO_KEEP_STATISTIC: запрос подсказки — не просмотр страницы. Без этого
++ * каждый набранный символ считался бы хитом «Контроля активности», а он
++ * блокирует IP после 200 хитов за 10 секунд.
++ */
++define('NO_KEEP_STATISTIC', true);
++define('NO_AGENT_STATISTIC', true);
++define('NO_AGENT_CHECK', true);
++define('STOP_STATISTICS', true);
++
++require $_SERVER['DOCUMENT_ROOT'] . '/bitrix/modules/main/include/prolog_before.php';
++require_once $_SERVER['DOCUMENT_ROOT'] . '/bitrix/templates/grandgurme/include/search.php';
++
++header('Content-Type: application/json; charset=utf-8');
++header('X-Robots-Tag: noindex, nofollow');
++header('Cache-Control: private, max-age=60');
++
++echo json_encode(gg_search_suggest((string)($_GET['q'] ?? '')), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
++
++require $_SERVER['DOCUMENT_ROOT'] . '/bitrix/modules/main/include/epilog_after.php';
+diff --git a/src/bitrix/main.js b/src/bitrix/main.js
+index c603e83..de8bcfd 100644
+--- a/src/bitrix/main.js
++++ b/src/bitrix/main.js
+@@ -55,6 +55,7 @@ import '../styles/pages/category.css'
+ import '../styles/pages/product.css'
+ import '../styles/pages/cart.css'
+ import '../styles/pages/checkout.css'
++import '../styles/pages/search.css'
+ 
+ import { initHeader } from '../js/sections/header.js'
+ import { initFooter } from '../js/sections/footer.js'
+diff --git a/src/data/search.js b/src/data/search.js
+index 4c9bb05..16b4702 100644
+--- a/src/data/search.js
++++ b/src/data/search.js
+@@ -56,6 +56,10 @@ export const searchCopy = {
+     'Проверьте раскладку и опечатки или посмотрите весь ассортимент — ' +
+     'в каталоге есть фильтры по сорту, весу и цене.',
+   emptyAction: { label: 'Открыть каталог', href: ROUTES.catalog },
++  priceOnRequest: 'Цена по запросу',
++  /* Популярные запросы живого сайта (Битрикс): только те, что точно находят
++     товары в выгрузке. Статистики запросов пока нет — список ручной. */
++  popularLive: ['икра белуги', 'осётр', 'красная икра', 'лосось', 'краб', 'оливки', 'чай'],
+ }
+ 
+ /**
+diff --git a/src/js/nav/search.js b/src/js/nav/search.js
+index 789d559..f8ee502 100644
+--- a/src/js/nav/search.js
++++ b/src/js/nav/search.js
+@@ -21,9 +21,13 @@
+    всё равно занимает весь экран. Поэтому ниже 1024px поиск открывается
+    полноэкранным слоем — тем же приёмом, что мобильное меню.
+ 
+-   ВЫДАЧА НЕНАСТОЯЩАЯ. Совпадение подстрокой по уже имеющемуся набору товаров
+-   и по дереву каталога — см. src/data/search.js. Задача прототипа — показать
+-   поведение, а не искать.
++   ДВА ИСТОЧНИКА ВЫДАЧИ. В прототипе выдача ненастоящая: совпадение подстрокой
++   по набору товаров прототипа и дереву каталога (src/data/search.js). На
++   Битриксе шапка передаёт remote, и выдача приходит с сервера
++   (/search/suggest.php, include/search.php шаблона): товары и разделы живой
++   витрины. До 16.09.2026 стенд тоже искал по данным прототипа — у чёрной икры
++   там нет цен, отрисовка падала на первой же позиции, и панель оставалась
++   пустой.
+ 
+    ТРИ СОСТОЯНИЯ ПАНЕЛИ:
+      пустое поле  — последние запросы, популярные, недавно просмотренные;
+@@ -54,6 +58,9 @@ const desktop = window.matchMedia('(min-width: 1024px)')
+ /** Задержка перед перерисовкой выдачи. Ниже — дёргается, выше — ощущается. */
+ const TYPE_DELAY = 120
+ 
++/** Задержка перед запросом к серверу подсказок. */
++const REMOTE_TYPE_DELAY = 250
++
+ const escape = (text) =>
+   String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+ 
+@@ -99,12 +106,32 @@ const productRow = ({ product }, query) => `
+       <span class="srow__name">${highlight(product.name, query)}</span>
+       <span class="srow__note">${escape(product.weightLabel)}</span>
+     </span>
+-    <span class="srow__price">${price(product.price)}</span>
++    <span class="srow__price">${product.price == null ? searchCopy.priceOnRequest : price(product.price)}</span>
++  </a>
++`
++
++/**
++ * Строка товара из ответа сервера. Цена приходит готовой строкой
++ * («7 990 ₽», «4 990 ₽ / кг», «Цена по запросу»), фотографий в выгрузке 1С
++ * нет — на месте кадра знак марки, как в сетке каталога.
++ */
++const remoteProductRow = (card, query) => `
++  <a class="srow" href="${escape(card.href)}" data-search-item>
++    <span class="srow__media">
++      <span class="media srow__frame is-blank" style="--media-ratio: 1 / 1" aria-hidden="true">
++        <span class="blank__mark">${icons.emptyFish}</span>
++      </span>
++    </span>
++    <span class="srow__body">
++      <span class="srow__name">${highlight(card.name, query)}</span>
++      <span class="srow__note">${escape(card.note)}</span>
++    </span>
++    <span class="srow__price">${escape(card.price)}</span>
+   </a>
+ `
+ 
+ const categoryRow = (category, query) => `
+-  <a class="scat" href="${ROUTES.category(category.slug)}" data-search-item>
++  <a class="scat" href="${category.href ? escape(category.href) : ROUTES.category(category.slug)}" data-search-item>
+     <span class="scat__icon" aria-hidden="true">${icons[category.icon] || icons.search}</span>
+     <span class="scat__name">${highlight(category.name, query)}</span>
+   </a>
+@@ -117,6 +144,43 @@ const group = (title, body, modifier = '') => `
+   </section>
+ `
+ 
++/* ---- последние запросы на живом сайте --------------------------------- */
++
++const RECENT_KEY = 'gg-search-recent'
++
++function readRecent() {
++  try {
++    const list = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]')
++    return Array.isArray(list) ? list.filter((item) => typeof item === 'string').slice(0, 5) : []
++  } catch {
++    return []
++  }
++}
++
++function rememberQuery(query) {
++  const q = String(query).trim()
++  if (q.length < 2) return
++  try {
++    const next = [q, ...readRecent().filter((item) => item.toLowerCase() !== q.toLowerCase())].slice(0, 5)
++    localStorage.setItem(RECENT_KEY, JSON.stringify(next))
++  } catch {
++    /* приватный режим — просто не запоминаем */
++  }
++}
++
++/**
++ * Пустое поле на живом сайте: свои последние запросы этого браузера и
++ * популярные. «Недавно смотрели» здесь нет — истории просмотров сайт
++ * пока не ведёт, а придуманная история хуже пустого места.
++ */
++function remoteIdleBody() {
++  const recent = readRecent()
++  return `
++    ${recent.length ? group(searchCopy.recent, `<div class="schips">${recent.map(chip).join('')}</div>`) : ''}
++    ${group(searchCopy.popular, `<div class="schips">${searchCopy.popularLive.map(chip).join('')}</div>`)}
++  `
++}
++
+ /** Пустое поле: последние, популярные, недавно просмотренные. */
+ function idleBody() {
+   const viewed = searchIdle.viewedSlugs.map(productBySlug).filter(Boolean)
+@@ -137,7 +201,7 @@ function idleBody() {
+ }
+ 
+ /** Есть ввод: товары, разделы, «показать все». */
+-function resultsBody(result) {
++function resultsBody(result, { row = productRow, url = searchUrl(result.query) } = {}) {
+   const { query, products, categories, total } = result
+ 
+   if (!total) {
+@@ -157,7 +221,7 @@ function resultsBody(result) {
+       products.length
+         ? group(
+             searchCopy.products,
+-            `<div class="srows">${products.map((entry) => productRow(entry, query)).join('')}</div>`,
++            `<div class="srows">${products.map((entry) => row(entry, query)).join('')}</div>`,
+           )
+         : ''
+     }
+@@ -169,9 +233,9 @@ function resultsBody(result) {
+           )
+         : ''
+     }
+-    <a class="sall" href="${searchUrl(query)}" data-search-item>
++    <a class="sall" href="${escape(url)}" data-search-item>
+       ${searchCopy.all}
+-      <span class="sall__count">${total}</span>
++      ${products.length || categories.length ? `<span class="sall__count">${total}</span>` : ''}
+     </a>
+   `
+ }
+@@ -224,9 +288,11 @@ const results = (idSuffix) => `
+  * @param {HTMLElement[]} o.triggers точки входа в поиск: капсула в шапке
+  *   на десктопе и иконка на мобильном
+  * @param {() => void} [o.onOpen] закрыть то, что не должно висеть вместе с поиском
++ * @param {{suggestUrl: string, resultsUrl: string}} [o.remote] выдача с сервера
++ *   (Битрикс). Без него — выдача прототипа по src/data/search.js
+  * @returns {{open: () => void, close: () => void, isOpen: () => boolean}}
+  */
+-export function initSearch({ header, triggers = [], onOpen }) {
++export function initSearch({ header, triggers = [], onOpen, remote = null }) {
+   if (!header) return { open: () => {}, close: () => {}, isOpen: () => false }
+ 
+   /* ---- разметка ---------------------------------------------------------- */
+@@ -290,10 +356,61 @@ export function initSearch({ header, triggers = [], onOpen }) {
+ 
+   /* ---- выдача ------------------------------------------------------------ */
+ 
++  /* Ответы сервера по запросам: повторный ввод того же текста не ходит
++     на сервер, а устаревший ответ не перерисовывает свежую выдачу. */
++  const cache = new Map()
++  let pending = null
++
++  const resultsHref = (query) => `${remote.resultsUrl}?q=${encodeURIComponent(query)}`
++
++  async function fetchSuggest(query) {
++    if (cache.has(query)) return cache.get(query)
++    pending?.abort()
++    pending = new AbortController()
++    const response = await fetch(`${remote.suggestUrl}?q=${encodeURIComponent(query)}`, {
++      signal: pending.signal,
++      headers: { Accept: 'application/json' },
++    })
++    if (!response.ok) throw new Error(`suggest ${response.status}`)
++    const data = await response.json()
++    const result = {
++      query,
++      products: Array.isArray(data.products) ? data.products : [],
++      categories: Array.isArray(data.categories) ? data.categories : [],
++      total: Number(data.total) || 0,
++    }
++    result.total = Math.max(result.total, result.products.length) + result.categories.length
++    cache.set(query, result)
++    return result
++  }
++
+   function paint() {
+     const query = view().input.value.trim()
+-    const html = query.length < 2 ? idleBody() : resultsBody(searchAll(query))
+ 
++    if (remote) {
++      if (query.length < 2) {
++        pending?.abort()
++        render(remoteIdleBody())
++        return
++      }
++      fetchSuggest(query)
++        .then((result) => {
++          // Пока ответ шёл, человек мог дописать запрос: старый ответ не рисуем.
++          if (view().input.value.trim() !== query) return
++          render(resultsBody(result, { row: remoteProductRow, url: resultsHref(query) }))
++        })
++        .catch((error) => {
++          if (error.name === 'AbortError') return
++          // Сервер не ответил — честно ведём на страницу результатов.
++          render(resultsBody({ query, products: [], categories: [], total: 1 }, { url: resultsHref(query) }))
++        })
++      return
++    }
++
++    render(query.length < 2 ? idleBody() : resultsBody(searchAll(query)))
++  }
++
++  function render(html) {
+     // Рисуем в обе панели сразу: их две (шапка и мобильный слой), а какая
+     // из них на экране — решает медиазапрос. Перекладывать DOM при повороте
+     // экрана было бы дороже и ломало бы фокус.
+@@ -416,7 +533,9 @@ export function initSearch({ header, triggers = [], onOpen }) {
+   views.forEach((item) => {
+     item.input.addEventListener('input', () => {
+       clearTimeout(typing)
+-      typing = setTimeout(paint, TYPE_DELAY)
++      // С сервером задержка длиннее: запрос на каждую букву — лишняя нагрузка
++      // и лишние хиты «Контроля активности».
++      typing = setTimeout(paint, remote ? REMOTE_TYPE_DELAY : TYPE_DELAY)
+     })
+ 
+     item.clear.addEventListener('click', () => {
+@@ -431,6 +550,11 @@ export function initSearch({ header, triggers = [], onOpen }) {
+       event.preventDefault()
+       const query = item.input.value.trim()
+       if (!query) return
++      if (remote) {
++        rememberQuery(query)
++        location.href = resultsHref(query)
++        return
++      }
+       location.href = searchUrl(query)
+     })
+ 
+@@ -473,6 +597,7 @@ export function initSearch({ header, triggers = [], onOpen }) {
+   // Чипы запросов подставляют текст в поле, ссылки работают ссылками.
+   views.forEach((item) => {
+     item.body.addEventListener('click', (event) => {
++      if (remote && event.target.closest('a[data-search-item]')) rememberQuery(item.input.value)
+       const el = event.target.closest('[data-query]')
+       if (!el) return
+       item.input.value = el.dataset.query
+diff --git a/src/js/sections/header.js b/src/js/sections/header.js
+index e2fccf1..ddef317 100644
+--- a/src/js/sections/header.js
++++ b/src/js/sections/header.js
+@@ -567,6 +567,8 @@ export function initHeader({ ssr = false } = {}) {
+     header,
+     triggers: [...header.querySelectorAll('[data-search-trigger]')],
+     onOpen: () => megamenu?.close(),
++    // На Битриксе выдача живая: подсказки и страница результатов — сервер.
++    remote: ssr ? { suggestUrl: '/search/suggest.php', resultsUrl: '/search/' } : null,
+   })
+ 
+   // Открытая строка поиска переводит шапку в плотное состояние по той же
+diff --git a/src/styles/pages/product.css b/src/styles/pages/product.css
+index d1fad0b..9aa5804 100644
+--- a/src/styles/pages/product.css
++++ b/src/styles/pages/product.css
+@@ -296,6 +296,16 @@
+   color: var(--fg);
+ }
+ 
++/* Артикул над заголовком — как на grandgurme.ru: для звонка менеджеру
++   и сверки с 1С, не для выбора. Поэтому мелко и приглушённо. */
++.pbuy__article {
++  margin: 0 0 .5rem;
++  font-size: .72rem;
++  letter-spacing: .04em;
++  color: var(--fg-mute);
++  font-variant-numeric: tabular-nums;
++}
++
+ /* ---- Ленты --------------------------------------------------------------- */
+ 
+ .prail__head {
+diff --git a/src/styles/pages/search.css b/src/styles/pages/search.css
+new file mode 100644
+index 0000000..bcef531
+--- /dev/null
++++ b/src/styles/pages/search.css
+@@ -0,0 +1,62 @@
++/* ============================================================================
++   Страница результатов поиска /search/ (только Битрикс).
++
++   Выдача живёт в разметке каталога: заголовок, строка разделов, счётчик
++   и сетка карточек — те же классы, что у страницы категории, поэтому
++   своих стилей здесь только строка запроса. Она стоит на волосяной линии
++   капсулой, как строка поиска в шапке, а не полем формы оформления:
++   это поиск, и выглядеть он должен одинаково везде.
++   ============================================================================ */
++
++.search-page__form {
++  display: flex;
++  align-items: center;
++  gap: .75rem;
++  max-width: 44rem;
++  margin-top: clamp(1rem, 2.5vh, 1.5rem);
++  padding: .35rem .35rem .35rem 1.1rem;
++  border: 1px solid var(--hairline);
++  border-radius: var(--radius-pill);
++  transition: border-color var(--dur-line) var(--ease-out);
++}
++
++.search-page__form:focus-within { border-color: var(--caspian); }
++
++.search-page__icon {
++  display: inline-flex;
++  flex: none;
++  color: var(--fg-mute);
++}
++
++.search-page__icon svg { width: 18px; height: 18px; }
++
++.search-page__input {
++  flex: 1 1 auto;
++  min-width: 0;
++  min-height: 40px;
++  border: 0;
++  background: transparent;
++  font-family: var(--font-body);
++  font-size: .95rem;
++  color: var(--fg);
++}
++
++.search-page__input::placeholder { color: var(--fg-mute); }
++.search-page__input:focus { outline: none; }
++.search-page__input::-webkit-search-cancel-button { display: none; }
++
++.search-page__submit { flex: none; }
++
++.search-page .facets { margin-top: clamp(1rem, 2.5vh, 1.5rem); }
++
++.search-page .catalog__status { margin-top: clamp(1rem, 2.5vh, 1.5rem); }
++
++.search-page__popular {
++  justify-content: center;
++  margin-block: 1rem;
++}
++
++@media (max-width: 479px) {
++  .search-page__form { padding-left: .9rem; }
++  .search-page__submit { padding-inline: 1.1rem; }
++}
+-- 
+2.43.0
+

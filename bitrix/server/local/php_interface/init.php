@@ -114,3 +114,48 @@ function GGWaitlistNotify()
 	}
 	return $agent;
 }
+
+/**
+ * Сброс кеша Битрикса по метке от заливки (23.09.2026).
+ *
+ * ЗАЧЕМ. Заливка идёт по SSH пользователем `deploy` (npm run stand:deploy),
+ * а папки `bitrix/cache`, `bitrix/managed_cache` и `bitrix/stack_cache`
+ * созданы php-fpm (www-data) без групповой записи: deploy их не чистит
+ * и почистить не может. В первый же раз это стоило полдня — опция
+ * `main/new_user_email_required` легла в базу, а сайт продолжал читать
+ * старое значение из managed_cache, и вход по телефону не заводил кабинет.
+ *
+ * КАК РАБОТАЕТ. Заливка кладёт пустой файл `/local/gg-stand/cache-flush`
+ * (в эту папку deploy писать может), а первый же хит сайта — уже от www-data —
+ * видит метку, снимает её и чистит кеш по-настоящему. Проверка адресов
+ * в конце заливки как раз и есть этот хит.
+ *
+ * Метка снимается ДО чистки: если чистка почему-то упадёт, сайт не уйдёт
+ * в цикл «метка на месте — чистим на каждом хите».
+ *
+ * Когда на папках кеша появится групповая запись (chmod -R g+ws, это root),
+ * заливка станет чистить их сама, и этот кусок можно убрать.
+ */
+AddEventHandler('main', 'OnPageStart', 'GGStandCacheFlush');
+function GGStandCacheFlush()
+{
+	$marker = $_SERVER['DOCUMENT_ROOT'] . '/local/gg-stand/cache-flush';
+	if (!is_file($marker)) {
+		return;
+	}
+	@unlink($marker);
+
+	if (function_exists('BXClearCache')) {
+		BXClearCache(true);
+	}
+	if (isset($GLOBALS['CACHE_MANAGER']) && is_object($GLOBALS['CACHE_MANAGER'])) {
+		$GLOBALS['CACHE_MANAGER']->CleanAll();
+	}
+	if (isset($GLOBALS['stackCacheManager']) && is_object($GLOBALS['stackCacheManager'])) {
+		$GLOBALS['stackCacheManager']->CleanAll();
+	}
+	if (function_exists('opcache_reset')) {
+		@opcache_reset();
+	}
+	AddMessage2Log('Стенд: кеш сброшен по метке от заливки', 'gg');
+}

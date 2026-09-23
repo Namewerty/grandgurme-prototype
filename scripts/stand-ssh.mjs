@@ -357,16 +357,22 @@ function cmdDeploy({ yes, force }) {
     label: 'запись манифеста',
   })
 
-  // 7. Кеш Битрикса — только эти три папки.
+  // 7. Кеш Битрикса — только эти три папки. Плюс метка для сайта: папки кеша
+  // на стенде созданы php-fpm без групповой записи, и deploy их дочистить
+  // не может. Метку видит первый же хит (проверка адресов ниже) и чистит кеш
+  // уже от www-data — обработчик в /local/php_interface/init.php.
   const cache = CACHE_DIRS.map((d) => `[ -d "${d}" ] && find "${d}" -mindepth 1 -maxdepth 1 -exec rm -rf {} +`).join('; ')
-  const cacheRun = ssh(`cd ${SITE}; ${cache}; true`, { allowFail: true, label: 'чистка кеша' })
+  const cacheRun = ssh(`cd ${SITE}; ${cache}; mkdir -p local/gg-stand && : > local/gg-stand/cache-flush; true`, {
+    allowFail: true,
+    label: 'чистка кеша',
+  })
   // Часть кеша пишет php-fpm (www-data) в подпапки без групповой записи —
   // такие файлы deploy удалить не может. Битрикс их перепишет сам, но знать
   // об этом надо: строка про права — в README, «Инфраструктура».
   const stuck = cacheRun.err.split('\n').filter((l) => l.includes('Permission denied')).length
   say(
     stuck
-      ? `Кеш очищен частично: ${plural(stuck, 'файл', 'файла', 'файлов')} не удалить — их писал www-data в папки без групповой записи.`
+      ? `Кеш: ${plural(stuck, 'файл', 'файла', 'файлов')} deploy не удалить (папки без групповой записи) — остальное дочистит сайт по метке на первом же хите.`
       : 'Кеш очищен: ' + CACHE_DIRS.join(', ')
   )
 
