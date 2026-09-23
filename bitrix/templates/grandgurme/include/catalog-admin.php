@@ -172,9 +172,18 @@ function gg_catalog_admin_edit_area(array $cat): string
         return '';
     }
 
+    /* ССЫЛКА КНОПКИ — ДИАЛОГ, А НЕ ПЕРЕХОД (23.09.2026). С голым адресом
+       формы вкладка целиком уезжала на iblock_element_edit.php: форма без
+       стилей сайта, без кнопок диалога, пользоваться нечем. Битрикс ждёт
+       здесь javascript:-ссылку на BX.CAdminDialog — ровно так собирает свои
+       кнопки CBitrixComponent::AddEditAction и панель включаемых областей
+       (bitrix/modules/main/classes/general/main.php). */
     $areaId = 'bx_gg_cat_' . preg_replace('/[^a-zA-Z0-9_\-]/', '', (string)$cat['slug']);
     $APPLICATION->SetEditArea($areaId, [[
-        'URL' => $url,
+        'URL' => 'javascript:' . $APPLICATION->GetPopupLink([
+            'URL' => $url,
+            'PARAMS' => ['width' => 780, 'height' => 500],
+        ]),
         'TITLE' => 'Изменить тексты раздела',
         'ICON' => 'bx-context-toolbar-edit-icon',
         'DEFAULT' => true,
