@@ -21,6 +21,7 @@
 // значения списков — по XML_ID. ID в код не зашиты.
 //
 // Удаление — gg-requests-uninstall.php рядом.
+// ИЛИ ПО SSH: npm run stand:php -- bitrix/install/gg-requests-install.php --mode=<режим>
 // =============================================================================
 
 if (!CModule::IncludeModule('iblock')) {

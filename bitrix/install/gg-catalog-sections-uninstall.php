@@ -10,6 +10,7 @@
 // «Бакалея и консервация».
 //
 // Тип инфоблоков gg_service НЕ удаляется: в нём живут заявки менеджеру.
+// ИЛИ ПО SSH: npm run stand:php -- bitrix/install/gg-catalog-sections-uninstall.php --mode=<режим>
 // =============================================================================
 
 $mode = 'check'; // check | uninstall

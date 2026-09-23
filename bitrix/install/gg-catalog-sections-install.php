@@ -19,6 +19,7 @@
 // по карте, как раньше, поэтому переводить разделы можно по одному.
 //
 // Удаление — gg-catalog-sections-uninstall.php рядом.
+// ИЛИ ПО SSH: npm run stand:php -- bitrix/install/gg-catalog-sections-install.php --mode=<режим>
 // =============================================================================
 
 $mode = 'check'; // check | install

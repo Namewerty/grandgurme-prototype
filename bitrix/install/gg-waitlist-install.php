@@ -19,6 +19,7 @@
 // ⚠ ПОДТВЕРДИТЬ У ЗАКАЗЧИКА: текст письма о поступлении и текст будущей СМС.
 //
 // УДАЛЕНИЕ — bitrix/install/gg-waitlist-uninstall.php.
+// ИЛИ ПО SSH: npm run stand:php -- bitrix/install/gg-waitlist-install.php --mode=<режим>
 // =============================================================================
 
 $say = static function (string $line): void { echo $line . "\n"; };

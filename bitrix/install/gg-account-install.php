@@ -22,6 +22,7 @@
 // границу данных, что api.js в прототипе (PERENOS-kabinet-i-izbrannoe.md).
 //
 // УДАЛЕНИЕ — bitrix/install/gg-account-uninstall.php.
+// ИЛИ ПО SSH: npm run stand:php -- bitrix/install/gg-account-install.php --mode=<режим>
 // =============================================================================
 
 $say = static function (string $line): void { echo $line . "\n"; };

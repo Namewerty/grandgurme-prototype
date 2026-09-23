@@ -493,22 +493,33 @@ function cmdDeploy({ yes, force }) {
  * Командная строка админки остаётся запасным путём: она работает от www-data
  * и годится там, где SSH недоступен (боевой сайт).
  */
-function cmdPhp(file, { mode }) {
+function cmdPhp(file, { mode, allowDirty }) {
   if (!file) die('нужен путь к скрипту: npm run stand:php -- bitrix/install/gg-...-install.php')
 
   const rel = file.split(sep).join('/').replace(/^\.\//, '')
   const dirty = git(`status --porcelain -- "${rel}"`)
-  if (dirty) {
+  if (dirty && !allowDirty) {
     console.error('[stand-ssh] В рабочей копии есть незакоммиченные правки этого файла:')
     console.error('  ' + dirty.split('\n').join('\n  '))
-    die('закоммитьте их и повторите: на стенде выполняется то, что лежит в истории.')
+    die('закоммитьте их и повторите — или, для одноразового скрипта, добавьте --dirty.')
   }
 
   let body
-  try {
-    body = execSync(`git show HEAD:"${rel}"`, { cwd: ROOT, encoding: 'utf8' })
-  } catch {
-    die(`в коммите нет файла ${rel}`)
+  if (allowDirty) {
+    /* Одноразовый скрипт («поменять одно поле и посмотреть») коммитить незачем,
+       а без него проверку правки через базу не сделать. Читаем рабочую копию
+       и громко об этом говорим: в отчёте должно быть видно, что выполнялось
+       не то, что лежит в истории. */
+    const abs = join(ROOT, rel)
+    if (!existsSync(abs)) die(`нет файла ${rel}`)
+    body = readFileSync(abs, 'utf8')
+    say('ВНИМАНИЕ: --dirty, скрипт взят из рабочей копии, а не из коммита.')
+  } else {
+    try {
+      body = execSync(`git show HEAD:"${rel}"`, { cwd: ROOT, encoding: 'utf8' })
+    } catch {
+      die(`в коммите нет файла ${rel}`)
+    }
   }
 
   /* Режим — первая строка вида $mode = '...'; в теле скрипта. Подменяем её,
@@ -558,9 +569,16 @@ function cmdPhp(file, { mode }) {
      папки кеша на стенде без групповой записи, и чистит их первый хит
      (см. CLAUDE.md и обработчик в /local/php_interface/init.php). */
   if (shown !== 'check') {
-    ssh(`cd ${SITE} && mkdir -p local/gg-stand && : > local/gg-stand/cache-flush`, { label: 'метка сброса кеша' })
+    /* Метку ставим и тут же дёргаем сайт сами: «подхватит на первом хите»
+       звучит хорошо ровно до того, как следующий шаг проверки придёт раньше
+       этого хита и увидит старое. */
+    ssh(
+      `cd ${SITE} && mkdir -p local/gg-stand && : > local/gg-stand/cache-flush && ` +
+        `curl -sk -o /dev/null ${CHECK_BASE}/`,
+      { label: 'метка сброса кеша' }
+    )
     say('')
-    say('Метка сброса кеша поставлена — сайт подхватит правку на первом же хите.')
+    say('Кеш сброшен: метка поставлена и сайт дёрнут.')
   }
 
   say('')
@@ -617,8 +635,8 @@ try {
   if (command === 'drift') cmdDrift()
   else if (command === 'deploy') cmdDeploy({ yes: flags.has('--yes'), force: flags.has('--force') })
   else if (command === 'pull') cmdPull(rest[0])
-  else if (command === 'php') cmdPhp(rest[0], { mode: modeArg })
-  else die('команда: drift | deploy [--yes] [--force] | pull <путь> | php <путь> [--mode=...]')
+  else if (command === 'php') cmdPhp(rest[0], { mode: modeArg, allowDirty: flags.has('--dirty') })
+  else die('команда: drift | deploy [--yes] [--force] | pull <путь> | php <путь> [--mode=...] [--dirty]')
 } finally {
   closeSsh()
 }
