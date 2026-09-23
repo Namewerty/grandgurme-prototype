@@ -275,8 +275,12 @@ function cmdDeploy({ yes, force }) {
 
   // 1. Правки на стенде мимо репозитория.
   if (last) {
-    const { changed: changedAll, gone } = drift(last, manifest.files)
+    const { changed: changedAll, gone: goneAll } = drift(last, manifest.files)
+    /* Страница, которую правят в админке, расхождением не считается ни
+       изменённой (её правил человек), ни удалённой (её нет — значит, ставим
+       заново, ровно об этом и правило). */
     const changed = changedAll.filter((p) => !ADMIN_EDITED.includes(p))
+    const gone = goneAll.filter((p) => !ADMIN_EDITED.includes(p))
     if (changed.length || gone.length) {
       for (const p of changed) say('ИЗМЕНЁН НА СТЕНДЕ  ' + p)
       for (const p of gone) say('УДАЛЁН НА СТЕНДЕ   ' + p)
