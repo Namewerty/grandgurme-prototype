@@ -21,6 +21,11 @@
  * Кнопки «Заказать у менеджера» больше нет: её место заняла «Добавить
  * в заявку».
  *
+ * «СООБЩИТЬ О ПОСТУПЛЕНИИ» (23.09.2026) — include/waitlist.php. Кнопка есть
+ * только у позиции «через менеджера» без остатка. Гость, нажавший её, видит
+ * окно входа (src/bitrix/catalog-hydrate.js); без JS форма уводит на страницу
+ * входа с возвратом сюда.
+ *
  * СТЕППЕР И «В КОРЗИНУ» — ОДНА ФОРМА, и форма эта и есть .pbuy__actions:
  * отдельная обёртка сломала бы ряд кнопок, а без формы количество пришлось
  * бы дописывать в адрес скриптом. Без JS форма работает как есть, скрипт
@@ -33,6 +38,7 @@ if (!defined('B_PROLOG_INCLUDED') || B_PROLOG_INCLUDED !== true) die();
 
 require_once $_SERVER['DOCUMENT_ROOT'] . SITE_TEMPLATE_PATH . '/include/catalog.php';
 require_once $_SERVER['DOCUMENT_ROOT'] . SITE_TEMPLATE_PATH . '/include/favorites.php';
+require_once $_SERVER['DOCUMENT_ROOT'] . SITE_TEMPLATE_PATH . '/include/waitlist.php';
 
 $cat = gg_catalog_category((string)($arParams['GG_CATEGORY_SLUG'] ?? ''));
 
@@ -120,6 +126,21 @@ $formAction = (string)parse_url((string)($_SERVER['REQUEST_URI'] ?? ''), PHP_URL
           <?= gg_fav_button((int)$arResult['ID'], $goods['name'], 'pbuy__fav', 'fav-form-' . (int)$arResult['ID']) ?>
         </form>
         <?= gg_fav_form((int)$arResult['ID'], 'fav-form-' . (int)$arResult['ID']) ?>
+
+<?php
+/* «СООБЩИТЬ О ПОСТУПЛЕНИИ» (23.09.2026). Только у позиции, которая идёт
+   заявкой менеджеру и которой нет на складе: остальное можно просто купить.
+   Сервер рисует кнопку сразу в нужном состоянии — подписан человек или нет, —
+   мигания «сначала не подписан, потом подписан» здесь нет. Формы лежат
+   отдельно: .pbuy__actions выше — сама форма, а вложенных форм HTML
+   не допускает. */
+$ggWaitId = (int)$arResult['ID'];
+$ggWaitForm = 'gg-wait-form-' . $ggWaitId;
+if (gg_wait_button_shown($kind, gg_item_quantity($arResult))):
+?>
+        <?= gg_wait_forms($ggWaitId, $ggWaitForm) ?>
+        <?= gg_wait_block($ggWaitId, $ggWaitForm) ?>
+<?php endif; ?>
 
         <?php /* Обещания и их иконки — те же три, что в прототипе
                  (src/data/product-copy.js). Иконка обязательна: строка

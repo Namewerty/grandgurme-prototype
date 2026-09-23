@@ -24,10 +24,16 @@ import { createLoginFlow } from './login-flow.js'
 const STOPS = 'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
 /**
- * @param {{ title: string, lead: string }} o заголовок и подводка шага телефона
+ * @param {object} o
+ * @param {string} o.title заголовок шага телефона
+ * @param {string} o.lead  подводка шага телефона
+ * @param {(phone: string) => Promise<object>} [o.requestCode] транспорт: выдать код
+ * @param {(phone: string, code: string) => Promise<object>} [o.verifyCode] транспорт: проверить код
+ *   Без них шаги ходят в api.js прототипа; на Битриксе окну передают
+ *   серверные запросы (src/bitrix/login-transport.js).
  * @returns {Promise<object|null>}
  */
-export function openLoginDialog({ title, lead }) {
+export function openLoginDialog({ title, lead, requestCode, verifyCode }) {
   return new Promise((resolve) => {
     const opener = document.activeElement
     let done = null
@@ -46,6 +52,8 @@ export function openLoginDialog({ title, lead }) {
       profileStep: false,
       heading: 'h2',
       phoneCopy: { title, lead },
+      ...(requestCode ? { requestCode } : {}),
+      ...(verifyCode ? { verifyCode } : {}),
       onComplete: (user) => {
         done = user
         dialog.close()

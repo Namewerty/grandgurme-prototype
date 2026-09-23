@@ -43,6 +43,84 @@ define('GG_PAGE_CLASS', 'page-account page-login');
 require($_SERVER['DOCUMENT_ROOT'] . '/bitrix/header.php');
 require_once $_SERVER['DOCUMENT_ROOT'] . SITE_TEMPLATE_PATH . '/include/account.php';
 
+/* -------------------------------------------------------------------------
+   Ajax для окна входа (23.09.2026).
+
+   Окно входа (src/js/account/login-dialog.js) открывается с карточки товара,
+   когда «Сообщить о поступлении» нажал гость. Шаги у него те же, что здесь,
+   но страницы вокруг нет — поэтому два ответа, дословно повторяющие
+   requestCode() и verifyCode() из api.js прототипа (записка
+   PERENOS-ikra-menyu-ozhidanie.md, раздел 3.2).
+
+   Ограничения по частоте и числу попыток общие с формами ниже: считает их
+   gg_auth_request_code / gg_auth_verify_code, а не страница.
+   ------------------------------------------------------------------------- */
+
+$ggAjax = (string)($_REQUEST['ajax'] ?? '');
+if ($ggAjax === 'code' || $ggAjax === 'verify') {
+    $ggSend = static function (array $data): void {
+        global $APPLICATION;
+        if ($APPLICATION instanceof CMain) {
+            $APPLICATION->RestartBuffer();
+        }
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode($data, JSON_UNESCAPED_UNICODE);
+        \CMain::FinalActions();
+        die();
+    };
+    if (!check_bitrix_sessid()) {
+        $ggSend(['ok' => false, 'error' => 'sessid']);
+    }
+
+    if ($ggAjax === 'code') {
+        $ggPhone = gg_phone_digits((string)($_POST['phone'] ?? ''));
+        if (strlen($ggPhone) < 10) {
+            $ggSend(['ok' => false, 'error' => 'phone']);
+        }
+        $ggResult = gg_auth_request_code($ggPhone);
+        if (empty($ggResult['ok'])) {
+            $ggSend(['ok' => false, 'error' => (string)($ggResult['error'] ?? 'rate_limit'), 'retryIn' => (int)($ggResult['retryIn'] ?? 60)]);
+        }
+        /* Номер запоминается в сессии так же, как у формы шага 1: verify
+           ниже берёт его оттуда и кода из чужого окна не примет. */
+        $_SESSION['GG_LOGIN_PHONE'] = $ggPhone;
+        $_SESSION['GG_LOGIN_STEP'] = 'code';
+        $_SESSION['GG_LOGIN_RESEND'] = time() + (int)($ggResult['resendIn'] ?? GG_RESEND_SECONDS);
+        $ggSend([
+            'ok' => true,
+            'resendIn' => (int)($ggResult['resendIn'] ?? GG_RESEND_SECONDS),
+            'codeLength' => GG_CODE_LENGTH,
+        ]);
+    }
+
+    $ggPhone = (string)($_SESSION['GG_LOGIN_PHONE'] ?? '');
+    if ($ggPhone === '') {
+        $ggSend(['ok' => false, 'error' => 'expired']);
+    }
+    $ggResult = gg_auth_verify_code($ggPhone, (string)($_POST['code'] ?? ''));
+    if (empty($ggResult['ok'])) {
+        $ggSend([
+            'ok' => false,
+            'error' => (string)($ggResult['error'] ?? 'expired'),
+            'attemptsLeft' => (int)($ggResult['attemptsLeft'] ?? 0),
+        ]);
+    }
+    /* Шага «Как к вам обращаться» у окна нет: имя человек заполнит в кабинете.
+       Кабинет для нового номера уже создан внутри gg_auth_verify_code. */
+    unset($_SESSION['GG_LOGIN_PHONE'], $_SESSION['GG_LOGIN_STEP'], $_SESSION['GG_LOGIN_RESEND'], $_SESSION['GG_LOGIN_CODE']);
+    gg_account_user_reset();
+    $ggUser = gg_account_user() ?? [];
+    $ggSend([
+        'ok' => true,
+        'isNew' => !empty($ggResult['isNew']),
+        'user' => [
+            'id' => (int)($ggUser['id'] ?? 0),
+            'name' => (string)($ggUser['name'] ?? ''),
+            'phone' => (string)($ggUser['phone'] ?? $ggPhone),
+        ],
+    ]);
+}
+
 $APPLICATION->SetTitle('Вход — №1 Гранд Гурмэ');
 $APPLICATION->SetPageProperty('robots', 'noindex, nofollow');
 

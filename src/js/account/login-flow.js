@@ -33,7 +33,7 @@ import { checkoutCopy } from '../../data/checkout-copy.js'
 import { escapeHtml } from '../catalog/model.js'
 import { PHONE_LENGTH, formatPhone, maskPhone, optionalEmail, phoneDigits, rules } from '../checkout/validate.js'
 import { icons } from '../icons.js'
-import { completeProfile, requestCode, verifyCode } from './api.js'
+import { completeProfile, requestCode as requestCodeLocal, verifyCode as verifyCodeLocal } from './api.js'
 import { createCodeStep } from './code-input.js'
 import { fill, phoneLabel } from './layout.js'
 import { currentUser } from './session.js'
@@ -78,6 +78,13 @@ const setBusy = (button, busy) => {
  * @param {'profile'|null} [o.start=null] начать сразу с шага профиля (демонстрация)
  * @param {(user: object, meta: { isNew: boolean }) => void} [o.onSignedIn]  после верного кода
  * @param {(user: object|null) => void} [o.onComplete]  шаги закончились
+ * @param {(phone: string) => Promise<object>} [o.requestCode]  выдать код
+ * @param {(phone: string, code: string) => Promise<object>} [o.verifyCode]  проверить код
+ *   Два последних — транспорт. По умолчанию это api.js прототипа
+ *   (localStorage, код 123456). На Битриксе шаги те же, но код выдаёт
+ *   и проверяет сервер, поэтому окно входа подсовывает сюда свои две
+ *   функции (src/bitrix/login-transport.js). Больше ничего в шагах
+ *   не меняется — иначе два входа разошлись бы.
  * @returns {{ signingIn: boolean, focus(): void, destroy(): void }}
  *   signingIn — true с момента отправки кода: странице входа нужно отличать
  *   свой вход от входа в соседней вкладке.
@@ -93,6 +100,8 @@ export function createLoginFlow(
     start = null,
     onSignedIn = () => {},
     onComplete = () => {},
+    requestCode = requestCodeLocal,
+    verifyCode = verifyCodeLocal,
   } = {},
 ) {
   const H = heading === 'h2' ? 'h2' : 'h1'

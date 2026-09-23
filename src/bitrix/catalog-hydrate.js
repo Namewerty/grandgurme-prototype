@@ -11,7 +11,15 @@
         прототипа (src/js/cart/add.js). Запрос не прошёл — форма уходит
         обычным способом и отвечает редиректом с тостом.
 
-     2. Выпадающие фильтры (details.drop) открыты по одному. В прототипе
+     2. «Сообщить о поступлении» на карточке товара (23.09.2026). Формы
+        .wait-form уходят с gg_wait_ajax=Y, сервер отвечает состоянием
+        кнопки и числом для счётчика кабинета. Гостю сервер отвечает
+        reason: 'guest' — тогда открывается окно входа
+        (src/js/account/login-dialog.js), и после верного кода страница
+        перезагружается: шапку, кнопку и лист сервер отрисует уже
+        для вошедшего.
+
+     3. Выпадающие фильтры (details.drop) открыты по одному. В прототипе
         это один поповер на все пилюли (src/js/catalog/filters.js): открыл
         «Линейку» — «Фасовка» закрылась. Родные <details> этого не умеют,
         и два списка ложились друг на друга. Клик мимо и Escape закрывают
@@ -20,7 +28,10 @@
 
 import gsap from 'gsap'
 import { cartCopy } from '../data/cart-copy.js'
+import { productCopy } from '../data/product-copy.js'
+import { openLoginDialog } from '../js/account/login-dialog.js'
 import { showToast } from '../js/cart/toast.js'
+import { requestCode, verifyCode } from './login-transport.js'
 
 const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
@@ -88,6 +99,69 @@ function hydrateQuickAdd(root) {
   })
 }
 
+/* ------------------------------------------ «сообщить о поступлении» */
+
+/**
+ * Кнопка на карточке. Без скрипта это две обычные формы, и они работают;
+ * здесь их нажатие перехватывается, чтобы страница не прыгала.
+ */
+function hydrateWaitlist(root) {
+  const block = root.querySelector('[data-wait]')
+  if (!block) return
+  const copy = productCopy.waitlist
+
+  const send = async (form) => {
+    const body = new FormData(form)
+    body.set('gg_wait_ajax', 'Y')
+    const response = await fetch(form.action || location.href, {
+      method: 'POST',
+      body,
+      credentials: 'same-origin',
+      headers: { 'X-Requested-With': 'XMLHttpRequest', Accept: 'application/json' },
+    })
+    if (!response.ok) throw new Error(`waitlist: ${response.status}`)
+    return response.json()
+  }
+
+  root.addEventListener('submit', async (event) => {
+    const form = event.target
+    if (!(form instanceof HTMLFormElement) || !form.matches('.wait-form')) return
+    event.preventDefault()
+
+    let result
+    try {
+      result = await send(form)
+    } catch {
+      form.submit()
+      return
+    }
+
+    if (result?.reason === 'guest') {
+      // Подписка живёт на номере кабинета: сначала вход, потом подписка.
+      const user = await openLoginDialog({ ...copy.login, requestCode, verifyCode })
+      if (!user) return
+      try {
+        await send(form)
+      } catch {
+        /* Вошли, но подписка не ушла — перезагрузка покажет настоящее
+           состояние кнопки, а не выдуманное. */
+      }
+      location.reload()
+      return
+    }
+    if (!result?.ok) return
+
+    // Разметку блока целиком рисует сервер (подписан / не подписан,
+    // номер в подписи, ссылка на лист) — повторять её здесь значило бы
+    // держать две правды. Поэтому перезагрузка.
+    showToast(
+      result.active ? copy.toastOn : copy.toastOff,
+      result.active ? { label: copy.toastOnAction.label, href: copy.toastOnAction.href } : undefined,
+    )
+    location.reload()
+  })
+}
+
 /* ------------------------------------------------------------ фильтры */
 
 function hydrateDrops(root) {
@@ -120,5 +194,6 @@ function hydrateDrops(root) {
 
 export function hydrateCatalog(root = document) {
   hydrateQuickAdd(root)
+  hydrateWaitlist(root)
   hydrateDrops(root)
 }

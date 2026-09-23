@@ -1276,16 +1276,41 @@ function gg_account_uri(): string
     return (string)\Bitrix\Main\Context::getCurrent()->getRequest()->getRequestUri();
 }
 
-/** Пункты бокового меню — MENU из layout.js. */
+/**
+ * Пункты бокового меню — MENU из layout.js.
+ *
+ * counted — откуда берётся число у пункта: 'fav' или 'wait'. Оно же уезжает
+ * в data-атрибут (data-acc-fav-count, data-acc-wait-count), по которому
+ * скрипт обновляет счётчик без перезагрузки.
+ */
 function gg_account_menu(): array
 {
     return [
         ['key' => 'overview', 'href' => '/account/', 'label' => 'Обзор', 'icon' => 'user'],
         ['key' => 'orders', 'href' => '/account/orders/', 'label' => 'Заказы и заявки', 'icon' => 'receipt'],
-        ['key' => 'favorites', 'href' => '/favorites/', 'label' => 'Избранное', 'icon' => 'heart', 'counted' => true],
+        ['key' => 'favorites', 'href' => '/favorites/', 'label' => 'Избранное', 'icon' => 'heart', 'counted' => 'fav'],
+        ['key' => 'waitlist', 'href' => '/account/waitlist/', 'label' => 'Лист ожидания', 'icon' => 'bell', 'counted' => 'wait'],
         ['key' => 'addresses', 'href' => '/account/addresses/', 'label' => 'Адреса', 'icon' => 'pin'],
         ['key' => 'profile', 'href' => '/account/profile/', 'label' => 'Личные данные', 'icon' => 'user'],
     ];
+}
+
+/**
+ * Число у пункта меню. Избранное и лист ожидания считаются по-разному, а
+ * include/waitlist.php подключён не на каждой странице кабинета — поэтому
+ * функция проверяется, а не вызывается вслепую.
+ */
+function gg_account_menu_count(string $kind): int
+{
+    /* Подключаем на месте, а не в шапке файла: include/waitlist.php и
+       include/favorites.php сами требуют account.php, и в шапке это была бы
+       кольцевая зависимость. К моменту вызова account.php уже определён. */
+    if ($kind === 'wait') {
+        require_once __DIR__ . '/waitlist.php';
+        return gg_wait_count();
+    }
+    require_once __DIR__ . '/favorites.php';
+    return gg_fav_count();
 }
 
 /**
@@ -1484,8 +1509,8 @@ function gg_account_frame_open(string $page, array $trail): void
 <?php foreach (gg_account_menu() as $item): $current = $item['key'] === $page; ?>
         <a class="acc__link<?= $current ? ' is-current' : '' ?>" href="<?= gg_e($item['href']) ?>"<?= $current ? ' aria-current="page"' : '' ?>>
           <span><?= gg_e($item['label']) ?></span>
-<?php   if (!empty($item['counted'])): $count = gg_fav_count(); ?>
-          <span class="acc__count"><?= $count > 0 ? (int)$count : '' ?></span>
+<?php   if (!empty($item['counted'])): $count = gg_account_menu_count((string)$item['counted']); ?>
+          <span class="acc__count" data-acc-<?= gg_e($item['counted']) ?>-count><?= $count > 0 ? (int)$count : '' ?></span>
 <?php   endif; ?>
         </a>
 <?php endforeach; ?>
@@ -1687,8 +1712,8 @@ function gg_account_section_rows(): void
         <a class="acc-rows__row" href="<?= gg_e($item['href']) ?>">
           <span class="acc-rows__icon" aria-hidden="true"><?= gg_icon($item['icon']) ?></span>
           <span class="acc-rows__label"><?= gg_e($item['label']) ?></span>
-<?php     if (!empty($item['counted'])): $count = gg_fav_count(); ?>
-          <span class="acc-rows__count"><?= $count > 0 ? (int)$count : '' ?></span>
+<?php     if (!empty($item['counted'])): $count = gg_account_menu_count((string)$item['counted']); ?>
+          <span class="acc-rows__count" data-acc-<?= gg_e($item['counted']) ?>-count><?= $count > 0 ? (int)$count : '' ?></span>
 <?php     endif; ?>
           <span class="acc-rows__chevron" aria-hidden="true"><?= gg_icon('chevronRight') ?></span>
         </a>

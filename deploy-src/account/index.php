@@ -24,6 +24,7 @@ define('GG_PAGE_CLASS', 'page-account');
 
 require($_SERVER['DOCUMENT_ROOT'] . '/bitrix/header.php');
 require_once $_SERVER['DOCUMENT_ROOT'] . SITE_TEMPLATE_PATH . '/include/account.php';
+require_once $_SERVER['DOCUMENT_ROOT'] . SITE_TEMPLATE_PATH . '/include/waitlist.php';
 
 /* Гость уходит на вход с возвратом сюда, и только потом разбираются формы:
    «Выйти», «Повторить заказ» и сердце нажимает тот, кто ещё вошёл. */
@@ -54,10 +55,19 @@ $favIds = gg_fav_ids();
 $favCount = count($favIds);
 $favCards = gg_account_fav_cards(array_slice($favIds, 0, 4));
 
+/* ---- лист ожидания -------------------------------------------------------- */
+
+/* Строка над «Сейчас в работе» — только если что-то из листа уже поступило.
+   Нет таких — узел остаётся на месте с hidden: его показывает скрипт
+   по событию waitlist:change, не перерисовывая страницу. */
+$waitArrived = gg_wait_arrived_count();
+
 gg_account_frame_open('overview', []);
 ?>
       <h1 class="acc-title"><?= gg_e($name !== '' ? 'Здравствуйте, ' . $name : 'Личный кабинет') ?></h1>
       <p class="acc-sub"><?= gg_e(gg_phone_format((string)($user['phone'] ?? ''))) ?></p>
+
+      <p class="acc-notice" data-wait-notice<?= $waitArrived > 0 ? '' : ' hidden' ?>>Поступили товары из листа ожидания: <?= (int)$waitArrived ?> <a class="link-btn" href="/account/waitlist/">Посмотреть</a></p>
 
       <section class="acc-block">
 <?php if ($active): ?>

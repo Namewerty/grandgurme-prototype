@@ -20,6 +20,7 @@ define('GG_PAGE_CLASS', 'page-product');
 
 require($_SERVER['DOCUMENT_ROOT'] . '/bitrix/header.php');
 require_once $_SERVER['DOCUMENT_ROOT'] . SITE_TEMPLATE_PATH . '/include/cart.php';
+require_once $_SERVER['DOCUMENT_ROOT'] . SITE_TEMPLATE_PATH . '/include/waitlist.php';
 
 $path = (string)parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH);
 $rest = trim(substr($path, strlen('/product')), '/');
@@ -46,6 +47,8 @@ $back = '/product/' . rawurlencode($code);
 if ($element) {
     gg_request_handle_post($back);
     gg_cart_add_handle($back);
+    /* «Сообщить о поступлении»: форма и ajax той же карточки. */
+    gg_wait_handle_post();
 }
 
 if (!$element) {
