@@ -119,15 +119,8 @@ function buildMedia(step, storyKey, index) {
   media.className = `origin__media${step.widget === 'cites' ? ' origin__media--cites' : ''}`
   media.dataset.originMedia = String(index)
 
-  if (step.media) {
-    const wrap = createImage({
-      src: step.media.src,
-      alt: step.media.alt,
-      ratio: step.media.ratio || '4:5',
-      className: 'origin__photo',
-    })
-    media.appendChild(wrap)
-  }
+  // Сам кадр кладёт fillPhotos() в initOrigin — после load страницы.
+  if (step.media) media._photo = step.media
 
   const uid = `origin-${storyKey}-${index}`
   const widget =
@@ -408,6 +401,36 @@ export function initOrigin() {
 
   section.querySelectorAll('[data-shell]').forEach(wireShell)
   section.querySelectorAll('[data-cites]').forEach(wireCites)
+
+  /* ---- кадры шагов — после load ------------------------------------------ */
+
+  /* Блок начинается в двух экранах от верха — в пределах порога ленивой
+     загрузки Chrome, а на широкой раскладке все пять кадров истории лежат
+     стопкой в одном месте. С loading="lazy" они уходили вместе с первым
+     экраном (на Vercel — до load). Поэтому <img> появляется после load или
+     раньше, если человек уже подбирается к блоку. */
+  let photos = false
+  const fillPhotos = () => {
+    if (photos) return
+    photos = true
+    section.querySelectorAll('[data-origin-media]').forEach((media) => {
+      const photo = media._photo
+      if (!photo) return
+      media.prepend(
+        createImage({ src: photo.src, alt: photo.alt, ratio: photo.ratio || '4:5', className: 'origin__photo' }),
+      )
+    })
+  }
+  if (document.readyState === 'complete') fillPhotos()
+  else window.addEventListener('load', fillPhotos, { once: true })
+  if ('IntersectionObserver' in window && !photos) {
+    const io = new IntersectionObserver((entries) => {
+      if (!entries.some((entry) => entry.isIntersecting)) return
+      io.disconnect()
+      fillPhotos()
+    }, { rootMargin: '600px 0px' })
+    io.observe(section)
+  }
 
   /* ---- старт -------------------------------------------------------------- */
 
