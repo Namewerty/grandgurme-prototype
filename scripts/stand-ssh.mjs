@@ -283,9 +283,12 @@ function cmdDeploy({ yes, force }) {
   }
 
   // 3. Сухой прогон: он и есть «что изменится».
-  // -rlpD — это -a без -t (даты), -g и -o (владелец и группа): владельца
-  // здесь меняем не мы, а по датам сравнивать нечего — сравнение по суммам.
-  const RSYNC = `rsync -rlpD --checksum --itemize-changes --chmod=Dg+ws,Fg+w --files-from=${LIST} ${STAGE}/ ${SITE}/`
+  // -rlD — это -a без -t, -g, -o и -p. Владельца и группу меняем не мы, по датам
+  // сравнивать нечего (сравнение по суммам), а -p опущен намеренно: с ним rsync
+  // пытается подровнять права УЖЕ СУЩЕСТВУЮЩИХ папок вроде /bitrix (она 0777),
+  // и падает — deploy не владелец. Без -p --chmod действует только на то, что
+  // rsync создаёт сам; чужие права остаются как были.
+  const RSYNC = `rsync -rlD --checksum --itemize-changes --chmod=Dg+ws,Fg+w --files-from=${LIST} ${STAGE}/ ${SITE}/`
   const dry = ssh(`${RSYNC} --dry-run`, { label: 'сухой прогон rsync' }).out
   const willChange = dry
     .split('\n')
