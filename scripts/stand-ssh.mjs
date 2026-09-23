@@ -333,9 +333,13 @@ function cmdDeploy({ yes, force }) {
   // -rlD — это -a без -t, -g, -o и -p. Владельца и группу меняем не мы, по датам
   // сравнивать нечего (сравнение по суммам), а -p опущен намеренно: с ним rsync
   // пытается подровнять права УЖЕ СУЩЕСТВУЮЩИХ папок вроде /bitrix (она 0777),
-  // и падает — deploy не владелец. Без -p --chmod действует только на то, что
-  // rsync создаёт сам; чужие права остаются как были.
-  const RSYNC = `rsync -rlD --checksum --itemize-changes --chmod=Dg+ws,Fg+w --files-from=${LIST} ${STAGE}/ ${SITE}/`
+  // и падает — deploy не владелец.
+  //
+  // umask 002 — не украшение. Без -p новый файл получает права по umask, и при
+  // обычной 022 это 0644: читать его php-fpm (www-data) может, а записать —
+  // нет. На странице /storage/, которую правят в админке, это значит «правка
+  // не сохраняется». С umask 002 файл выходит 0664, папка — 2775.
+  const RSYNC = `umask 002; rsync -rlD --checksum --itemize-changes --chmod=Dg+ws,Fg+w --files-from=${LIST} ${STAGE}/ ${SITE}/`
   const dry = ssh(`${RSYNC} --dry-run`, { label: 'сухой прогон rsync' }).out
   const willChange = dry
     .split('\n')
@@ -379,6 +383,13 @@ function cmdDeploy({ yes, force }) {
   const real = ssh(RSYNC, { label: 'заливка rsync' }).out
   const written = real.split('\n').filter((l) => /^[<>c]f/.test(l)).length
   say(`Залито ${plural(written, 'файл', 'файла', 'файлов')}.`)
+
+  /* Права на уже лежавшие файлы umask не исправит: их создала прошлая заливка
+     с 0644. Правим то, чем владеем сами, — чужие файлы не трогаем. */
+  ssh(
+    `cd ${SITE} && while IFS= read -r f; do [ -O "$f" ] && chmod g+w "$f"; case "$f" in */*) d="\${f%/*}"; [ -O "$d" ] && chmod g+ws "$d";; esac; done < ${LIST}; true`,
+    { allowFail: true, label: 'групповая запись на залитых файлах' }
+  )
 
   // 6. Манифест — на него смотрят stand:drift и stand-deploy.php.
   ssh(`mkdir -p ${SITE}/local/gg-stand && cat > ${SITE}${MANIFEST}`, {
