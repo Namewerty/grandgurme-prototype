@@ -41,6 +41,7 @@ import {
   dirtyList,
   git,
   md5lf,
+  pad,
   requireBuild,
 } from './stand-files.mjs'
 
@@ -59,6 +60,13 @@ const CHECK_BASE = 'https://bitrix.grandgurme.ru'
 const CHECK_URLS = ['/', '/catalog/', '/catalog/ryba/', '/cart/', '/account/login/']
 
 const say = (line = '') => console.log(line)
+/** «1 файл», «3 файла», «5 файлов» — иначе итоговая строка читается как черновик. */
+const plural = (n, one, few, many) => {
+  const d = n % 100
+  if (d > 10 && d < 20) return `${n} ${many}`
+  const u = n % 10
+  return `${n} ${u === 1 ? one : u >= 2 && u <= 4 ? few : many}`
+}
 const die = (line) => {
   console.error('[stand-ssh] ' + line)
   closeSsh()
@@ -242,7 +250,7 @@ function cmdDrift() {
   say('')
   say(
     total
-      ? `Итог: коммит ${last.commit.slice(0, 7)}, расхождений ${total} — перенести в репозиторий (npm run stand:pull -- <путь>) до следующей заливки.`
+      ? `Итог: коммит ${last.commit.slice(0, 7)}, ${plural(total, 'расхождение', 'расхождения', 'расхождений')} — перенести в репозиторий (npm run stand:pull -- <путь>) до следующей заливки.`
       : `Итог: коммит ${last.commit.slice(0, 7)}, расхождений нет — стенд совпадает с последней заливкой.`
   )
 }
@@ -267,11 +275,11 @@ function cmdDeploy({ yes, force }) {
       say('')
       if (!force) {
         die(
-          `на стенде ${changed.length + gone.length} правок мимо репозитория. Заберите их (npm run stand:pull -- <путь>) ` +
-            'или, если они заведомо не нужны, повторите с --force.'
+          `на стенде ${plural(changed.length + gone.length, 'правка', 'правки', 'правок')} мимо репозитория. ` +
+            'Заберите их (npm run stand:pull -- <путь>) или, если они заведомо не нужны, повторите с --force.'
         )
       }
-      say(`--force: перечисленное выше будет перезаписано (${changed.length + gone.length}).`)
+      say(`--force: перечисленное выше будет перезаписано — ${plural(changed.length + gone.length, 'файл', 'файла', 'файлов')}.`)
       say('')
     }
   }
@@ -313,17 +321,20 @@ function cmdDeploy({ yes, force }) {
     }
   }
   say('')
-  say(`Изменится файлов: ${willChange.length} из ${serverPaths.length}.`)
+  say(`Изменится ${plural(willChange.length, 'файл', 'файла', 'файлов')} из ${serverPaths.length}.`)
 
   if (!yes) {
     say('')
-    say(`Итог: коммит ${short}, изменится ${willChange.length} файлов, копия не делалась (сухой прогон).`)
+    say(`Итог: коммит ${short}, изменится ${plural(willChange.length, 'файл', 'файла', 'файлов')}, копия не делалась (сухой прогон).`)
     say('Залить: npm run stand:deploy -- --yes')
     return
   }
 
-  // 4. Копия того, что будет перезаписано, — до заливки.
-  const backup = `${archiveDir}/backup-${date}-${short}.tar.gz`
+  // 4. Копия того, что будет перезаписано, — до заливки. В имени есть время:
+  // за день один коммет заливают по нескольку раз, и без времени вторая копия
+  // затирала бы первую — то есть ровно ту версию, к которой хочется вернуться.
+  const now = new Date()
+  const backup = `${archiveDir}/backup-${date}-${pad(now.getHours())}${pad(now.getMinutes())}-${short}.tar.gz`
   const backupList = willChange.map((p) => p.replace(/^\//, '')).join('\n') + '\n'
   const made = ssh(
     `cat > $HOME/.gg-stand-backup.txt && cd ${SITE} && ` +
@@ -333,12 +344,12 @@ function cmdDeploy({ yes, force }) {
     { input: backupList, label: 'копия перед заливкой' }
   ).out.trim()
   say('')
-  say(`Копия: ${backup} (файлов ${made})`)
+  say(`Копия: ${backup} — ${plural(Number(made) || 0, 'файл', 'файла', 'файлов')}`)
 
   // 5. Заливка.
   const real = ssh(RSYNC, { label: 'заливка rsync' }).out
   const written = real.split('\n').filter((l) => /^[<>c]f/.test(l)).length
-  say(`Залито файлов: ${written}`)
+  say(`Залито ${plural(written, 'файл', 'файла', 'файлов')}.`)
 
   // 6. Манифест — на него смотрят stand:drift и stand-deploy.php.
   ssh(`mkdir -p ${SITE}/local/gg-stand && cat > ${SITE}${MANIFEST}`, {
@@ -349,7 +360,15 @@ function cmdDeploy({ yes, force }) {
   // 7. Кеш Битрикса — только эти три папки.
   const cache = CACHE_DIRS.map((d) => `[ -d "${d}" ] && find "${d}" -mindepth 1 -maxdepth 1 -exec rm -rf {} +`).join('; ')
   const cacheRun = ssh(`cd ${SITE}; ${cache}; true`, { allowFail: true, label: 'чистка кеша' })
-  say(cacheRun.code === 0 && !cacheRun.err.trim() ? 'Кеш очищен: ' + CACHE_DIRS.join(', ') : 'Кеш очищен с замечаниями: ' + cacheRun.err.trim())
+  // Часть кеша пишет php-fpm (www-data) в подпапки без групповой записи —
+  // такие файлы deploy удалить не может. Битрикс их перепишет сам, но знать
+  // об этом надо: строка про права — в README, «Инфраструктура».
+  const stuck = cacheRun.err.split('\n').filter((l) => l.includes('Permission denied')).length
+  say(
+    stuck
+      ? `Кеш очищен частично: ${plural(stuck, 'файл', 'файла', 'файлов')} не удалить — их писал www-data в папки без групповой записи.`
+      : 'Кеш очищен: ' + CACHE_DIRS.join(', ')
+  )
 
   // 8. Проверка: страницы отвечают, манифест на месте, суммы сошлись.
   say('')
@@ -391,7 +410,7 @@ function cmdDeploy({ yes, force }) {
   }
 
   say('')
-  say(`Итог: коммит ${short}, изменилось ${willChange.length} файлов, копия ${backup}`)
+  say(`Итог: коммит ${short}, изменилось ${plural(willChange.length, 'файл', 'файла', 'файлов')}, копия ${backup}`)
   say(`Откат: ssh ${HOST} "tar -xzf ${backup} -C ${SITE}"`)
   if (bad) {
     say('')
