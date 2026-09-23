@@ -140,8 +140,17 @@ function remoteMd5(serverPaths) {
   return md5
 }
 
-/** Расхождения стенда с последним манифестом: правки, сделанные мимо репозитория. */
-function drift(last) {
+/**
+ * Расхождения стенда с последним манифестом: правки, сделанные мимо репозитория.
+ *
+ * Правило то же, что в stand-deploy.php: файл — расхождение, только если он не
+ * совпал НИ с прошлой заливкой, НИ с тем, что мы сейчас собрали. Совпал с новой
+ * сборкой — значит, это ровно то содержимое, которое мы и собирались положить
+ * (так бывает после заливки, оборвавшейся до записи манифеста), и хвататься
+ * за него незачем. Без сборки (npm run stand:drift) сравнивать не с чем —
+ * тогда сравнение только с манифестом.
+ */
+function drift(last, build = null) {
   const paths = Object.keys(last.files)
   const md5 = remoteMd5(paths)
   const changed = []
@@ -149,6 +158,7 @@ function drift(last) {
   for (const path of paths) {
     const cur = md5.get(path) ?? ''
     if (cur === last.files[path]) continue
+    if (build && cur === build[path]) continue
     ;(cur === '' ? gone : changed).push(path)
   }
   return { changed, gone }
@@ -250,7 +260,7 @@ function cmdDeploy({ yes, force }) {
 
   // 1. Правки на стенде мимо репозитория.
   if (last) {
-    const { changed, gone } = drift(last)
+    const { changed, gone } = drift(last, manifest.files)
     if (changed.length || gone.length) {
       for (const p of changed) say('ИЗМЕНЁН НА СТЕНДЕ  ' + p)
       for (const p of gone) say('УДАЛЁН НА СТЕНДЕ   ' + p)
