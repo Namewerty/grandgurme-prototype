@@ -385,10 +385,12 @@ function cmdDeploy({ yes, force }) {
   say(`Залито ${plural(written, 'файл', 'файла', 'файлов')}.`)
 
   /* Права на уже лежавшие файлы umask не исправит: их создала прошлая заливка
-     с 0644. Правим то, чем владеем сами, — чужие файлы не трогаем. */
+     с 0644, и php-fpm их только читает. Правим то, чем владеем сами, — чужие
+     файлы не трогаем. Список берём полный, а не тот, что уехал rsync-ом:
+     страницу из админки rsync не трогает, а записывать её www-data должен. */
   ssh(
-    `cd ${SITE} && while IFS= read -r f; do [ -O "$f" ] && chmod g+w "$f"; case "$f" in */*) d="\${f%/*}"; [ -O "$d" ] && chmod g+ws "$d";; esac; done < ${LIST}; true`,
-    { allowFail: true, label: 'групповая запись на залитых файлах' }
+    `cd ${SITE} && while IFS= read -r f; do [ -O "$f" ] && chmod g+w "$f"; case "$f" in */*) d="\${f%/*}"; [ -O "$d" ] && chmod g+ws "$d";; esac; done; true`,
+    { input: listText, allowFail: true, label: 'групповая запись на залитых файлах' }
   )
 
   // 6. Манифест — на него смотрят stand:drift и stand-deploy.php.
