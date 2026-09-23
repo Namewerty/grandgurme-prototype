@@ -105,8 +105,16 @@ function hydrateQuickAdd(root) {
  * Кнопка на карточке. Без скрипта это две обычные формы, и они работают;
  * здесь их нажатие перехватывается, чтобы страница не прыгала.
  */
+/** Число у пункта «Лист ожидания» в меню кабинета, если оно на странице есть. */
+function paintWaitCount(n) {
+  if (!Number.isFinite(n)) return
+  document.querySelectorAll('[data-acc-wait-count]').forEach((node) => {
+    node.textContent = n > 0 ? String(n) : ''
+  })
+}
+
 function hydrateWaitlist(root) {
-  const block = root.querySelector('[data-wait]')
+  let block = root.querySelector('[data-wait]')
   if (!block) return
   const copy = productCopy.waitlist
 
@@ -151,14 +159,24 @@ function hydrateWaitlist(root) {
     }
     if (!result?.ok) return
 
-    // Разметку блока целиком рисует сервер (подписан / не подписан,
-    // номер в подписи, ссылка на лист) — повторять её здесь значило бы
-    // держать две правды. Поэтому перезагрузка.
-    showToast(
-      result.active ? copy.toastOn : copy.toastOff,
-      result.active ? { label: copy.toastOnAction.label, href: copy.toastOnAction.href } : undefined,
-    )
-    location.reload()
+    // Разметку блока рисует сервер и присылает её готовой: повторять сборку
+    // здесь значило бы держать две правды. Меняем блок на месте — страница
+    // не дёргается, и тост доживает до нажатия на «Вернуть».
+    if (result.html) {
+      block.outerHTML = result.html
+      block = root.querySelector('[data-wait]')
+    }
+    paintWaitCount(Number(result.count))
+
+    if (result.active) {
+      showToast(copy.toastOn, { label: copy.toastOnAction.label, href: copy.toastOnAction.href })
+      return
+    }
+    // «Вернуть» — та же форма подписки, что и была: другого действия здесь нет.
+    showToast(copy.toastOff, {
+      label: copy.toastUndo,
+      onClick: () => root.querySelector('.wait-form')?.requestSubmit(),
+    })
   })
 }
 

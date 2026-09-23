@@ -432,7 +432,12 @@ function gg_wait_handle_post(): void
             $toast = gg_wait_add($id) ? $texts['toastOn'] : '';
             $toastHref = $toast !== '' ? '/account/waitlist/' : '';
         } elseif ($action === 'remove') {
-            $toast = gg_wait_remove($id) ? $texts['toastOff'] : '';
+            /* На карточке это «Не будем сообщать о поступлении», на странице
+               листа — «Убрали из листа ожидания»: там человек убирает строку,
+               а не отменяет подписку на товар, который смотрит. Тексты —
+               product-copy.js и account-copy.js прототипа. */
+            $onList = strpos(gg_wait_back_url(), '/account/waitlist/') === 0;
+            $toast = gg_wait_remove($id) ? ($onList ? $texts['toastRemoved'] : $texts['toastOff']) : '';
         } elseif ($action === 'take' && function_exists('gg_cart_put')) {
             /* «В корзину» / «Добавить в заявку» у поступившей позиции:
                человек своё дождался, и запись уходит из листа. */
@@ -446,9 +451,21 @@ function gg_wait_handle_post(): void
     }
 
     if ($ajax) {
+        /* Блок кнопки отдаём готовой разметкой: рисует его сервер (подписан
+           или нет, номер в подписи, ссылка на лист), и держать вторую такую
+           же сборку в скрипте значило бы держать две правды. Страница тогда
+           не перезагружается — и тост с «Вернуть» на ней доживает до того,
+           как на него нажмут. */
         gg_wait_json($guest
             ? ['ok' => false, 'reason' => 'guest']
-            : ['ok' => true, 'id' => $id, 'active' => gg_wait_has($id), 'count' => gg_wait_count(), 'toast' => $toast]);
+            : [
+                'ok' => true,
+                'id' => $id,
+                'active' => gg_wait_has($id),
+                'count' => gg_wait_count(),
+                'toast' => $toast,
+                'html' => gg_wait_block($id, 'gg-wait-form-' . $id),
+            ]);
     }
 
     if ($guest) {
