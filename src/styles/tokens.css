@@ -114,7 +114,9 @@
   --radius-card-sm: 10px;
 
   --topbar-h: 40px;
-  --header-h: 58px;
+  /* Высота шапки: 62 / 84px (было 58 / 76). Прибавка — под крупный логотип,
+     см. .header__logo img в components/header.css. */
+  --header-h: 62px;
   --ring-size: 44px;
 
   /* Плавающий виджет эксперта. Отсюда же считает свою позицию тост корзины,
@@ -131,7 +133,7 @@
 }
 
 @media (min-width: 1024px) {
-  :root { --header-h: 76px; }
+  :root { --header-h: 84px; }
 }
 
 @media (max-width: 767px) {
