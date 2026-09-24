@@ -63,20 +63,28 @@ if ($own && CModule::IncludeModule('sale')) {
     try {
         $order = \Bitrix\Sale\Order::load((int)$own['id']);
         if ($order) {
-            $orderTotal = (float)$order->getPrice();
-            $ids = [];
+            /* Предложения одного товара — одна строка: «Коробки 202 и 204 г»
+               (gg_order_lines, include/boxes.php). Итог — сумма строк, как
+               в корзине: цена коробки до рубля, а Битрикс хранит сумму по весу
+               с копейками. Доставку в заказ сайт не пишет (checkout.php). */
+            $rows = [];
             foreach ($order->getBasket() as $item) {
-                $ids[] = (int)$item->getProductId();
-            }
-            $goods = gg_goods_info_for_ids($ids);
-            foreach ($order->getBasket() as $item) {
-                $pid = (int)$item->getProductId();
-                $items[] = [
-                    'name' => (string)($goods[$pid]['name'] ?? $item->getField('NAME')),
-                    'note' => gg_line_weight($goods[$pid] ?? null),
-                    'qty' => (int)$item->getQuantity(),
-                    'sum' => (float)$item->getPrice() * (int)$item->getQuantity(),
+                $rows[] = [
+                    'productId' => (int)$item->getProductId(),
+                    'name' => (string)$item->getField('NAME'),
+                    'qty' => (float)$item->getQuantity(),
+                    'price' => (float)$item->getPrice(),
                 ];
+            }
+            $orderTotal = 0.0;
+            foreach (gg_order_lines($rows) as $line) {
+                $items[] = [
+                    'name' => $line['name'],
+                    'note' => $line['note'],
+                    'qty' => $line['qty'],
+                    'sum' => $line['sum'],
+                ];
+                $orderTotal += $line['sum'];
             }
         }
     } catch (\Throwable $e) {

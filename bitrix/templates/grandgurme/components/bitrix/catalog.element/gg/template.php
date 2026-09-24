@@ -26,6 +26,15 @@
  * окно входа (src/bitrix/catalog-hydrate.js); без JS форма уводит на страницу
  * входа с возвратом сюда.
  *
+ * КОРОБКИ (24.09.2026) — include/boxes.php. У товара, который продаётся
+ * коробками разного веса, как в прототипе: под названием цена коробки по
+ * умолчанию (ближайшей к номиналу) и мелко «за коробку 202 г», под ценой
+ * строка про цену за 100 г, ниже ряд «Коробка» с весами. Сервер рисует
+ * его обычным <select name="packs[]"> — без скрипта форма кладёт выбранную
+ * коробку, недостающие до количества подбирает сервер. Скрипт
+ * (src/bitrix/box-hydrate.js) ставит поверх селектор прототипа. Степпер
+ * не даёт положить больше свободных коробок.
+ *
  * СТЕППЕР И «В КОРЗИНУ» — ОДНА ФОРМА, и форма эта и есть .pbuy__actions:
  * отдельная обёртка сломала бы ряд кнопок, а без формы количество пришлось
  * бы дописывать в адрес скриптом. Без JS форма работает как есть, скрипт
@@ -47,6 +56,12 @@ $goods = gg_goods_info_for_ids([(int)$arResult['ID']])[(int)$arResult['ID']]
     ?? ['name' => (string)$arResult['NAME'], 'weight' => '', 'weighed' => false, 'article' => ''];
 
 $price = gg_item_price($arResult);
+
+/* Коробки: свободные, по умолчанию — ближайшая к номиналу (boxes.php). */
+$ggLive = gg_products_live([(int)$arResult['ID']])[(int)$arResult['ID']] ?? [];
+$ggSale = $ggLive['sale'] ?? null;
+$ggBox = ($ggSale && $ggSale['mode'] === 'box' && $ggSale['packs'] && $ggSale['price'] !== null) ? $ggSale : null;
+$ggPack = $ggBox ? gg_pick_packs($ggBox['packs'], 1, $ggBox['nominalG'])[0] : null;
 
 /* Вид считает только gg_item_kind: цена, живой остаток, CAN_BUY компонента
    и раздел витрины. Раздел карточки ($cat) определён по разделам товара
@@ -96,18 +111,44 @@ $formAction = (string)parse_url((string)($_SERVER['REQUEST_URI'] ?? ''), PHP_URL
         <p class="pbuy__article">Артикул <?= gg_e($goods['article']) ?></p>
 <?php endif; ?>
         <h1 class="pbuy__title"><?= gg_e($title) ?></h1>
+<?php if ($ggBox): ?>
+        <p class="pbuy__line"><?= gg_e(gg_box_words($ggBox['noun'])['title'] . ' около ' . $ggBox['nominalG'] . ' г') ?></p>
+        <p class="pbuy__price" data-price><?= gg_e(gg_price((float)gg_pack_price($ggBox['price'], $ggPack['g']))) ?>
+          <span class="pbuy__price-unit"><?= gg_e('за ' . gg_box_words($ggBox['noun'])['acc'][0] . ' ' . $ggPack['g'] . ' г') ?></span></p>
+        <p class="pbuy__boxes"><?= gg_e(gg_price($ggBox['price'] / 10) . ' за 100 г · каждая ' . $ggBox['noun'] . ' взвешена, цена по её весу') ?></p>
+<?php else: ?>
 <?php if ($goods['weight'] !== ''): ?>
         <p class="pbuy__line"><?= gg_e($goods['weight']) ?></p>
 <?php endif; ?>
-        <p class="pbuy__price"><?= gg_e(gg_price(gg_shelf_price($price, $goods['weighed']))) ?></p>
+        <p class="pbuy__price"><?= gg_e(gg_price(gg_shelf_price($price, $goods))) ?></p>
+<?php endif; ?>
         <div class="pbuy__kind">
           <?= gg_stock_tag($kind) ?>
           <p class="pbuy__kind-text"><?= gg_e($kindText) ?></p>
         </div>
+<?php if ($ggBox):
+    $ggWords = gg_box_words($ggBox['noun']);
+?>
+        <?php /* Ряд выбора коробки. Без скрипта — обычный список весов в форме
+                 pbuy-form; скрипт ставит поверх селектор прототипа. */ ?>
+        <div class="pbuy__row pbuy__row--boxes" data-form="pbuy-form" data-box-picker="<?= gg_e(json_encode([
+            'free' => array_map(static fn($pack) => ['id' => (string)$pack['id'], 'weightG' => $pack['g']], $ggBox['packs']),
+            'nominalG' => $ggBox['nominalG'],
+            'pricePerKg' => $ggBox['price'],
+            'copy' => gg_box_js_copy($ggBox['noun']),
+        ], JSON_UNESCAPED_UNICODE)) ?>">
+          <label class="pbuy__label" for="pbuy-box-select"><?= gg_e($ggWords['title']) ?></label>
+          <select class="field__input pbuy__select" id="pbuy-box-select" name="packs[]" form="pbuy-form">
+<?php foreach ($ggBox['packs'] as $pack): ?>
+            <option value="<?= (int)$pack['id'] ?>"<?= $pack['id'] === $ggPack['id'] ? ' selected' : '' ?>><?= gg_e($pack['g'] . ' г — ' . gg_price((float)gg_pack_price($ggBox['price'], $pack['g']))) ?></option>
+<?php endforeach; ?>
+          </select>
+        </div>
+<?php endif; ?>
 
         <?php /* Одна форма на оба пути: «в корзину» — ADD2BASKET, «в заявку» —
                  request_add. POST с проверкой сессии; без JS работает как есть. */ ?>
-        <form class="pbuy__actions" method="post" action="<?= gg_e($formAction) ?>">
+        <form class="pbuy__actions" id="pbuy-form" method="post" action="<?= gg_e($formAction) ?>">
           <?= bitrix_sessid_post() ?>
 <?php if ($kind === 'request'): ?>
           <input type="hidden" name="gg_action" value="request_add">
@@ -118,7 +159,7 @@ $formAction = (string)parse_url((string)($_SERVER['REQUEST_URI'] ?? ''), PHP_URL
           <div class="qty" data-qty-hydrate role="group" aria-label="Количество">
             <button type="button" class="qty__btn" data-step="-1" aria-label="Меньше"><?= gg_icon('minus') ?></button>
             <input class="qty__value" type="text" inputmode="numeric" autocomplete="off"
-                   name="quantity" value="1" min="1" max="99" maxlength="2" aria-label="Количество">
+                   name="quantity" value="1" min="1" max="<?= $ggBox ? min(GG_MAX_QTY, count($ggBox['packs'])) : GG_MAX_QTY ?>" maxlength="2" aria-label="Количество">
             <button type="button" class="qty__btn" data-step="1" aria-label="Больше"><?= gg_icon('plus') ?></button>
           </div>
           <button type="submit" class="btn btn--solid"><?= $kind === 'request' ? 'Добавить в заявку' : 'В корзину' ?></button>

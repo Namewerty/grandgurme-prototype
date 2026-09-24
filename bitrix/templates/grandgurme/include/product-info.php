@@ -91,7 +91,13 @@ function gg_weight_from_text(string $text): string
 /**
  * Название, вес, признак весового товара и артикул по списку ID — одним запросом.
  *
- * @return array ID → ['name' => …, 'weight' => «50 г»|«100 г»|'', 'weighed' => bool, 'article' => …]
+ * КОРОБКИ (24.09.2026, boxes.php). Весовой товар, который продаётся
+ * коробками, на витрине — стандарт, как решил Денис 23.09: «Коробка 200 г»
+ * (номинал — медиана весов свободных коробок) и цена такой коробки, без «≈».
+ * Тогда 'weighed' => false, а в 'box' — номинал, цена за килограмм и слово.
+ *
+ * @return array ID → ['name' => …, 'weight' => «50 г»|«100 г»|«Коробка 200 г»|'', 'weighed' => bool,
+ *                     'article' => …, 'box' => null|['nominalG', 'pricePerKg', 'noun']]
  */
 function gg_goods_info_for_ids(array $ids): array
 {
@@ -100,6 +106,7 @@ function gg_goods_info_for_ids(array $ids): array
     $missing = array_values(array_diff($ids, array_keys($cache)));
 
     if ($missing && CModule::IncludeModule('iblock')) {
+        $weighedIds = [];
         $res = CIBlockElement::GetList(
             [],
             ['IBLOCK_ID' => gg_map()['iblockId'], 'ID' => $missing],
@@ -129,7 +136,25 @@ function gg_goods_info_for_ids(array $ids): array
                 'weight' => $weight,
                 'weighed' => $weighed,
                 'article' => trim((string)$row['PROPERTY_CML2_ARTICLE_VALUE']),
+                'box' => null,
             ];
+            if ($weighed) {
+                $weighedIds[] = $id;
+            }
+        }
+
+        /* Весовой товар с коробками: стандартный вес и цена вместо «100 г».
+           Кеш выше уже заполнен — gg_sale_info может спросить отсюда же. */
+        if ($weighedIds && function_exists('gg_products_live')) {
+            foreach (gg_products_live($weighedIds) as $id => $live) {
+                $sale = $live['sale'] ?? null;
+                if (!$sale || $sale['mode'] !== 'box' || !$sale['packs'] || $sale['price'] === null) {
+                    continue;
+                }
+                $cache[$id]['weight'] = gg_box_label($sale['noun'], $sale['nominalG']);
+                $cache[$id]['weighed'] = false;
+                $cache[$id]['box'] = ['nominalG' => $sale['nominalG'], 'pricePerKg' => $sale['price'], 'noun' => $sale['noun']];
+            }
         }
     }
 
@@ -145,12 +170,19 @@ function gg_goods_info_for_ids(array $ids): array
 /**
  * Цена на витрине. У весового товара цена в 1С стоит за килограмм,
  * а витрина показывает 100 г — делим на десять, как на grandgurme.ru.
+ * У товара в коробках — цена коробки номинального веса, до рубля.
+ *
+ * $info — строка gg_goods_info_for_ids или, по-старому, признак весового.
  */
-function gg_shelf_price(?float $price, bool $weighed): ?float
+function gg_shelf_price(?float $price, $info): ?float
 {
     if ($price === null) {
         return null;
     }
+    if (is_array($info) && !empty($info['box'])) {
+        return (float)gg_pack_price((float)$info['box']['pricePerKg'], (int)$info['box']['nominalG']);
+    }
+    $weighed = is_array($info) ? !empty($info['weighed']) : (bool)$info;
     return $weighed ? round($price / 10, 2) : $price;
 }
 

@@ -173,7 +173,7 @@ function gg_wait_entries(): array
             'addedAt' => $added[$id] ?? 0,
             'status' => $status,
             'kind' => gg_item_kind($item),
-            'price' => gg_price(gg_shelf_price($item['price'], (bool)$info['weighed'])),
+            'price' => gg_price(gg_shelf_price($item['price'], $info)),
         ];
     }
 

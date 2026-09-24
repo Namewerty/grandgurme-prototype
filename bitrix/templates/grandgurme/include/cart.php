@@ -18,6 +18,13 @@
  * за видом (gg_cart_sync): позиция корзины, ставшая заявкой, переезжает
  * в cookie, позиция заявки, которую снова можно купить, — в корзину.
  *
+ * ТОВАР С ПРЕДЛОЖЕНИЯМИ (24.09.2026, boxes.php). В корзине Битрикса лежат
+ * предложения — коробки, партии, развес, — а строка корзины одна на товар:
+ * gg_basket_lines собирает предложения обратно. Такая строка адресуется
+ * не ID строки Битрикса, а 'p<ID товара>', и её количество — у коробок
+ * число коробок, у партий — штуки по всем партиям. Сколько и каких
+ * предложений положить, решает gg_basket_put.
+ *
  * ПОЧЕМУ НЕ ШАБЛОН sale.basket.basket. Разметка корзины обязана совпасть
  * с прототипом до класса — стили общие. Родной компонент приносит свой
  * JS на тысячи строк и свою разметку.
@@ -59,6 +66,15 @@ function gg_basket(bool $reload = false): ?\Bitrix\Sale\Basket
 /**
  * Строки корзины Битрикса простыми массивами: разметка о Битриксе не знает.
  * Вид строки — по живому остатку, цене и доступности товара.
+ *
+ * Предложения одного товара — одна строка (boxes.php):
+ *   'id'        'p<ID товара>' — адрес строки в формах корзины;
+ *   'items'     ID строк Битрикса, по возрастанию — в порядке добавления;
+ *   'basketProductIds' — ID предложений: по ним заказ раскладывается по
+ *               отгрузкам;
+ *   'box'       у коробок: выбранные коробки, свободные коробки товара
+ *               и всё, что нужно окну «Выбрать другие».
+ * Обычный товар — строка на строку Битрикса, 'id' — её ID, как раньше.
  */
 function gg_basket_lines(): array
 {
@@ -76,8 +92,11 @@ function gg_basket_lines(): array
     if (!$items) {
         return [];
     }
+    usort($items, static fn($a, $b) => (int)$a->getId() <=> (int)$b->getId());
 
-    $productIds = array_map(static fn($item) => (int)$item->getProductId(), $items);
+    $basketIds = array_map(static fn($item) => (int)$item->getProductId(), $items);
+    $parents = gg_offer_parents($basketIds);
+    $productIds = array_values(array_unique(array_map(static fn($id) => $parents[$id] ?? $id, $basketIds)));
     $props = gg_props_for_ids($productIds, ['UPAKOVKA', 'CML2_ARTICLE']);
     $elements = gg_elements_for_ids($productIds);
     $live = gg_products_live($productIds);
@@ -86,26 +105,261 @@ function gg_basket_lines(): array
 
     $lines = [];
     foreach ($items as $item) {
-        $pid = (int)$item->getProductId();
-        $name = (string)($goods[$pid]['name'] ?? ($elements[$pid]['NAME'] ?? $item->getField('NAME')));
-        $code = (string)($elements[$pid]['CODE'] ?? '');
-        $price = (float)$item->getPrice();
+        $basketId = (int)$item->getProductId();
+        $pid = $parents[$basketId] ?? $basketId;
+        $key = isset($parents[$basketId]) ? 'p' . $pid : (string)(int)$item->getId();
         $data = $live[$pid] ?? ['id' => $pid, 'price' => null, 'quantity' => 0.0, 'canBuy' => false];
+        $sale = $data['sale'] ?? null;
+        $price = (float)$item->getPrice();
+        $q = (float)$item->getQuantity();
 
-        $lines[] = [
-            'id' => (int)$item->getId(),
-            'productId' => $pid,
-            'code' => $code,
-            'name' => $name,
-            'note' => gg_line_weight($goods[$pid] ?? null),
-            'article' => trim((string)($props[$pid]['CML2_ARTICLE'] ?? '')),
-            'href' => $code !== '' ? '/product/' . $code : '/catalog',
-            'price' => $price > 0 ? $price : null,
-            'qty' => max(1, (int)$item->getQuantity()),
-            'kind' => gg_item_kind($data),
-        ];
+        if (!isset($lines[$key])) {
+            $name = (string)($goods[$pid]['name'] ?? ($elements[$pid]['NAME'] ?? $item->getField('NAME')));
+            $code = (string)($elements[$pid]['CODE'] ?? '');
+            $lines[$key] = [
+                'id' => $key,
+                'productId' => $pid,
+                'items' => [],
+                'basketProductIds' => [],
+                'code' => $code,
+                'name' => $name,
+                'note' => gg_line_weight($goods[$pid] ?? null),
+                'article' => trim((string)($props[$pid]['CML2_ARTICLE'] ?? '')),
+                'href' => $code !== '' ? '/product/' . $code : '/catalog',
+                'price' => $price > 0 ? $price : null,
+                'qty' => 0,
+                'sum' => 0.0,
+                'max' => GG_MAX_QTY,
+                'kind' => gg_item_kind($data),
+                'box' => null,
+            ];
+            if ($sale && $sale['mode'] === 'box') {
+                $lines[$key]['box'] = [
+                    'noun' => $sale['noun'],
+                    'nominalG' => $sale['nominalG'],
+                    'pricePerKg' => $price > 0 ? $price : (float)$sale['price'],
+                    'packIds' => [],
+                    'weights' => [],
+                    'free' => array_map(static fn($pack) => ['id' => (string)$pack['id'], 'weightG' => $pack['g']], $sale['packs']),
+                ];
+                $lines[$key]['max'] = count($sale['packs']);
+            }
+        }
+
+        $line = &$lines[$key];
+        $line['items'][] = (int)$item->getId();
+        $line['basketProductIds'][] = $basketId;
+        if ($line['box'] !== null) {
+            /* Коробка: количество строки Битрикса — её вес в килограммах. */
+            $g = (int)round($q * 1000);
+            $line['box']['packIds'][] = (string)$basketId;
+            $line['box']['weights'][] = $g;
+            $line['qty'] += 1;
+            $line['sum'] += gg_pack_price((float)$line['box']['pricePerKg'], $g);
+        } else {
+            $line['qty'] += max(1, (int)round($q));
+            $line['sum'] += $price * max(1, (int)round($q));
+        }
+        unset($line);
     }
-    return $lines;
+
+    foreach ($lines as &$line) {
+        if ($line['box'] !== null) {
+            $line['note'] = gg_box_note($line['box']['noun'], $line['box']['weights']);
+            $line['max'] = max($line['max'], $line['qty']);
+        }
+    }
+    unset($line);
+    return array_values($lines);
+}
+
+/** Строка корзины по адресу из формы: ID строки Битрикса или 'p<ID товара>'. */
+function gg_basket_line(string $id): ?array
+{
+    foreach (gg_basket_lines() as $line) {
+        if ((string)$line['id'] === $id) {
+            return $line;
+        }
+    }
+    return null;
+}
+
+/** Убрать строки Битрикса по ID. Корзину сохраняет вызывающий. */
+function gg_basket_delete(array $itemIds): void
+{
+    $basket = gg_basket();
+    if (!$basket) {
+        return;
+    }
+    foreach ($itemIds as $itemId) {
+        $item = $basket->getItemById((int)$itemId);
+        if ($item) {
+            $item->delete();
+        }
+    }
+}
+
+/**
+ * Положить товар в корзину Битрикса — предложениями, если они у него есть.
+ *
+ *   обычный товар — как раньше, строкой товара;
+ *   коробки       — отмеченные в карточке ($packIds), недостающие ближайшие
+ *                   к номиналу; каждая коробка — строка предложения
+ *                   с количеством, равным её весу. Больше свободных не
+ *                   кладётся: 'limit' — текст тоста о пределе;
+ *   развес        — килограммы на предложение с самым большим остатком;
+ *   партии        — штуки по партиям, старшая первой (gg_batch_split).
+ *
+ * @return array{ok: bool, added: int, limit: string}
+ */
+function gg_basket_put(int $id, int $qty, array $packIds = []): array
+{
+    $qty = max(1, min(GG_MAX_QTY, $qty));
+    $fail = ['ok' => false, 'added' => 0, 'limit' => ''];
+    if ($id <= 0 || !CModule::IncludeModule('catalog') || !CModule::IncludeModule('sale')) {
+        return $fail;
+    }
+
+    $live = gg_products_live([$id])[$id] ?? null;
+    $sale = $live['sale'] ?? null;
+    $add = static function (int $productId, float $quantity, bool $merge): bool {
+        try {
+            $result = \Bitrix\Catalog\Product\Basket::addProduct(
+                ['PRODUCT_ID' => $productId, 'QUANTITY' => $quantity],
+                [],
+                ['USE_MERGE' => $merge ? 'Y' : 'N']
+            );
+            return $result->isSuccess();
+        } catch (\Throwable $e) {
+            return false;
+        }
+    };
+
+    if (!$live || !$live['sku']) {
+        $ok = $add($id, $qty, true);
+        gg_basket(true);
+        return ['ok' => $ok, 'added' => $ok ? $qty : 0, 'limit' => ''];
+    }
+    if (!$sale || $sale['mode'] === 'none') {
+        return $fail;
+    }
+
+    /* Что от этого товара уже лежит в корзине: ID предложения => количество. */
+    $inBasket = [];
+    foreach ((gg_basket() ?: []) as $item) {
+        if (!$item->isDelay()) {
+            $inBasket[(int)$item->getProductId()] = ($inBasket[(int)$item->getProductId()] ?? 0) + (float)$item->getQuantity();
+        }
+    }
+
+    $added = 0;
+    $limit = '';
+    if ($sale['mode'] === 'box') {
+        $offerIds = array_column($sale['offers'], 'id');
+        $taken = array_values(array_filter(array_keys($inBasket), static fn($offerId) => in_array($offerId, $offerIds, true)));
+        $chosen = gg_box_choose($sale, $qty, $packIds, $taken);
+        foreach ($chosen as $pack) {
+            if ($add($pack['id'], $pack['kg'], false)) {
+                $added++;
+            }
+        }
+        if ($added < $qty) {
+            $n = count($sale['packs']);
+            $limit = 'На складе ' . $n . ' ' . gg_box_word($sale['noun'], $n) . ', больше положить нельзя';
+        }
+    } elseif ($sale['mode'] === 'weighed') {
+        $added = $add($sale['offers'][0]['id'], $qty, true) ? $qty : 0;
+    } else {
+        /* Партии: остаток каждой — минус то, что уже лежит в корзине. */
+        $offers = array_map(static function ($offer) use ($inBasket) {
+            $offer['q'] = max(0.0, $offer['q'] - ($inBasket[$offer['id']] ?? 0));
+            return $offer;
+        }, $sale['offers']);
+        foreach (gg_batch_split($offers, $qty) as $offerId => $n) {
+            if ($add((int)$offerId, $n, true)) {
+                $added += $n;
+            }
+        }
+    }
+
+    gg_basket(true);
+    return ['ok' => $added > 0, 'added' => $added, 'limit' => $limit];
+}
+
+/**
+ * Количество строки товара с предложениями. Коробки: меньше — уходят
+ * последние добавленные, больше — докладываются ближайшие к номиналу.
+ * Партии и развес раскладываются заново.
+ */
+function gg_basket_line_set_qty(array $line, int $qty): void
+{
+    $basket = gg_basket();
+    if (!$basket) {
+        return;
+    }
+    $qty = max(0, min(GG_MAX_QTY, $qty));
+    if ($line['box'] !== null) {
+        $have = count($line['items']);
+        if ($qty < $have) {
+            gg_basket_delete(array_slice($line['items'], $qty));
+            $basket->save();
+            gg_basket(true);
+        } elseif ($qty > $have) {
+            gg_basket_put((int)$line['productId'], $qty - $have);
+        }
+        return;
+    }
+    gg_basket_delete($line['items']);
+    $basket->save();
+    gg_basket(true);
+    if ($qty > 0) {
+        gg_basket_put((int)$line['productId'], $qty);
+    }
+}
+
+/**
+ * Другие коробки из окна «Выбрать другие»: строка становится ровно этим
+ * набором. Коробки, которых уже нет среди свободных, не кладутся;
+ * недостающие до прежнего количества подбирает gg_basket_put.
+ */
+function gg_basket_line_set_packs(array $line, array $packIds): void
+{
+    $basket = gg_basket();
+    if (!$basket || $line['box'] === null) {
+        return;
+    }
+    $free = array_flip(array_map(static fn($pack) => (int)$pack['id'], $line['box']['free']));
+    $want = [];
+    foreach ($packIds as $packId) {
+        $packId = (int)$packId;
+        if (isset($free[$packId]) && !in_array($packId, $want, true)) {
+            $want[] = $packId;
+        }
+    }
+    $want = array_slice($want, 0, count($line['items']));
+    if (!$want) {
+        return;
+    }
+
+    $keep = [];
+    $drop = [];
+    foreach ($line['items'] as $i => $itemId) {
+        $offerId = (int)$line['box']['packIds'][$i];
+        if (in_array($offerId, $want, true)) {
+            $keep[] = $offerId;
+        } else {
+            $drop[] = $itemId;
+        }
+    }
+    gg_basket_delete($drop);
+    $basket->save();
+    gg_basket(true);
+
+    $new = array_values(array_diff($want, $keep));
+    $missing = count($line['items']) - count($want);
+    if ($new || $missing > 0) {
+        gg_basket_put((int)$line['productId'], count($new) + max(0, $missing), $new);
+    }
 }
 
 /**
@@ -114,6 +368,13 @@ function gg_basket_lines(): array
  * Позиция корзины, ставшая заявкой, уходит из корзины Битрикса в cookie.
  * Позиция заявки, которую снова можно купить, кладётся в корзину; не принял
  * Битрикс — остаётся в заявке молча. Запускается один раз за хит.
+ *
+ * КОРОБКИ (24.09.2026). Выбранную коробку могли купить, пока она лежала
+ * в корзине: резерв у Битрикса появляется только с заказом. Такая коробка
+ * меняется на ближайшую к номиналу из свободных, об этом — уведомление;
+ * свободных нет — коробка уходит из корзины. Оформление по этим
+ * уведомлениям (gg_box_notices) заказ не отправляет, а просит проверить
+ * сумму — как проверка перед отправкой в прототипе.
  */
 function gg_cart_sync(): array
 {
@@ -124,15 +385,63 @@ function gg_cart_sync(): array
     $notices = [];
 
     $basket = gg_basket();
+
+    /* Коробки, которых больше нет среди свободных. */
+    if ($basket) {
+        $changed = false;
+        foreach (gg_basket_lines() as $line) {
+            if ($line['box'] === null) {
+                continue;
+            }
+            $free = [];
+            foreach ($line['box']['free'] as $pack) {
+                $free[(int)$pack['id']] = (int)$pack['weightG'];
+            }
+            foreach ($line['items'] as $i => $itemId) {
+                $offerId = (int)$line['box']['packIds'][$i];
+                $oldG = (int)$line['box']['weights'][$i];
+                $item = $basket->getItemById($itemId);
+                if (!$item) {
+                    continue;
+                }
+                if (isset($free[$offerId])) {
+                    /* Коробку перевесили в 1С — количество следует за весом. */
+                    if ($free[$offerId] !== $oldG) {
+                        $item->setField('QUANTITY', $free[$offerId] / 1000);
+                        $changed = true;
+                    }
+                    continue;
+                }
+                $item->delete();
+                $changed = true;
+                $inLine = array_map('intval', $line['box']['packIds']);
+                $packs = array_map(static fn($pack) => ['id' => (int)$pack['id'], 'g' => (int)$pack['weightG'], 'kg' => $pack['weightG'] / 1000], $line['box']['free']);
+                $next = gg_pick_packs($packs, 1, (int)$line['box']['nominalG'], $inLine)[0] ?? null;
+                $word = gg_box_words($line['box']['noun']);
+                if ($next) {
+                    $basket->save();
+                    gg_basket_put((int)$line['productId'], 1, [$next['id']]);
+                    $basket = gg_basket();
+                    gg_box_notices(gg_ucfirst($word['acc'][0]) . ' ' . $oldG . ' г («' . $line['name'] . '») только что купили. Положили '
+                        . $next['g'] . ' г — ' . gg_price((float)gg_pack_price((float)$line['box']['pricePerKg'], $next['g'])) . '.');
+                } else {
+                    gg_box_notices($word['titlePlural'] . ' «' . $line['name'] . '» закончились — убрали из корзины.');
+                }
+            }
+        }
+        if ($changed) {
+            $basket->save();
+            gg_basket(true);
+            $basket = gg_basket();
+        }
+        $notices = array_merge($notices, gg_box_notices());
+    }
+
     $toRequest = array_filter(gg_basket_lines(), static fn($line) => $line['kind'] === 'request');
     if ($basket && $toRequest) {
         $list = gg_request_list();
         foreach ($toRequest as $line) {
-            $item = $basket->getItemById($line['id']);
-            if (!$item) {
-                continue;
-            }
-            $item->delete();
+            gg_basket_delete($line['items']);
             $list[$line['productId']] = min(GG_MAX_QTY, ($list[$line['productId']] ?? 0) + (int)$line['qty']);
             $notices[] = '«' . $line['name'] . '» закончилась на складе — перенесли в заявку менеджеру';
         }
@@ -143,30 +452,35 @@ function gg_cart_sync(): array
 
     $toOrder = array_filter(gg_request_lines(), static fn($line) => gg_item_kind($line['live']) !== 'request');
     if ($toOrder && CModule::IncludeModule('catalog') && CModule::IncludeModule('sale')) {
-        $moved = false;
         foreach ($toOrder as $line) {
-            try {
-                $result = \Bitrix\Catalog\Product\Basket::addProduct(
-                    ['PRODUCT_ID' => $line['productId'], 'QUANTITY' => $line['qty']],
-                    [],
-                    ['USE_MERGE' => 'Y']
-                );
-                $ok = $result->isSuccess();
-            } catch (\Throwable $e) {
-                $ok = false;
-            }
-            if ($ok) {
+            $result = gg_basket_put((int)$line['productId'], (int)$line['qty']);
+            if ($result['ok']) {
                 gg_request_remove((int)$line['productId']);
                 $notices[] = '«' . $line['name'] . '» снова можно заказать — перенесли в заказ';
-                $moved = true;
             }
-        }
-        if ($moved) {
-            gg_basket(true);
         }
     }
 
     return $notices;
+}
+
+/**
+ * Уведомления о коробках, которые купили, пока они лежали в корзине.
+ * С аргументом — добавить, без — прочитать. Живут до конца хита.
+ */
+function gg_box_notices(?string $add = null): array
+{
+    static $list = [];
+    if ($add !== null) {
+        $list[] = $add;
+    }
+    return $list;
+}
+
+/** «коробку» → «Коробку»: mb_ucfirst есть только с PHP 8.4. */
+function gg_ucfirst(string $text): string
+{
+    return mb_strtoupper(mb_substr($text, 0, 1)) . mb_substr($text, 1);
 }
 
 /**
@@ -181,6 +495,7 @@ function gg_cart_state(): array
 
     return [
         'notices' => $notices,
+        'boxNotices' => gg_box_notices(),
         'orderLines' => $orderLines,
         'requestLines' => $requestLines,
         'groups' => gg_group_lines(array_merge($orderLines, $requestLines)),
@@ -215,7 +530,7 @@ function gg_cart_totals(array $orderLines, array $requestLines): array
     $hasPreorder = false;
     foreach ($orderLines as $line) {
         $orderCount += (int)$line['qty'];
-        $sum += (float)$line['price'] * (int)$line['qty'];
+        $sum += (float)($line['sum'] ?? (float)$line['price'] * (int)$line['qty']);
         $hasStock = $hasStock || $line['kind'] === 'stock';
         $hasPreorder = $hasPreorder || $line['kind'] === 'preorder';
     }
@@ -306,7 +621,10 @@ function gg_summary_texts(array $totals): array
  */
 function gg_line_sum(array $line): string
 {
-    return $line['price'] === null ? 'Цена по запросу' : gg_price((float)$line['price'] * (int)$line['qty']);
+    if ($line['price'] === null) {
+        return 'Цена по запросу';
+    }
+    return gg_price((float)($line['sum'] ?? (float)$line['price'] * (int)$line['qty']));
 }
 
 /** «2 позиции». */
@@ -368,8 +686,8 @@ function gg_cart_handle_post(string $back = '/cart/'): void
         LocalRedirect($back);
     }
 
-    $id = (int)($_POST['line'] ?? 0);
-    $item = $id ? $basket->getItemById($id) : null;
+    $lineId = (string)($_POST['line'] ?? '');
+    $line = $lineId !== '' ? gg_basket_line($lineId) : null;
 
     /* Удаление приходит своим полем, а не значением gg_action: у строки
        одна форма на количество и на крестик, и два одноимённых поля в ней
@@ -378,18 +696,28 @@ function gg_cart_handle_post(string $back = '/cart/'): void
         $action = 'remove';
     }
 
-    if ($item) {
+    if ($line) {
         if ($action === 'remove') {
-            $item->delete();
+            gg_basket_delete($line['items']);
             $basket->save();
         } elseif ($action === 'qty') {
             $qty = (int)($_POST['quantity'] ?? 0);
-            if ($qty <= 0) {
-                $item->delete();
+            if (strncmp($lineId, 'p', 1) === 0) {
+                /* Строка товара с предложениями — своя раскладка (boxes.php). */
+                gg_basket_line_set_qty($line, $qty);
             } else {
-                $item->setField('QUANTITY', min(GG_MAX_QTY, $qty));
+                $item = $basket->getItemById((int)$line['items'][0]);
+                if ($item && $qty <= 0) {
+                    $item->delete();
+                } elseif ($item) {
+                    $item->setField('QUANTITY', min(GG_MAX_QTY, $qty));
+                }
+                $basket->save();
             }
-            $basket->save();
+        } elseif ($action === 'packs') {
+            /* «Выбрать другие» — окно выбора коробок (src/bitrix/box-hydrate.js). */
+            $packs = $_POST['packs'] ?? [];
+            gg_basket_line_set_packs($line, is_array($packs) ? $packs : []);
         }
     }
 
@@ -407,7 +735,7 @@ function gg_cart_handle_post(string $back = '/cart/'): void
  *
  * @return array{ok: bool, kind: string, toast: string}
  */
-function gg_cart_put(int $id, int $qty = 1): array
+function gg_cart_put(int $id, int $qty = 1, array $packIds = []): array
 {
     $qty = max(1, min(GG_MAX_QTY, $qty));
     $fail = ['ok' => false, 'kind' => '', 'toast' => ''];
@@ -419,19 +747,15 @@ function gg_cart_put(int $id, int $qty = 1): array
     $kind = $live ? gg_item_kind($live) : 'request';
 
     if ($kind !== 'request') {
-        try {
-            $result = \Bitrix\Catalog\Product\Basket::addProduct(
-                ['PRODUCT_ID' => $id, 'QUANTITY' => $qty],
-                [],
-                ['USE_MERGE' => 'Y']
-            );
-            if ($result->isSuccess()) {
-                return ['ok' => true, 'kind' => $kind, 'toast' => gg_toast_text($kind)];
-            }
-            /* Битрикс позицию не принял — значит, её можно только заявить. */
-        } catch (\Throwable $e) {
-            return $fail;
+        $result = gg_basket_put($id, $qty, $packIds);
+        if ($result['ok']) {
+            return ['ok' => true, 'kind' => $kind, 'toast' => $result['limit'] !== '' ? $result['limit'] : gg_toast_text($kind)];
         }
+        /* Все свободные коробки уже в корзине — это предел, а не заявка. */
+        if ($result['limit'] !== '') {
+            return ['ok' => true, 'kind' => $kind, 'toast' => $result['limit']];
+        }
+        /* Битрикс позицию не принял — значит, её можно только заявить. */
     }
 
     if (gg_request_add($id, $qty)) {
@@ -463,7 +787,9 @@ function gg_cart_add_handle(string $back): void
         return;
     }
 
-    $result = gg_cart_put((int)($_REQUEST['id'] ?? 0), (int)($_REQUEST['quantity'] ?? 1));
+    /* Коробки, отмеченные в карточке: packs[] — ID предложений. */
+    $packs = $_REQUEST['packs'] ?? [];
+    $result = gg_cart_put((int)($_REQUEST['id'] ?? 0), (int)($_REQUEST['quantity'] ?? 1), is_array($packs) ? $packs : [$packs]);
     if ($result['ok']) {
         gg_flash_toast_set($result['toast']);
     }
@@ -546,14 +872,14 @@ function gg_cart_quick_add_handle(): void
  * так строка корзины пересчитывается сервером без кнопки «Обновить».
  * Без скрипта форма отправляется обычной кнопкой.
  */
-function gg_qty_stepper(int $value, string $label, bool $submit = false, string $size = '', string $extraClass = ''): string
+function gg_qty_stepper(int $value, string $label, bool $submit = false, string $size = '', string $extraClass = '', int $max = GG_MAX_QTY): string
 {
     $mode = $submit ? ' data-qty-hydrate="submit"' : ' data-qty-hydrate';
     return '<div class="qty' . ($size === 'sm' ? ' qty--sm' : '') . ($extraClass !== '' ? ' ' . $extraClass : '') . '"' . $mode
         . ' role="group" aria-label="' . gg_e($label) . '">'
         . '<button type="button" class="qty__btn" data-step="-1" aria-label="Меньше">' . gg_icon('minus') . '</button>'
         . '<input class="qty__value" type="text" inputmode="numeric" autocomplete="off" name="quantity"'
-        . ' value="' . (int)$value . '" min="1" max="' . GG_MAX_QTY . '" maxlength="2"'
+        . ' value="' . (int)$value . '" min="1" max="' . max(1, min(GG_MAX_QTY, $max)) . '" maxlength="2"'
         . ' aria-label="' . gg_e($label) . '">'
         . '<button type="button" class="qty__btn" data-step="1" aria-label="Больше">' . gg_icon('plus') . '</button>'
         . '</div>';

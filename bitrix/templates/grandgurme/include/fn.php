@@ -408,6 +408,10 @@ function gg_logo(bool $hero): string
  *
  * ЗАЯВКА ТОЖЕ СЧИТАЕТСЯ (16.09.2026): её позиции лежат на той же странице
  * корзины, только в cookie, а не в sale.basket (include/requests.php).
+ *
+ * КОРОБКИ СЧИТАЮТСЯ КОРОБКАМИ (24.09.2026): у коробки количество в корзине
+ * Битрикса — её вес, 0,23 кг, и сумма количеств врала бы. Считаем по тем же
+ * строкам, что показывает корзина (gg_basket_lines).
  */
 function gg_cart_count(): int
 {
@@ -415,18 +419,8 @@ function gg_cart_count(): int
         return 0;
     }
     try {
-        $basket = \Bitrix\Sale\Basket::loadItemsForFUser(
-            \Bitrix\Sale\Fuser::getId(),
-            \Bitrix\Main\Context::getCurrent()->getSite()
-        );
-        $count = 0;
-        foreach ($basket as $item) {
-            if ($item->isDelay()) {
-                continue;
-            }
-            $count += (int)$item->getQuantity();
-        }
-        require_once __DIR__ . '/requests.php';
+        require_once __DIR__ . '/cart.php';
+        $count = (int)array_sum(array_column(gg_basket_lines(), 'qty'));
         return $count + gg_request_count();
     } catch (\Throwable $e) {
         return 0;

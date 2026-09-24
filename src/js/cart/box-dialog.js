@@ -28,23 +28,26 @@ const copy = cartCopy.boxes.dialog
  * @param {number}   o.n           сколько коробок отметить
  * @param {{ id: string, weightG: number }[]} o.free  свободные коробки
  * @param {string[]} o.selected    отмеченные сейчас
+ * @param {object}   [o.texts]     тексты окна, по умолчанию cartCopy.boxes.dialog;
+ *                                 стенд Битрикса передаёт свои (слово «упаковка»)
+ * @param {(n: number) => string} [o.wordAcc]  «коробку / коробки / коробок»
  * @returns {Promise<string[] | null>} id отмеченных или null — без изменений
  */
-export function openBoxDialog({ name, pricePerKg, nominalG, n, free, selected }) {
+export function openBoxDialog({ name, pricePerKg, nominalG, n, free, selected, texts = copy, wordAcc = packsWordAcc }) {
   const dialog = document.createElement('dialog')
   dialog.className = 'dialog dialog--boxes'
   dialog.setAttribute('aria-labelledby', 'box-dialog-title')
   dialog.innerHTML = `
     <h2 class="dialog__title" id="box-dialog-title">${escapeHtml(name)}</h2>
     <p class="dialog__text">${escapeHtml(
-      fillText(copy.lead, { per100: formatPrice(pricePer100(pricePerKg)), n, word: packsWordAcc(n) }),
+      fillText(texts.lead, { per100: formatPrice(pricePer100(pricePerKg)), n, word: wordAcc(n) }),
     )}</p>
     <div data-box-slot></div>
     <div class="dialog__actions">
-      <button type="button" class="btn btn--solid" data-box-done>${copy.done}</button>
-      <button type="button" class="btn" data-box-cancel>${copy.cancel}</button>
+      <button type="button" class="btn btn--solid" data-box-done>${escapeHtml(texts.done)}</button>
+      <button type="button" class="btn" data-box-cancel>${escapeHtml(texts.cancel)}</button>
     </div>
-    <p class="boxlist__auto"><button type="button" class="link-btn" data-box-auto>${copy.auto}</button></p>`
+    <p class="boxlist__auto"><button type="button" class="link-btn" data-box-auto>${escapeHtml(texts.auto)}</button></p>`
 
   const done = dialog.querySelector('[data-box-done]')
   let ids = selected.slice()
@@ -52,7 +55,7 @@ export function openBoxDialog({ name, pricePerKg, nominalG, n, free, selected })
   const list = createBoxList({
     free,
     pricePerKg,
-    texts: { listLabel: copy.listLabel, count: copy.count, hint: copy.hint },
+    texts: { listLabel: texts.listLabel, count: texts.count, hint: texts.hint },
     onPick: (next) => {
       ids = next
       done.disabled = ids.length !== n

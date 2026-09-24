@@ -31,6 +31,8 @@ require_once __DIR__ . '/fn.php';
 require_once __DIR__ . '/product-info.php';
 /* Тексты разделов из админки и кнопка «Изменить» в режиме правки (23.09.2026). */
 require_once __DIR__ . '/catalog-admin.php';
+/* Товар с торговыми предложениями: коробки, партии, развес (24.09.2026). */
+require_once __DIR__ . '/boxes.php';
 
 /** Сколько дней везём то, чего нет на складе. Подтверждено заказчиком. */
 const GG_PREORDER_DAYS = 7;
@@ -303,7 +305,7 @@ function gg_catalog_stock_counts(array $cat, array $picked = []): array
     if ($total > 0 && CModule::IncludeModule('iblock') && CModule::IncludeModule('catalog')) {
         $filter = gg_catalog_filter($cat, $picked);
         $filter['IBLOCK_ID'] = gg_map()['iblockId'];
-        $filter['>CATALOG_QUANTITY'] = 0;
+        $filter[] = gg_in_stock_filter();
         $inStock = (int)CIBlockElement::GetList([], $filter, []);
     }
 
@@ -312,6 +314,47 @@ function gg_catalog_stock_counts(array $cat, array $picked = []): array
         'preorder' => max(0, $total - $inStock),
         'total' => $total,
     ];
+}
+
+/**
+ * Условие «есть на складе» для CIBlockElement::GetList.
+ *
+ * У товара с торговыми предложениями остаток самого товара всегда ноль —
+ * склад лежит на предложениях (boxes.php). По одному '>CATALOG_QUANTITY'
+ * такие позиции уходили в конец выдачи «под заказ», хотя коробки лежат
+ * на складе. Поэтому к остатку товара добавляются товары, у которых по
+ * предложениям есть что продать со склада.
+ */
+function gg_in_stock_filter(): array
+{
+    $ids = gg_sku_parents_in_stock();
+    return $ids
+        ? ['LOGIC' => 'OR', ['>CATALOG_QUANTITY' => 0], ['ID' => $ids]]
+        : ['>CATALOG_QUANTITY' => 0];
+}
+
+/** Товары с предложениями, у которых есть что продать со склада. Кеш на хит. */
+function gg_sku_parents_in_stock(): array
+{
+    static $ids = null;
+    if ($ids !== null) {
+        return $ids;
+    }
+    $ids = [];
+    if (!CModule::IncludeModule('catalog')) {
+        return $ids;
+    }
+    $all = [];
+    $res = CIBlockElement::GetList([], ['IBLOCK_ID' => gg_map()['iblockId'], 'CATALOG_TYPE' => \Bitrix\Catalog\ProductTable::TYPE_SKU], false, false, ['ID']);
+    while ($row = $res->Fetch()) {
+        $all[] = (int)$row['ID'];
+    }
+    foreach (gg_products_live($all) as $id => $live) {
+        if ($live['canBuy'] && $live['quantity'] > 0) {
+            $ids[] = $id;
+        }
+    }
+    return $ids;
 }
 
 /**
@@ -356,7 +399,7 @@ function gg_catalog_ids(array $cat, array $picked, array $sort, bool $inStockOnl
         if (!CModule::IncludeModule('catalog')) {
             return [];
         }
-        $filter['>CATALOG_QUANTITY'] = 0;
+        $filter[] = gg_in_stock_filter();
     }
 
     /* Порядок собирается по одному ключу: поле сортировки может совпасть
@@ -1040,8 +1083,9 @@ function gg_products_live(array $ids): array
 
     if ($missing) {
         foreach ($missing as $id) {
-            $cache[$id] = ['id' => $id, 'price' => null, 'quantity' => 0.0, 'canBuy' => false, 'sku' => false];
+            $cache[$id] = ['id' => $id, 'price' => null, 'quantity' => 0.0, 'canBuy' => false, 'sku' => false, 'sale' => null];
         }
+        $skuIds = [];
         if (CModule::IncludeModule('catalog')) {
             $res = \Bitrix\Catalog\ProductTable::getList([
                 'filter' => ['@ID' => $missing],
@@ -1056,6 +1100,9 @@ function gg_products_live(array $ids): array
                 $cache[$id]['quantity'] = (float)$row['QUANTITY'];
                 $cache[$id]['sku'] = $sku;
                 $cache[$id]['canBuy'] = !$sku && ($row['AVAILABLE'] ?? 'N') === 'Y';
+                if ($sku) {
+                    $skuIds[] = $id;
+                }
             }
 
             $group = gg_price_group_id();
@@ -1070,6 +1117,25 @@ function gg_products_live(array $ids): array
                     }
                 }
             }
+
+            /* Товар с предложениями (24.09.2026, boxes.php). Остаток — то,
+               что можно продать со склада по предложениям (у коробок — число
+               свободных коробок), цена — цена предложения. Купить можно, если
+               есть что положить в корзину: свободная коробка, развес или
+               партия с ценой. */
+            $sales = gg_sale_info($skuIds);
+            foreach ($skuIds as $id) {
+                $sale = $sales[$id] ?? null;
+                $cache[$id]['sale'] = $sale;
+                if (!$sale) {
+                    continue;
+                }
+                $cache[$id]['quantity'] = (float)$sale['stock'];
+                if ($sale['price'] !== null) {
+                    $cache[$id]['price'] = $sale['price'];
+                }
+                $cache[$id]['canBuy'] = $sale['mode'] === 'box' ? (bool)$sale['packs'] : $sale['mode'] !== 'none';
+            }
         }
     }
 
@@ -1083,12 +1149,10 @@ function gg_products_live(array $ids): array
 /**
  * Товары с торговыми предложениями (23.09.2026).
  *
- * У «Гранд Гурмэ» это коробки рыбы: 19 позиций, у каждой десяток предложений —
- * конкретных партий с весом в коде серии. Битрикс не даёт положить такой товар
- * в корзину («Нельзя добавить в корзину товар с торговыми предложениями —
- * только конкретное предложение»), поэтому вид у них всегда «через менеджера»,
- * сколько бы цены и остатка ни стояло у родителя. Это временно: когда коробки
- * доедут (PERENOS-korobki.md), покупать будут предложение, а не родителя.
+ * Битрикс не даёт положить такой товар в корзину («Нельзя добавить в корзину
+ * товар с торговыми предложениями — только конкретное предложение»). С
+ * 24.09.2026 покупается предложение — какое и сколько, решает gg_sale_info
+ * (boxes.php) по данным выгрузки.
  *
  * @return array ID товара => bool
  */
@@ -1114,6 +1178,16 @@ function gg_sku_parents(array $ids): array
  */
 function gg_item_kind(array $item, ?array $cat = null): string
 {
+    /* Товар с предложениями: остаток, цена и доступность — по предложениям
+       (gg_products_live), а не по нулю, который компонент видит у товара. */
+    if (!array_key_exists('price', $item)) {
+        $componentId = (int)($item['ID'] ?? 0);
+        $live = $componentId ? (gg_products_live([$componentId])[$componentId] ?? null) : null;
+        if ($live && $live['sku']) {
+            $item = $live;
+        }
+    }
+
     if (array_key_exists('price', $item)) {
         $id = (int)($item['id'] ?? 0);
         $price = $item['price'] !== null ? (float)$item['price'] : null;
@@ -1130,13 +1204,12 @@ function gg_item_kind(array $item, ?array $cat = null): string
     if ($price === null || $price <= 0) {
         return 'request';
     }
-    /* Битрикс эту позицию в корзину не примет. */
+    /* Битрикс эту позицию в корзину не примет. Сюда же товар
+       с предложениями, по которым положить в корзину нечего: у коробок это
+       «нет свободных коробок» — и это «через менеджера», а не «под заказ»:
+       номинала коробки никто не знает, и сумму оценить не из чего
+       (gg_products_live, boxes.php). */
     if ($canBuy === false) {
-        return 'request';
-    }
-    /* Товар с торговыми предложениями — тоже не примет, и компонент об этом
-       не говорит: CAN_BUY он у родителя не заполняет вовсе (gg_sku_parents). */
-    if ($id && ($item['sku'] ?? null) !== false && (gg_sku_parents([$id])[$id] ?? false)) {
         return 'request';
     }
     if ($quantity > 0) {

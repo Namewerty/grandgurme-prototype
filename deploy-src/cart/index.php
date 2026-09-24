@@ -16,6 +16,13 @@
  * отрисовке, и позиция переезжает между ними сама (gg_cart_sync);
  * уведомление об этом стоит над группами.
  *
+ * КОРОБКИ (24.09.2026, include/boxes.php). Строка товара, который продаётся
+ * коробками, пишет выбранные веса («Коробки 202 и 204 г») и сумму по ним;
+ * степпер не даёт положить больше свободных коробок. Рядом с весами —
+ * «Выбрать другие»: окно выбора открывает скрипт (src/bitrix/box-hydrate.js)
+ * и отправляет выбор формой gg_action=packs. Без скрипта ссылки нет —
+ * коробки можно поменять на карточке товара.
+ *
  * БЕЗ JS СТРАНИЦА РАБОТАЕТ. Количество меняется формой (скрытая кнопка
  * «Обновить» — она же обработчик Enter в поле), крестик — вторая кнопка
  * той же формы. Скрипт только оживляет − и + и отправляет форму сам.
@@ -92,7 +99,7 @@ $hasLines = $totals['positions'] > 0;
 <?php foreach ($lines as $line):
         $sumClass = $line['price'] === null ? ' is-request' : ($isRequest ? ' is-estimate' : '');
 ?>
-          <li class="cart-line" data-id="<?= (int)$line['id'] ?>">
+          <li class="cart-line" data-id="<?= gg_e((string)$line['id']) ?>">
             <a class="cart-line__shot" href="<?= gg_e($line['href']) ?>" tabindex="-1" aria-hidden="true"><?=
               gg_product_shot(['CODE' => $line['code']], $line['name'], 'cart-line__photo media--compact')
             ?></a>
@@ -104,13 +111,30 @@ $hasLines = $totals['positions'] > 0;
             <form class="cart-line__body" method="post" action="/cart/">
               <?= bitrix_sessid_post() ?>
               <input type="hidden" name="gg_action" value="<?= $isRequest ? 'request_qty' : 'qty' ?>">
-              <input type="hidden" name="line" value="<?= (int)$line['id'] ?>">
+              <input type="hidden" name="line" value="<?= gg_e((string)$line['id']) ?>">
 
               <h3 class="cart-line__name"><a href="<?= gg_e($line['href']) ?>"><?= gg_e($line['name']) ?></a></h3>
-<?php if (trim((string)$line['note']) !== ''): ?>
-              <p class="cart-line__note"><?= gg_e($line['note']) ?></p>
+<?php
+        /* «Выбрать другие» — только у коробок в наличии, как в прототипе:
+           под заказ выбирать не из чего. Данные для окна — в атрибуте. */
+        $ggBox = ($line['box'] ?? null) !== null && $line['kind'] === 'stock' ? $line['box'] : null;
+?>
+<?php if (trim((string)$line['note']) !== '' || $ggBox): ?>
+              <p class="cart-line__note"><span><?= gg_e($line['note']) ?></span><?php if ($ggBox):
+                  $ggCopy = gg_box_js_copy($ggBox['noun']); ?> <button type="button" class="link-btn cart-line__pick" data-pick hidden
+                      aria-label="<?= gg_e('Выбрать другие: ' . $line['name']) ?>"
+                      data-box="<?= gg_e(json_encode([
+                          'line' => (string)$line['id'],
+                          'name' => $line['name'],
+                          'n' => (int)$line['qty'],
+                          'nominalG' => (int)$ggBox['nominalG'],
+                          'pricePerKg' => (float)$ggBox['pricePerKg'],
+                          'free' => $ggBox['free'],
+                          'selected' => $ggBox['packIds'],
+                          'copy' => $ggCopy,
+                      ], JSON_UNESCAPED_UNICODE)) ?>"><?= gg_e((int)$line['qty'] === 1 ? $ggCopy['pickOne'] : $ggCopy['pick']) ?></button><?php endif; ?></p>
 <?php endif; ?>
-              <?= gg_qty_stepper((int)$line['qty'], 'Количество: ' . $line['name'], true, 'sm', 'cart-line__qty') ?>
+              <?= gg_qty_stepper((int)$line['qty'], 'Количество: ' . $line['name'], true, 'sm', 'cart-line__qty', (int)($line['max'] ?? GG_MAX_QTY)) ?>
               <button type="submit" class="visually-hidden">Обновить количество</button>
               <p class="cart-line__sum<?= $sumClass ?>"><?= gg_e(gg_line_sum($line)) ?></p>
               <button type="submit" class="icon-btn cart-line__remove" name="gg_remove" value="1"

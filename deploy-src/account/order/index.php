@@ -165,7 +165,10 @@ $deliveryValue = $method === 'pickup'
     /* Состав отгрузки — только её позиции; если в записи их нет, показываем
        весь состав заказа. */
     $ids = array_flip(array_map('intval', is_array($shipment['items'] ?? null) ? $shipment['items'] : []));
-    $lines = $ids ? array_values(array_filter($items, static fn(array $item): bool => isset($ids[(int)$item['productId']]))) : [];
+    /* Отгрузка помнит ID строк корзины Битрикса: у товара с предложениями
+       это ID предложений (коробок), а не товара. */
+    $lines = $ids ? array_values(array_filter($items, static fn(array $item): bool => isset($ids[(int)$item['productId']])
+        || array_intersect_key($ids, array_flip(array_map('intval', $item['offerIds'] ?? []))))) : [];
     $lines = $lines ?: $items;
     $shipTitle = ($titled && (string)$shipment['kind'] !== 'all')
         ? ((string)$shipment['kind'] === 'preorder' ? 'Товары под заказ · ' : 'Товары в наличии · ') . gg_positions_label(count($lines))

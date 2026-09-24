@@ -361,7 +361,7 @@ function gg_search_cards(array $ids): array
             'id' => $id,
             'name' => $info['name'],
             'note' => $info['weight'],
-            'price' => gg_price(gg_shelf_price($data['price'], $info['weighed'])),
+            'price' => gg_price(gg_shelf_price($data['price'], $info)),
             'href' => gg_product_url($row),
             'kind' => gg_item_kind($data),
             'row' => $row,

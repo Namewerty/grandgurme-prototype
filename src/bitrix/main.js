@@ -82,6 +82,7 @@ import { hydrateQtySteppers } from './qty-hydrate.js'
 import { hydrateCartBar, hydrateReceiveMethod, hydrateServerToast } from './purchase-hydrate.js'
 import { hydrateAccount } from './account-hydrate.js'
 import { hydrateCatalog } from './catalog-hydrate.js'
+import { hydrateBoxes } from './box-hydrate.js'
 import { initInlineSearch } from '../js/nav/search.js'
 
 function boot() {
@@ -108,6 +109,9 @@ function boot() {
   // Сетка и фильтры каталога: «в корзину» без перезагрузки, выпадающие
   // фильтры по одному (22.09.2026).
   hydrateCatalog(document)
+  // Коробки (24.09.2026): селектор веса на карточке и «Выбрать другие»
+  // в корзине — поверх серверной разметки, без скрипта работают формы.
+  hydrateBoxes(document)
   // Строка на /search/ подсказывает так же, как строка в шапке.
   initInlineSearch(document.querySelector('.search-page__form'), {
     suggestUrl: '/search/suggest.php',

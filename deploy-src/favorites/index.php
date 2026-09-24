@@ -66,7 +66,7 @@ foreach ($ids as $id) {
         'kind' => gg_item_kind($item),
         'title' => $title,
         'weight' => $weight,
-        'price' => gg_price(gg_shelf_price($item['price'], (bool)$info['weighed'])),
+        'price' => gg_price(gg_shelf_price($item['price'], $info)),
         'href' => gg_product_url($element),
         'alt' => $title . ($weight !== '' ? ', ' . $weight : ''),
     ];

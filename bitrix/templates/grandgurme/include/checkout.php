@@ -302,6 +302,9 @@ function gg_delivery_id(string $method): int
 /**
  * Отгрузки заказа по данным формы.
  *
+ * productIds — то, что лежит в корзине Битрикса: у товара с предложениями
+ * это ID предложений (basketProductIds строки корзины), а не ID товара.
+ *
  * @return array [['kind' => 'all'|'stock'|'preorder', 'label' => string, 'date' => iso, 'interval' => string, 'productIds' => int[]|null]]
  */
 function gg_checkout_shipments(array $post, array $plan): array
@@ -313,14 +316,14 @@ function gg_checkout_shipments(array $post, array $plan): array
                 'label' => 'Товары в наличии',
                 'date' => (string)($post['date_stock'] ?? ''),
                 'interval' => (string)($post['interval_stock'] ?? ''),
-                'productIds' => array_column($plan['stockLines'], 'productId'),
+                'productIds' => gg_lines_basket_ids($plan['stockLines']),
             ],
             [
                 'kind' => 'preorder',
                 'label' => 'Товары под заказ',
                 'date' => (string)($post['date_preorder'] ?? ''),
                 'interval' => (string)($post['interval_preorder'] ?? ''),
-                'productIds' => array_column($plan['preorderLines'], 'productId'),
+                'productIds' => gg_lines_basket_ids($plan['preorderLines']),
             ],
         ];
     }
@@ -331,6 +334,18 @@ function gg_checkout_shipments(array $post, array $plan): array
         'interval' => (string)($post['interval'] ?? ''),
         'productIds' => null,
     ]];
+}
+
+/** ID товаров в корзине Битрикса по строкам корзины (предложения — свои ID). */
+function gg_lines_basket_ids(array $lines): array
+{
+    $ids = [];
+    foreach ($lines as $line) {
+        foreach (($line['basketProductIds'] ?? [$line['productId']]) as $id) {
+            $ids[] = (int)$id;
+        }
+    }
+    return array_values(array_unique($ids));
 }
 
 /** «23 сентября, 10:00–14:00». */

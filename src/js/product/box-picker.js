@@ -14,6 +14,10 @@
    и подпись селектора становится «Коробка 202 и 238 г».
 
    О корзине модуль не знает: отдаёт отмеченные id через onChange и state().
+
+   texts — тексты селектора (по умолчанию productCopy.boxes). Стенд
+   Битрикса передаёт свои: у пласта в вакууме «Упаковка», а не «Коробка»
+   (bitrix/templates/grandgurme/include/boxes.php, gg_box_js_copy).
    ============================================================================ */
 
 import { defaultPack, nearerTo, packPrice, packsWord, pickPacks, weightsText } from '../../data/boxes.js'
@@ -33,9 +37,10 @@ const fill = (template, values) => String(template).replace(/\{(\w+)\}/g, (_, ke
  * @param {number}   o.pricePerKg
  * @param {string[]} [o.selected]  отмеченные при открытии; пусто — ближайшая к номиналу
  * @param {Function} o.onChange    ({ ids, packs, count, sum, weights }) => void
+ * @param {object}   [o.texts]     тексты селектора, по умолчанию productCopy.boxes
  * @returns {{ node: HTMLElement, state: () => object, setCount: (n: number) => void }}
  */
-export function createBoxPicker({ free, nominalG, pricePerKg, selected = [], onChange }) {
+export function createBoxPicker({ free, nominalG, pricePerKg, selected = [], onChange, texts = copy }) {
   const byId = new Map(free.map((pack) => [pack.id, pack]))
   /** Отмеченные в порядке выбора. */
   let ids = selected.filter((id) => byId.has(id))
@@ -47,7 +52,7 @@ export function createBoxPicker({ free, nominalG, pricePerKg, selected = [], onC
   const node = document.createElement('div')
   node.className = 'pbuy__row pbuy__row--boxes'
   node.innerHTML = `
-    <span class="pbuy__label" id="pbuy-box-label">${copy.row}</span>
+    <span class="pbuy__label" id="pbuy-box-label">${escapeHtml(texts.row)}</span>
     <div class="boxsel" data-boxsel>
       <button type="button" class="boxsel__trigger" data-boxsel-trigger
               aria-expanded="false" aria-controls="pbuy-box-panel">
@@ -78,7 +83,7 @@ export function createBoxPicker({ free, nominalG, pricePerKg, selected = [], onC
   const list = createBoxList({
     free,
     pricePerKg,
-    texts: { listLabel: copy.listLabel, count: copy.count, hint: copy.hint },
+    texts: { listLabel: texts.listLabel, count: texts.count, hint: texts.hint },
     onPick: (next) => {
       ids = next
       // Сняли одну из двух — состояние неполное: меняется только счётчик
@@ -101,8 +106,8 @@ export function createBoxPicker({ free, nominalG, pricePerKg, selected = [], onC
 
   function paint() {
     const weights = state().weights
-    value.textContent = fill(copy.trigger, { weights })
-    trigger.setAttribute('aria-label', fill(copy.triggerLabel, { weights }))
+    value.textContent = fill(texts.trigger, { weights })
+    trigger.setAttribute('aria-label', fill(texts.triggerLabel, { weights }))
     syncList()
   }
 

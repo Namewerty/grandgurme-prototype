@@ -370,7 +370,12 @@ function gg_auth_logout(): void
    Корзина при входе
    ------------------------------------------------------------------------- */
 
-/** Снимок корзины: ID товара => количество. */
+/**
+ * Снимок корзины: ID товара => количество.
+ *
+ * Количество дробное: у коробки это её вес (0,23 кг, include/boxes.php),
+ * и приведение к целому превращало бы коробку в килограмм.
+ */
 function gg_basket_snapshot(): array
 {
     $basket = gg_basket(true);
@@ -382,7 +387,7 @@ function gg_basket_snapshot(): array
         if ($item->isDelay()) {
             continue;
         }
-        $out[(int)$item->getProductId()] = max(1, (int)$item->getQuantity());
+        $out[(int)$item->getProductId()] = (float)$item->getQuantity();
     }
     return $out;
 }
@@ -411,9 +416,11 @@ function gg_basket_merge(array $guest): void
     }
 
     foreach ($guest as $productId => $qty) {
-        $target = min(GG_MAX_QTY, max($qty, isset($mine[$productId]) ? (int)$mine[$productId]->getQuantity() : 0));
+        /* Коробка (дробное количество — её вес) у обоих одна и та же:
+           большее из двух равно ей самой, удвоиться она не может. */
+        $target = min((float)GG_MAX_QTY, max((float)$qty, isset($mine[$productId]) ? (float)$mine[$productId]->getQuantity() : 0.0));
         if (isset($mine[$productId])) {
-            if ((int)$mine[$productId]->getQuantity() !== $target) {
+            if (abs((float)$mine[$productId]->getQuantity() - $target) > 0.0001) {
                 $mine[$productId]->setField('QUANTITY', $target);
             }
             continue;
@@ -880,7 +887,14 @@ function gg_status_weight(string $code): int
     return $order[$code] ?? 0;
 }
 
-/** Строки заказа: товары с кадрами и суммами. */
+/**
+ * Строки заказа: товары с кадрами и суммами.
+ *
+ * Предложения одного товара — одна строка (gg_order_lines, boxes.php):
+ * две коробки лосося — «Коробки 202 и 204 г», а не две строки с номерами
+ * серий. offerIds — что лежит в заказе на самом деле: по ним строка
+ * находит свою отгрузку и «Повторить заказ» — те же коробки.
+ */
 function gg_order_items(int $orderId): array
 {
     if (!CModule::IncludeModule('sale')) {
@@ -895,25 +909,22 @@ function gg_order_items(int $orderId): array
         return [];
     }
 
-    $ids = array_map(static fn($row) => (int)$row['PRODUCT_ID'], $rows);
-    $elements = gg_elements_for_ids($ids);
-    $goods = gg_goods_info_for_ids($ids);
-
     $items = [];
-    foreach ($rows as $row) {
-        $pid = (int)$row['PRODUCT_ID'];
-        $code = (string)($elements[$pid]['CODE'] ?? '');
-        $name = (string)($goods[$pid]['name'] ?? ($elements[$pid]['NAME'] ?? $row['NAME']));
-        $qty = max(1, (int)$row['QUANTITY']);
-        $price = (float)$row['PRICE'];
+    foreach (gg_order_lines(array_map(static fn($row) => [
+        'productId' => (int)$row['PRODUCT_ID'],
+        'name' => (string)$row['NAME'],
+        'qty' => (float)$row['QUANTITY'],
+        'price' => (float)$row['PRICE'],
+    ], $rows)) as $line) {
         $items[] = [
-            'productId' => $pid,
-            'name' => $name,
-            'note' => gg_line_weight($goods[$pid] ?? null),
-            'href' => $code !== '' ? '/product/' . $code : '/catalog/',
-            'price' => $price > 0 ? $price : null,
-            'qty' => $qty,
-            'sum' => $price * $qty,
+            'productId' => $line['productId'],
+            'offerIds' => $line['offerIds'],
+            'name' => $line['name'],
+            'note' => $line['note'],
+            'href' => $line['code'] !== '' ? '/product/' . $line['code'] : '/catalog/',
+            'price' => $line['price'],
+            'qty' => $line['qty'],
+            'sum' => $line['sum'],
         ];
     }
     return $items;
@@ -1219,6 +1230,18 @@ function gg_account_reorder(string $number): array
         }
         $qty = max(1, min(GG_MAX_QTY, (int)$item['qty']));
         $kind = gg_item_kind($data);
+
+        /* Товар с предложениями — через раскладку корзины: те же коробки,
+           что были в заказе, пока они свободны, иначе ближайшие (boxes.php). */
+        if (!empty($data['sku']) && $kind !== 'request') {
+            $result = gg_basket_put($pid, $qty, $item['offerIds'] ?? []);
+            if ($result['ok'] || gg_request_add($pid, $qty)) {
+                $added++;
+            } else {
+                $skipped[] = $item['name'];
+            }
+            continue;
+        }
 
         if ($kind === 'request') {
             if (gg_request_add($pid, $qty)) {
@@ -1784,7 +1807,7 @@ function gg_account_fav_cards(array $ids): array
             'kind' => gg_item_kind($item),
             'title' => $title,
             'weight' => $weight,
-            'price' => gg_price(gg_shelf_price($item['price'], (bool)$info['weighed'])),
+            'price' => gg_price(gg_shelf_price($item['price'], $info)),
             'href' => gg_product_url($element),
             'alt' => $title . ($weight !== '' ? ', ' . $weight : ''),
         ];

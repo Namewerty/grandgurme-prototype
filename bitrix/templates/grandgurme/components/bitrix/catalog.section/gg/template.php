@@ -296,7 +296,7 @@ if ($items && $page['ids']) {
     gg_products_live(array_column($items, 'ID'));
     foreach ($items as $item):
         $goods = $ggGoods[(int)$item['ID']] ?? ['name' => (string)$item['NAME'], 'weight' => '', 'weighed' => false];
-        $price = gg_shelf_price(gg_item_price($item), $goods['weighed']);
+        $price = gg_shelf_price(gg_item_price($item), $goods);
         $title = $goods['name'];
         /* На витрине вид считается по разделу самого товара: красная икра
            без остатка — «под заказ», чёрная — «через менеджера». У раздела

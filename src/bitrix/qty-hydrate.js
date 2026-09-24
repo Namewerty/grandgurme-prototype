@@ -16,6 +16,10 @@
 
    data-qty-hydrate="submit" — после изменения форма отправляется сама:
    так строка корзины пересчитывается сервером без отдельной кнопки «Обновить».
+
+   После каждого изменения степпер сообщает число событием qty-change
+   (detail.value): по нему селектор коробок на карточке отмечает столько
+   коробок, сколько стоит в степпере (src/bitrix/box-hydrate.js).
    ============================================================================ */
 
 export function hydrateQtySteppers(root = document) {
@@ -41,6 +45,7 @@ export function hydrateQtySteppers(root = document) {
       if (String(value) === input.value) return paint()
       input.value = String(value)
       paint()
+      box.dispatchEvent(new CustomEvent('qty-change', { bubbles: true, detail: { value } }))
       if (autoSubmit) input.form?.requestSubmit()
     }
 
