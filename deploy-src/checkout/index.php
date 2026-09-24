@@ -88,6 +88,12 @@ $ggPrefill = $ggUser ? [
     'email' => $ggUser['email'],
 ] : [];
 
+/* Коробку заменили при открытии страницы — сказать сразу, а не молча
+   показать другую сумму. */
+if (!$post && $state['boxNotices']) {
+    $formError = implode(' ', $state['boxNotices']) . ' Проверьте сумму.';
+}
+
 if ($post) {
     if (!check_bitrix_sessid()) {
         LocalRedirect('/checkout/');
@@ -95,6 +101,7 @@ if ($post) {
     $errors = gg_checkout_validate($post, $plan);
 
     if ($state['boxNotices']) {
+        /* Коробку заменили на этом же нажатии — заказ не отправляем. */
         $formError = implode(' ', $state['boxNotices']) . ' Проверьте сумму и оформите заказ ещё раз.';
     } elseif (!$errors && gg_request_is_spam($post)) {
         $formError = 'Заявку отправить не удалось, позвоните нам';
