@@ -1,0 +1,47 @@
+/* ============================================================================
+   gallery — текст и лента кадров с подписями (механизм ленты витрины:
+   rail.css / rail.js). Кадр 4:5, --radius-card-sm; видно 1,3 кадра на
+   телефоне, 2,5 — на планшете, 4 — на широкой раскладке.
+   ============================================================================ */
+
+.ib-gallery__head {
+  display: grid;
+  gap: 0;
+  margin-bottom: clamp(1.5rem, 4vh, 2.5rem);
+}
+
+.ib-gallery__head .ib__head { margin-bottom: 1rem; }
+
+.ib-gallery__stage { position: relative; }
+
+.ib-gallery__track {
+  gap: var(--gap);
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: 0;
+}
+
+.ib-gallery__item {
+  flex: 0 0 calc((100% - var(--gap)) / 1.3);
+  scroll-snap-align: start;
+}
+
+.ib-gallery__media { border-radius: var(--radius-card-sm); }
+
+.ib-gallery__caption {
+  margin-top: .65rem;
+  font-size: .88rem;
+  line-height: 1.45;
+  color: var(--fg-mute);
+}
+
+.ib-gallery__stage .rail-edge { top: 42%; }
+
+.ib-gallery__slider { margin-top: 1.25rem; }
+
+@media (min-width: 640px) {
+  .ib-gallery__item { flex-basis: calc((100% - 2 * var(--gap)) / 2.5); }
+}
+
+@media (min-width: 1024px) {
+  .ib-gallery__item { flex-basis: calc((100% - 3 * var(--gap)) / 4); }
+}

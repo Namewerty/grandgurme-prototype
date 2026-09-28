@@ -415,7 +415,10 @@ function watchAccountState(header, panel) {
 /* ------------------------------------------- состояние «после hero» */
 
 function watchHeaderState(header) {
-  const hero = document.querySelector('#hero')
+  // [data-hero] — тёмный первый экран информационной страницы (src/info/,
+  // вид stage): шапка над ним прозрачная, как над #hero главной. Логотип
+  // при этом ведёт на корень — якорь #hero есть только у главной.
+  const hero = document.querySelector('#hero') || document.querySelector('[data-hero]')
   if (!hero) {
     // Внутренняя страница: hero нет, шапка сразу плотная.
     skin.pastHero = true

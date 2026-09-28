@@ -7,6 +7,7 @@
   "scripts": {
     "pages": "node scripts/build-pages.mjs",
     "media": "node scripts/media-list.mjs",
+    "info:snapshot": "node scripts/info-snapshot.mjs",
     "predev": "node scripts/build-pages.mjs",
     "dev": "vite",
     "prebuild": "node scripts/build-pages.mjs",

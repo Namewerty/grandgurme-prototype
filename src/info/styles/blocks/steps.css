@@ -1,0 +1,114 @@
+/* ============================================================================
+   steps — шаги по золотой линии. Широкая: линия горизонтальная через центры
+   кругов; узкая: вертикальная слева. Линию рисует steps.js (scale),
+   круги загораются классом .is-lit.
+   ============================================================================ */
+
+.ib-steps__track {
+  position: relative;
+  --num: 52px;
+}
+
+.ib-steps__line {
+  position: absolute;
+  left: calc(var(--num) / 2);
+  top: calc(var(--num) / 2);
+  bottom: calc(var(--num) / 2);
+  width: 1px;
+  background: var(--hairline);
+}
+
+.ib-steps__fill {
+  position: absolute;
+  inset: 0;
+  display: block;
+  background: var(--gold);
+  transform-origin: 50% 0;
+}
+
+.ib-steps__list {
+  display: grid;
+  gap: 1.75rem;
+}
+
+.ib-steps__item {
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--num) minmax(0, 1fr);
+  column-gap: 1.25rem;
+  align-items: start;
+}
+
+.ib-steps__num {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  grid-row: 1 / span 2;
+  width: var(--num);
+  height: var(--num);
+  border: 1px solid var(--hairline);
+  border-radius: 50%;
+  background: var(--bg);
+  font-family: var(--font-accent, var(--font-display));
+  font-style: italic;
+  font-size: 1.35rem;
+  line-height: 1;
+  color: var(--fg-mute);
+  transition: border-color 400ms var(--ease-out), color 400ms var(--ease-out);
+}
+
+.ib-steps__item.is-lit .ib-steps__num {
+  border-color: var(--gold);
+  color: var(--gold-fg);
+}
+
+.ib-steps__title {
+  margin: .7rem 0 .4rem;
+  font-size: 1.25rem;
+  line-height: 1.25;
+}
+
+.ib-steps__text {
+  max-width: 34ch;
+  font-size: .92rem;
+  line-height: 1.6;
+  color: var(--fg-mute);
+}
+
+/* Предсостояние до прорисовки: линия пустая, круги не горят. */
+.is-animated .ib-steps__fill { transform: scaleY(0); }
+
+@media (min-width: 1024px) {
+  .ib-steps__line {
+    left: calc(var(--num) / 2);
+    right: calc((100% - (var(--steps, 4) - 1) * var(--gap)) / var(--steps, 4) - var(--num) / 2 + 0px);
+    top: calc(var(--num) / 2);
+    bottom: auto;
+    width: auto;
+    height: 1px;
+  }
+
+  .ib-steps__fill { transform-origin: 0 50%; }
+  .is-animated .ib-steps__fill { transform: scaleX(0); }
+
+  .ib-steps__list {
+    grid-template-columns: repeat(var(--steps, 4), minmax(0, 1fr));
+    column-gap: var(--gap);
+  }
+
+  .ib-steps__item {
+    display: block;
+  }
+
+  .ib-steps__num { margin-bottom: 1.1rem; }
+
+  .ib-steps__title { margin-top: 0; }
+}
+
+.ib-steps__track.is-drawn .ib-steps__fill { transform: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ib-steps__fill { transform: none !important; }
+  .ib-steps__num { transition: none; }
+}

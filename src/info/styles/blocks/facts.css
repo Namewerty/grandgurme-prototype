@@ -1,0 +1,72 @@
+/* ============================================================================
+   facts — числа в ряд через волосяные линии; на узкой раскладке 2×2.
+   ============================================================================ */
+
+.ib-facts__list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border-top: 1px solid var(--hairline);
+}
+
+.ib-facts__item {
+  display: flex;
+  flex-direction: column;
+  gap: .6rem;
+  padding: 1.5rem 1rem 1.5rem 0;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.ib-facts__item:nth-child(2n) {
+  padding-left: 1rem;
+  border-left: 1px solid var(--hairline);
+}
+
+.ib-facts__num {
+  display: flex;
+  align-items: baseline;
+  font-family: var(--font-accent, var(--font-display));
+  font-style: italic;
+  font-size: clamp(3rem, 6vw, 5rem);
+  line-height: 1;
+  color: var(--fg);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.ib-facts__affix { color: var(--gold-fg); }
+.ib-facts__affix:first-child { margin-right: .2em; }
+
+.ib-facts__label {
+  max-width: 26ch;
+  font-size: .85rem;
+  line-height: 1.45;
+  color: var(--fg-mute);
+}
+
+/* Три числа на телефоне — третье во всю строку. */
+.ib-facts__list[data-count='3'] .ib-facts__item:last-child {
+  grid-column: 1 / -1;
+  padding-left: 0;
+  border-left: 0;
+}
+
+@media (min-width: 768px) {
+  .ib-facts__list {
+    grid-template-columns: repeat(var(--facts, 4), minmax(0, 1fr));
+    border-top: 0;
+  }
+
+  .ib-facts__list[data-count='3'] { --facts: 3; }
+  .ib-facts__list[data-count='4'] { --facts: 4; }
+
+  .ib-facts__item,
+  .ib-facts__item:nth-child(2n),
+  .ib-facts__list[data-count='3'] .ib-facts__item:last-child {
+    grid-column: auto;
+    padding: .5rem 1.5rem;
+    border-bottom: 0;
+    border-left: 1px solid var(--hairline);
+  }
+
+  .ib-facts__item:first-child { padding-left: 0; border-left: 0; }
+}

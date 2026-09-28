@@ -1,0 +1,68 @@
+/* ============================================================================
+   table — условия и реквизиты: <dl> в две колонки через волосяные линии.
+   Широкая раскладка: шапка блока слева (колонки 1–5), таблица справа (6–12).
+   ============================================================================ */
+
+.ib-table__grid {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.ib-table__head .ib__head { margin-bottom: 1rem; }
+
+.ib-table__action { margin-top: 1rem; }
+
+.ib-table__list { border-top: 1px solid var(--hairline); }
+
+.ib-table__row {
+  display: grid;
+  gap: .35rem;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.ib-table__label {
+  font-size: .75rem;
+  line-height: 1.4;
+  letter-spacing: var(--ls-eyebrow);
+  text-transform: uppercase;
+  color: var(--fg-mute);
+}
+
+.ib-table__value {
+  font-size: 1rem;
+  line-height: 1.55;
+  color: var(--fg);
+  overflow-wrap: anywhere;
+}
+
+.ib-table__dot { color: var(--fg-mute); }
+
+.ib-table__copy { margin-top: 1.25rem; }
+
+.ib-table__fallback {
+  max-width: 56ch;
+  font-size: 1.05rem;
+  line-height: 1.65;
+  color: var(--fg);
+  text-wrap: pretty;
+}
+
+@media (min-width: 640px) {
+  .ib-table__row {
+    grid-template-columns: minmax(10rem, 2fr) minmax(0, 5fr);
+    column-gap: 1.5rem;
+    align-items: baseline;
+  }
+}
+
+@media (min-width: 1024px) {
+  .ib-table__grid {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    column-gap: var(--gap);
+    align-items: start;
+  }
+
+  .ib-table__head { grid-column: 1 / span 5; }
+  .ib-table__body { grid-column: 6 / -1; }
+}

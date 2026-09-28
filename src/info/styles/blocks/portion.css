@@ -1,0 +1,115 @@
+/* ============================================================================
+   portion — сколько порций в банке: подводка слева (1–4), инструмент
+   справа (6–12): капсулы фасовки и порции, цена, банка сверху и результат.
+   ============================================================================ */
+
+.ib-portion__grid {
+  display: grid;
+  gap: 2.25rem;
+}
+
+.ib-portion__note {
+  max-width: 44ch;
+  margin-top: 1.25rem;
+  font-size: .85rem;
+  line-height: 1.55;
+  color: var(--fg-mute);
+}
+
+.ib-portion__tool {
+  display: grid;
+  gap: 1.25rem;
+  min-width: 0;
+}
+
+.ib-portion__row {
+  display: grid;
+  gap: .55rem;
+}
+
+.ib-portion__label {
+  font-size: .72rem;
+  letter-spacing: .06em;
+  color: var(--fg-mute);
+}
+
+.ib-portion__price { max-width: 16rem; }
+
+.ib-portion__out {
+  display: grid;
+  grid-template-columns: minmax(0, 200px) minmax(0, 1fr);
+  align-items: center;
+  gap: 1.5rem;
+  margin-top: .5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--hairline);
+}
+
+.ib-portion__jar svg { width: 100%; height: auto; overflow: visible; }
+
+.ib-portion__base {
+  fill: var(--surface);
+}
+
+.ib-portion__rim {
+  fill: none;
+  stroke: var(--gold);
+  stroke-width: 3;
+}
+
+.ib-portion__sector {
+  fill: var(--fg);
+  fill-opacity: .88;
+  stroke: var(--hairline);
+  stroke-width: 1;
+}
+
+.ib-portion__sector--rest { fill-opacity: .28; }
+
+.is-solid .ib-portion__sector { stroke: none; }
+
+.ib-portion__count {
+  font-family: var(--font-accent, var(--font-display));
+  font-style: italic;
+  font-size: 56px;
+  fill: var(--bg);
+}
+
+.ib-portion__result { display: grid; gap: .5rem; }
+
+.ib-portion__main {
+  font-family: var(--font-accent, var(--font-display));
+  font-style: italic;
+  font-size: clamp(1.9rem, 3.2vw, 2.8rem);
+  line-height: 1.05;
+  color: var(--fg);
+}
+
+.ib-portion__rest,
+.ib-portion__cost {
+  font-size: .95rem;
+  line-height: 1.5;
+  color: var(--fg-mute);
+}
+
+.ib-portion__cost { color: var(--fg); }
+.ib-portion__rest[hidden],
+.ib-portion__cost[hidden] { display: none; }
+
+@media (max-width: 479px) {
+  .ib-portion__out { grid-template-columns: minmax(0, 1fr); justify-items: start; }
+  .ib-portion__jar { width: min(220px, 70vw); }
+}
+
+@media (min-width: 1024px) {
+  .ib-portion__grid {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    column-gap: var(--gap);
+    align-items: start;
+  }
+
+  .ib-portion__intro { grid-column: 1 / span 4; }
+  .ib-portion__tool { grid-column: 6 / -1; }
+
+  .ib-portion__out { grid-template-columns: 240px minmax(0, 1fr); gap: 2.5rem; }
+}

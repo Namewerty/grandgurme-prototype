@@ -1,0 +1,55 @@
+/* ============================================================================
+   next — «Дальше»: три карточки-ссылки в ряд перед подвалом.
+   ============================================================================ */
+
+.ib-next__grid {
+  display: grid;
+  gap: var(--gap);
+  margin-top: 1.5rem;
+}
+
+.ib-next__card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: .6rem;
+  height: 100%;
+  min-height: 9.5rem;
+  padding: 1.4rem 3.25rem 1.4rem 1.4rem;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-card);
+  color: var(--fg);
+  transition: border-color var(--dur-line) var(--ease-out);
+}
+
+.ib-next__title {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  line-height: 1.25;
+}
+
+.ib-next__lead {
+  font-size: .88rem;
+  line-height: 1.55;
+  color: var(--fg-mute);
+}
+
+.ib-next__arrow {
+  position: absolute;
+  right: 1.4rem;
+  top: 1.55rem;
+  font-size: 1.1rem;
+  color: var(--fg-mute);
+  transition: transform 350ms var(--ease-out), color 350ms var(--ease-out);
+}
+
+.ib-next__card:hover { border-color: var(--caspian); }
+.ib-next__card:hover .ib-next__arrow { transform: translateX(6px); color: var(--caspian-fg); }
+
+@media (min-width: 768px) {
+  .ib-next__grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ib-next__arrow { transition: none; }
+}

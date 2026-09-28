@@ -99,25 +99,36 @@ function passportHTML(line) {
 
 /* --------------------------------------------------------------- разметка */
 
+/**
+ * item.headless — без шапки секции (надзаголовок, H2, подводка): так блок
+ * стоит на /brands, где шапку заменяет вступление. Подпись секции тогда —
+ * item.labelledBy (id заголовка вступления) или aria-label с заголовком блока.
+ */
 export function buildCharacter(item) {
   const section = document.createElement('section')
   section.id = item.id
   section.className = 'section character'
   section.setAttribute('data-reveal-section', '')
-  section.setAttribute('aria-labelledby', `${item.id}-title`)
+  if (!item.headless) section.setAttribute('aria-labelledby', `${item.id}-title`)
+  else if (item.labelledBy) section.setAttribute('aria-labelledby', item.labelledBy)
+  else section.setAttribute('aria-label', copy.title)
 
   const id = item.id
 
   section.innerHTML = `
     <div class="section__layer">
       <div class="container">
-        <div class="character__head">
+        ${
+          item.headless
+            ? ''
+            : `<div class="character__head">
           <p class="eyebrow" data-reveal>${copy.eyebrow}</p>
           <h2 id="${id}-title" class="character__title" data-reveal>${copy.title}</h2>
           <p class="character__note" data-reveal>${copy.note}</p>
-        </div>
+        </div>`
+        }
 
-        <div class="character__picker" data-reveal>
+        <div class="character__picker${item.headless ? ' is-headless' : ''}" data-reveal>
           <div class="character__tabs" role="tablist" aria-label="${copy.tabsLabel}" data-tabs>
             ${caviarSpecies
               .map(
@@ -186,7 +197,7 @@ export function buildCharacter(item) {
 
   // Запасные заголовки — комментарием в разметке.
   const title = section.querySelector('.character__title')
-  title.parentNode.insertBefore(
+  title?.parentNode.insertBefore(
     document.createComment(' Запасные заголовки: «Девять линеек — девять характеров» / «Икра по характеру» '),
     title,
   )

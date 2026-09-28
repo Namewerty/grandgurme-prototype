@@ -1,0 +1,96 @@
+/* ============================================================================
+   guests — сколько икры взять: степпер гостей и капсулы подачи слева,
+   результат, набор банок и банки кругами в масштабе справа.
+   ============================================================================ */
+
+.ib-guests {
+  display: grid;
+  gap: 2rem;
+}
+
+.ib-guests__controls { display: grid; gap: 1.25rem; align-content: start; }
+
+.ib-guests__row { display: grid; gap: .55rem; justify-items: start; }
+
+.ib-guests__label {
+  font-size: .72rem;
+  letter-spacing: .06em;
+  color: var(--fg-mute);
+}
+
+.ib-guests__note {
+  max-width: 40ch;
+  font-size: .85rem;
+  line-height: 1.55;
+  color: var(--fg-mute);
+}
+
+.ib-guests__out {
+  display: grid;
+  gap: .75rem;
+  align-content: start;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--hairline);
+}
+
+.ib-guests__result {
+  font-family: var(--font-accent, var(--font-display));
+  font-style: italic;
+  font-size: clamp(2.4rem, 4.5vw, 3.6rem);
+  line-height: 1;
+  color: var(--fg);
+}
+
+.ib-guests__pack {
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--fg);
+}
+
+.ib-guests__jars {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: .75rem;
+  min-height: 170px;
+  padding-block: .5rem;
+}
+
+/* Банка сверху: круг, площадь пропорциональна весу (--d считает guests.js). */
+.ib-guests__jar {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: var(--d);
+  height: var(--d);
+  border: 2px solid var(--gold);
+  border-radius: 50%;
+  background: var(--fg);
+}
+
+.ib-guests__jar span {
+  font-family: var(--font-accent, var(--font-display));
+  font-style: italic;
+  font-size: clamp(.7rem, calc(var(--d) / 4), 1.3rem);
+  line-height: 1;
+  color: var(--bg);
+}
+
+.ib-guests__action { margin-top: .75rem; }
+
+@media (min-width: 1024px) {
+  .ib-guests {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    column-gap: var(--gap);
+  }
+
+  .ib-guests__controls { grid-column: 1 / span 5; }
+
+  .ib-guests__out {
+    grid-column: 7 / -1;
+    padding-top: 0;
+    border-top: 0;
+    padding-left: var(--gap);
+    border-left: 1px solid var(--hairline);
+  }
+}

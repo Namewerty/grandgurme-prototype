@@ -28,6 +28,7 @@
 import { categories } from './catalog.js'
 import { contacts } from './nav.js'
 import { ROUTES } from './routes.js'
+import { copyrightLine } from './info/company-details.js'
 
 export const footerColumns = [
   {
@@ -111,7 +112,8 @@ export const socials = [
 export const payments = ['Sber Pay', 'СБП']
 
 export const legal = {
-  copyright: `© №1 Гранд Гурмэ, ${new Date().getFullYear()}`,
+  /* Юрлицо и ИНН — src/data/info/company-details.js (28.09.2026). */
+  copyright: copyrightLine(new Date().getFullYear()),
   /* Отдельной строкой внизу, как просил заказчик: правовые документы
      и карта сайта не должны стоять в одном ряду с разделами каталога. */
   links: [

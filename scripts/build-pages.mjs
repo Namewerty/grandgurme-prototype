@@ -25,12 +25,21 @@ import path from 'node:path'
 
 import { allPages } from '../src/data/routes.js'
 import { hasProducts } from '../src/data/catalog-products.js'
+import { INFO_PATHS } from '../src/info/pages/index.js'
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url))
 const MARKER = '<!-- GENERATED scripts/build-pages.mjs — правки затрутся -->'
 
 const escape = (text) =>
   String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+
+/* Информационные страницы раздела «Компания» (точка входа /src/info.js):
+   акцентный шрифт Cormorant Garamond, как в alt2/index.html, и флаг
+   is-animated до первой отрисовки — блоки появляются при прокрутке. */
+const INFO_ENTRY = '/src/info.js'
+const FONTS = 'family=Golos+Text:wght@400;500;600&family=Prata&display=swap'
+const FONTS_INFO =
+  'family=Cormorant+Garamond:ital,wght@1,400;1,500&family=Golos+Text:wght@400;500;600&family=Prata&display=swap'
 
 const template = ({ title, lead, entry }) => `${MARKER}
 <!doctype html>
@@ -48,7 +57,7 @@ const template = ({ title, lead, entry }) => `${MARKER}
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600&family=Prata&display=swap">
+        href="https://fonts.googleapis.com/css2?${entry === INFO_ENTRY ? FONTS_INFO : FONTS}">
 
   <script>
     /* Тема ставится до первой отрисовки, как на главной, — иначе мигает. */
@@ -58,7 +67,12 @@ const template = ({ title, lead, entry }) => `${MARKER}
       try {
         var saved = localStorage.getItem('gg-theme')
         if (saved === 'dark' || saved === 'light') root.setAttribute('data-theme', saved)
-      } catch (e) { /* приватный режим — остаёмся на светлой */ }
+      } catch (e) { /* приватный режим — остаёмся на светлой */ }${
+        entry === INFO_ENTRY
+          ? `
+      if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) root.classList.add('is-animated')`
+          : ''
+      }
     })()
   </script>
 </head>
@@ -115,7 +129,7 @@ findGenerated(ROOT).forEach((file) => {
 /**
  * Точка входа страницы.
  *
- * Семь входов вместо одного:
+ * Восемь входов вместо одного:
  *   /src/category.js       раздел с выгрузкой товаров: фильтры, сетка, боттом-шит;
  *   /src/product.js        карточка товара: галерея, фасовки, ленты;
  *   /src/cart.js           корзина;
@@ -124,6 +138,9 @@ findGenerated(ROOT).forEach((file) => {
  *   /src/account.js        вход, личный кабинет, лист ожидания и избранное —
  *                          девять адресов, страница выбирается внутри
  *                          по location.pathname;
+ *   /src/info.js           страницы раздела «Компания» из блоков —
+ *                          /partners, /about, /brands, /production,
+ *                          /documents, /corporate, /contacts, /faq, /storage;
  *   /src/page.js           всё остальное — общий каркас заглушек.
  *
  * Раздел без товаров тоже остаётся на заглушке: пустой каталог с нулём
@@ -143,6 +160,9 @@ const ENTRY_BY_PATH = {
   '/account/profile': '/src/account.js',
   '/account/waitlist': '/src/account.js',
   '/favorites': '/src/account.js',
+  /* Страницы раздела «Компания», партия 1 (28.09.2026): девять адресов,
+     страница выбирается внутри по location.pathname (src/info/pages/). */
+  ...Object.fromEntries(INFO_PATHS.map((path) => [path, INFO_ENTRY])),
 }
 
 function entryFor(page) {

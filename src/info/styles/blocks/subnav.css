@@ -1,0 +1,59 @@
+/* ============================================================================
+   subnav — оглавление страницы: капсулы-якоря, липнет под шапкой.
+   Фон --bg, волосяная линия снизу. Активная — рамка --caspian.
+   Узкая раскладка — лента с прокруткой без полосы.
+   ============================================================================ */
+
+.ib--subnav.ib.section {
+  position: sticky;
+  top: var(--header-h);
+  z-index: 40;
+  padding-block: .6rem;
+  background: var(--bg);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.ib--subnav.ib.section + .ib.section { padding-top: var(--section-pad); }
+
+.ib-subnav__list {
+  display: flex;
+  gap: .5rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  margin-inline: calc(-1 * var(--gutter));
+  padding-inline: var(--gutter);
+}
+
+.ib-subnav__list::-webkit-scrollbar { display: none; }
+
+.ib-subnav__list li { flex: none; }
+
+.ib-subnav__link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 1.15rem;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+  font-size: .82rem;
+  font-weight: 500;
+  color: var(--fg-mute);
+  white-space: nowrap;
+  transition: color var(--dur-line) var(--ease-out), border-color var(--dur-line) var(--ease-out);
+}
+
+.ib-subnav__link:hover { color: var(--fg); }
+
+.ib-subnav__link.is-active {
+  border-color: var(--caspian);
+  color: var(--fg);
+}
+
+@media (min-width: 1024px) {
+  .ib-subnav__list {
+    flex-wrap: wrap;
+    margin-inline: 0;
+    padding-inline: 0;
+  }
+}

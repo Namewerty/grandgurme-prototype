@@ -1,0 +1,50 @@
+/* ============================================================================
+   cta — тёмная полоса-призыв; справа круг с кадром и золотым кольцом
+   (колонки 9–12), вращается при прокрутке.
+   ============================================================================ */
+
+.ib-cta__grid {
+  display: grid;
+  gap: 2.5rem;
+  align-items: center;
+}
+
+.ib-cta__text .ib__p { margin-top: 1rem; }
+
+.ib-cta__disc {
+  justify-self: center;
+  width: min(100%, 300px);
+  padding: 12px;
+}
+
+.ib-cta__ring { position: relative; }
+
+.ib-cta__ring::after {
+  content: '';
+  position: absolute;
+  inset: -12px;
+  border: 1px solid rgba(169, 135, 72, .45);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.ib-cta__turn {
+  border-radius: 50%;
+  overflow: hidden;
+}
+
+.ib-cta__turn .media { width: 100%; }
+
+@media (min-width: 1024px) {
+  .ib-cta__grid {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    column-gap: var(--gap);
+  }
+
+  .ib-cta__text { grid-column: 1 / span 7; }
+
+  .ib-cta__disc {
+    grid-column: 9 / -1;
+    width: min(100%, 340px);
+  }
+}

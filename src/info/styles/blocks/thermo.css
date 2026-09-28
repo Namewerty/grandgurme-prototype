@@ -1,0 +1,338 @@
+/* ============================================================================
+   thermo — шкала температур. Узкая раскладка (вне медиазапроса): шкала
+   горизонтальная над карточкой, −20 слева, +8 справа; полосы продуктов над
+   трубкой. Широкая — от 1024px: термометр вертикальный в колонках 1–4,
+   карточка в 6–12, стрелка от выбранной полосы к карточке (thermo.js).
+   Положение на шкале — --p / --from / --to / --level в процентах.
+   ============================================================================ */
+
+.ib-thermo { display: grid; gap: 1.5rem; }
+
+.ib-thermo__grid {
+  position: relative;
+  display: grid;
+  gap: 2rem;
+}
+
+.ib-thermo__scale {
+  position: relative;
+  height: 118px;
+  margin-inline: 12px;
+}
+
+/* ---- Трубка и ртуть ---- */
+
+.ib-thermo__tube {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 30px;
+  height: 8px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+}
+
+.ib-thermo__mercury {
+  position: absolute;
+  left: 1px;
+  top: 1px;
+  bottom: 1px;
+  width: calc(var(--level, 0%) - 2px);
+  min-width: 0;
+  border-radius: var(--radius-pill);
+  background: var(--fg);
+  opacity: .78;
+}
+
+.ib-thermo__bulb {
+  position: absolute;
+  left: -10px;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--fg);
+  opacity: .78;
+  transform: translateY(-50%);
+}
+
+/* ---- Деления ---- */
+
+.ib-thermo__ticks {
+  position: absolute;
+  inset: auto 0 0;
+  height: 30px;
+}
+
+.ib-thermo__tick {
+  position: absolute;
+  left: var(--p);
+  top: 0;
+  width: 1px;
+  height: 5px;
+  background: var(--hairline);
+}
+
+.ib-thermo__tick.is-label { height: 8px; background: var(--fg-mute); opacity: .7; }
+
+.ib-thermo__tick span {
+  position: absolute;
+  top: 11px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: .7rem;
+  line-height: 1;
+  color: var(--fg-mute);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Полосы продуктов ---- */
+
+.ib-thermo__bars {
+  position: absolute;
+  inset: 0 0 40px;
+}
+
+.ib-thermo__lane {
+  position: absolute;
+  left: var(--from);
+  width: calc(var(--to) - var(--from));
+  min-width: 10px;
+  bottom: 0;
+  height: 100%;
+}
+
+.ib-thermo__bar {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  cursor: pointer;
+}
+
+.ib-thermo__bar-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 6px;
+  height: 6px;
+  background: var(--gold);
+  transition: height 300ms var(--ease-out), background-color 300ms var(--ease-out);
+}
+
+.ib-thermo__bar.is-reference .ib-thermo__bar-line {
+  height: 0;
+  background: none;
+  border-top: 2px dashed var(--fg-mute);
+}
+
+.ib-thermo__bar.is-active .ib-thermo__bar-line {
+  height: 10px;
+  background: var(--caspian);
+}
+
+.ib-thermo__bar.is-reference.is-active .ib-thermo__bar-line {
+  height: 0;
+  background: none;
+  border-top-color: var(--caspian);
+}
+
+.ib-thermo__bar-label { display: none; }
+
+/* ---- Стрелка и карточка ---- */
+
+.ib-thermo__arrow {
+  position: absolute;
+  z-index: 1;
+  background: var(--caspian);
+  pointer-events: none;
+}
+
+.ib-thermo__arrow::after {
+  content: '';
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  width: 7px;
+  height: 7px;
+  border-right: 1px solid var(--caspian);
+  border-bottom: 1px solid var(--caspian);
+  transform: rotate(45deg);
+}
+
+.ib-thermo__card {
+  display: grid;
+  gap: .5rem;
+  align-content: start;
+  max-width: 46ch;
+  padding: 1.5rem;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+}
+
+.ib-thermo__card-range {
+  font-family: var(--font-accent, var(--font-display));
+  font-style: italic;
+  font-size: clamp(2rem, 4vw, 3rem);
+  line-height: 1;
+  color: var(--gold-fg);
+}
+
+.ib-thermo__card-title {
+  margin: 0;
+  font-size: 1.35rem;
+  line-height: 1.25;
+}
+
+.ib-thermo__card-text {
+  font-size: .95rem;
+  line-height: 1.65;
+  color: var(--fg-mute);
+}
+
+@media (min-width: 1024px) {
+  .ib-thermo__grid {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    column-gap: var(--gap);
+    align-items: center;
+  }
+
+  .ib-thermo__scale {
+    grid-column: 1 / span 4;
+    height: 440px;
+    margin: 12px 0 28px;
+  }
+
+  .ib-thermo__card { grid-column: 6 / -1; }
+
+  /* Трубка вертикальная: подписи слева, полосы справа. */
+  .ib-thermo__tube {
+    left: 3rem;
+    right: auto;
+    top: 0;
+    bottom: 0;
+    width: 10px;
+    height: auto;
+  }
+
+  .ib-thermo__mercury {
+    left: 1px;
+    right: 1px;
+    top: auto;
+    bottom: 1px;
+    width: auto;
+    height: calc(var(--level, 0%) - 2px);
+  }
+
+  .ib-thermo__bulb {
+    left: 50%;
+    top: auto;
+    bottom: -12px;
+    width: 20px;
+    height: 20px;
+    transform: translateX(-50%);
+  }
+
+  .ib-thermo__ticks {
+    inset: 0 auto 0 0;
+    width: 3rem;
+    height: auto;
+  }
+
+  .ib-thermo__tick {
+    left: auto;
+    right: -14px;
+    top: auto;
+    bottom: var(--p);
+    width: 8px;
+    height: 1px;
+  }
+
+  .ib-thermo__tick.is-label { width: 12px; height: 1px; right: -14px; }
+
+  .ib-thermo__tick span {
+    top: 50%;
+    left: auto;
+    right: calc(100% + 18px);
+    transform: translateY(-50%);
+  }
+
+  .ib-thermo__bars { inset: 0 0 0 calc(3rem + 10px + 1.25rem); }
+
+  .ib-thermo__lane {
+    left: 0;
+    right: 0;
+    width: auto;
+    bottom: var(--from);
+    height: calc(var(--to) - var(--from));
+    min-height: 6px;
+  }
+
+  .ib-thermo__bar {
+    display: flex;
+    align-items: center;
+    min-height: 0;
+    height: 100%;
+    text-align: left;
+  }
+
+  .ib-thermo__bar-line {
+    position: relative;
+    left: auto;
+    right: auto;
+    bottom: auto;
+    flex: none;
+    width: 6px;
+    height: 100%;
+    min-height: 6px;
+    transition: width 300ms var(--ease-out), background-color 300ms var(--ease-out);
+  }
+
+  .ib-thermo__bar.is-active .ib-thermo__bar-line { width: 10px; height: 100%; }
+
+  .ib-thermo__bar.is-reference .ib-thermo__bar-line,
+  .ib-thermo__bar.is-reference.is-active .ib-thermo__bar-line {
+    width: 0;
+    height: 100%;
+    border-top: 0;
+    border-left: 2px dashed var(--fg-mute);
+  }
+
+  .ib-thermo__bar.is-reference.is-active .ib-thermo__bar-line { border-left-color: var(--caspian); }
+
+  .ib-thermo__bar-label {
+    display: block;
+    margin-left: .85rem;
+    font-size: .85rem;
+    line-height: 1.2;
+    color: var(--fg-mute);
+    white-space: nowrap;
+    transition: color 300ms var(--ease-out);
+  }
+
+  .ib-thermo__bar.is-active .ib-thermo__bar-label,
+  .ib-thermo__bar:hover .ib-thermo__bar-label { color: var(--fg); }
+
+  .ib-thermo__arrow::after {
+    right: -1px;
+    top: -3px;
+    bottom: auto;
+    transform: rotate(-45deg);
+  }
+}
+
+@media (max-width: 1023px) {
+  .ib-thermo__arrow::after {
+    right: auto;
+    left: -3px;
+    bottom: -1px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ib-thermo__bar-line,
+  .ib-thermo__bar-label { transition: none; }
+}

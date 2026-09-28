@@ -1,0 +1,53 @@
+/* ============================================================================
+   split — кадр 4:5 и текст рядом; сторона кадра — .ib-split__grid--left/right.
+   Эту же раскладку берёт boutique (/contacts).
+   ============================================================================ */
+
+.ib-split__grid {
+  display: grid;
+  gap: 2rem;
+  align-items: center;
+}
+
+.ib-split__media {
+  width: min(100%, 520px);
+}
+
+.ib-split__media .media { border-radius: var(--radius-card); }
+
+.ib-split__text { min-width: 0; }
+
+.ib-split__text .ib__head { margin-bottom: 1.25rem; }
+
+.ib-split__list {
+  margin-top: 1.5rem;
+  border-top: 1px solid var(--hairline);
+}
+
+.ib-split__list li {
+  padding: .8rem 0;
+  border-bottom: 1px solid var(--hairline);
+  font-size: .95rem;
+  line-height: 1.5;
+  color: var(--fg);
+}
+
+.ib-split__action { margin-top: 1.5rem; }
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .ib-split__grid { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); column-gap: var(--gap); }
+  .ib-split__grid--right .ib-split__media { order: 2; }
+}
+
+@media (min-width: 1024px) {
+  .ib-split__grid {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    column-gap: var(--gap);
+  }
+
+  .ib-split__grid--left .ib-split__media { grid-column: 1 / span 5; }
+  .ib-split__grid--left .ib-split__text { grid-column: 7 / -1; }
+
+  .ib-split__grid--right .ib-split__media { grid-column: 8 / -1; grid-row: 1; justify-self: end; }
+  .ib-split__grid--right .ib-split__text { grid-column: 1 / span 6; grid-row: 1; }
+}

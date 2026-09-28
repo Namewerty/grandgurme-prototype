@@ -174,24 +174,34 @@ function buildStory(key, story, id, active) {
   return panel
 }
 
+/**
+ * item.headless — без шапки секции (надзаголовок, H2, подводка), вкладки
+ * историй остаются: так блок стоит на /production, где шапку заменяет
+ * первый экран. Подпись секции тогда — aria-label с заголовком блока.
+ */
 export function buildOrigin(item) {
   const section = document.createElement('section')
   section.id = item.id
   section.className = 'section section--dark origin'
   section.setAttribute('data-reveal-section', '')
-  section.setAttribute('aria-labelledby', `${item.id}-title`)
+  if (item.headless) section.setAttribute('aria-label', copy.title)
+  else section.setAttribute('aria-labelledby', `${item.id}-title`)
 
   const id = item.id
 
   section.innerHTML = `
     <div class="section__layer">
       <div class="container">
-        <div class="origin__head">
-          <div class="origin__intro">
+        <div class="origin__head${item.headless ? ' is-headless' : ''}">
+          ${
+            item.headless
+              ? ''
+              : `<div class="origin__intro">
             <p class="eyebrow" data-reveal>${copy.eyebrow}</p>
             <h2 id="${id}-title" class="origin__title" data-reveal>${copy.title}</h2>
             <p class="origin__note" data-reveal>${copy.note}</p>
-          </div>
+          </div>`
+          }
           <div class="origin__tabs" role="tablist" aria-label="${copy.tabsLabel}" data-reveal>
             ${originOrder
               .map(
@@ -209,7 +219,7 @@ export function buildOrigin(item) {
   `
 
   const title = section.querySelector('.origin__title')
-  title.parentNode.insertBefore(
+  title?.parentNode.insertBefore(
     document.createComment(' Запасные заголовки: «Откуда икра и рыба на вашем столе» / «Путь до банки» '),
     title,
   )

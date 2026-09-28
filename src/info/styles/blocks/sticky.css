@@ -1,0 +1,41 @@
+/* ============================================================================
+   sticky — липкая кнопка посадочной (/partners): капсула внизу справа;
+   на узкой раскладке — полоса во всю ширину внизу экрана с отступом
+   safe-area. Видимость — .is-visible (sticky.js).
+   ============================================================================ */
+
+.ib--sticky {
+  position: fixed;
+  right: clamp(1rem, 3vw, 2.5rem);
+  bottom: clamp(1rem, 3vw, 2.5rem);
+  z-index: 70;
+  opacity: 0;
+  transform: translateY(12px);
+  pointer-events: none;
+  transition: opacity 300ms var(--ease-out), transform 300ms var(--ease-out);
+}
+
+.ib--sticky.is-visible {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+
+.ib-sticky__btn { min-height: 52px; padding-inline: 1.75rem; }
+
+@media (max-width: 767px) {
+  .ib--sticky {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: .6rem 1rem calc(.6rem + env(safe-area-inset-bottom));
+    background: var(--bg);
+    border-top: 1px solid var(--hairline);
+  }
+
+  .ib-sticky__btn { width: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ib--sticky { transition: none; }
+}

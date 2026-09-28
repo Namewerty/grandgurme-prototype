@@ -1,0 +1,186 @@
+/* ============================================================================
+   Информационные страницы раздела «Компания» — общее для всех блоков:
+   ритм секций, шапки блоков, кнопки-ссылки, капсулы-чипы, акцентный шрифт.
+
+   Всё — под body.is-info или классами .ib*: другие страницы этих правил
+   не видят. Акцентный шрифт и зерно тёмных секций — в src/alt2/alt2.css
+   (селектор body.is-info добавлен туда, правила не копируются).
+   ============================================================================ */
+
+body.is-info {
+  /* Средний цвет синей шкатулки с кадра box-blue.jpg (rgb 68 89 120) —
+     круг исполнения в блоке giftbox. Единственный цвет вне палитры
+     tokens.css: цвет товара, а не интерфейса. */
+  --gift-blue: #445978;
+}
+
+.info { display: block; }
+
+/* ---- Ритм ----------------------------------------------------------------
+   Отступы блока — --section-pad; у соседних блоков одного фона верхний
+   отступ второго — --section-pad-tight (как .section--tight на главной). */
+
+.ib.section {
+  padding-block: var(--section-pad);
+}
+
+.ib.section:not(.section--dark) + .ib.section:not(.section--dark):not(.ib--hero),
+.ib.section.section--dark + .ib.section.section--dark {
+  padding-top: var(--section-pad-tight);
+}
+
+/* Между двумя тёмными блоками волосяной линии в layout.css нет — ставим
+   такую же, иначе блоки сливаются в один. */
+.ib.section--dark + .ib.section--dark::before {
+  content: '';
+  display: block;
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  height: 1px;
+  background: var(--hairline);
+  opacity: .55;
+  z-index: 1;
+}
+
+/* Секции /alt2 внутри информационной страницы. */
+body.is-info .character > .section__layer { padding-top: 0; }
+body.is-info .ib + .character::before { display: none; }
+body.is-info .ib--text:has(+ .character) { padding-bottom: var(--section-pad-tight); }
+body.is-info .character__picker.is-headless { margin-top: 0; }
+body.is-info .origin__head.is-headless { display: flex; align-items: flex-start; justify-content: flex-start; }
+body.is-info .origin__head.is-headless .origin__tabs { grid-column: auto; justify-self: start; justify-content: flex-start; }
+
+/* ---- Шапка блока -------------------------------------------------------- */
+
+.ib__head {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1rem;
+  max-width: 56ch;
+  margin-bottom: clamp(1.75rem, 4vh, 2.75rem);
+}
+
+.ib__title {
+  margin: 0;
+  font-size: clamp(1.85rem, 3.3vw, 3rem);
+  line-height: 1.12;
+  text-wrap: balance;
+}
+
+.ib__note {
+  max-width: 56ch;
+  font-size: .98rem;
+  line-height: 1.6;
+  color: var(--fg-mute);
+  text-wrap: pretty;
+}
+
+.ib__p {
+  max-width: 62ch;
+  font-size: 1rem;
+  line-height: 1.7;
+  color: var(--fg-mute);
+  text-wrap: pretty;
+}
+
+.ib__p + .ib__p { margin-top: 1rem; }
+
+.ib__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .75rem;
+  margin-top: 1.75rem;
+}
+
+/* ---- Ссылки ------------------------------------------------------------- */
+
+.ib-link {
+  color: var(--fg);
+  border-bottom: 1px solid var(--caspian);
+  transition: color var(--dur-line) var(--ease-out);
+}
+
+.ib-link:hover { color: var(--caspian-fg); }
+
+/* Ссылка со стрелкой — «Как добраться →». Как «Весь каталог» на /alt2. */
+.ib-more {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  min-height: 44px;
+  font-size: .78rem;
+  font-weight: 500;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--fg);
+  text-decoration: underline;
+  text-decoration-color: var(--caspian);
+  text-decoration-thickness: 1px;
+  text-underline-offset: .5em;
+  transition: color var(--dur-line) var(--ease-out);
+}
+
+.ib-more span { transition: transform 350ms var(--ease-out); }
+.ib-more:hover { color: var(--caspian-fg); }
+.ib-more:hover span { transform: translateX(4px); }
+
+/* ---- Капсулы-чипы ------------------------------------------------------- */
+
+.ib-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+}
+
+.ib-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .45rem;
+  min-height: 44px;
+  padding: .5rem 1.1rem;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+  font-size: .84rem;
+  line-height: 1.2;
+  color: var(--fg);
+  white-space: nowrap;
+  transition: border-color var(--dur-line) var(--ease-out),
+              background-color var(--dur-line) var(--ease-out),
+              color var(--dur-line) var(--ease-out);
+}
+
+.ib-chip:hover { border-color: var(--caspian); }
+
+.ib-chip[aria-pressed='true'] {
+  background: var(--fg);
+  border-color: var(--fg);
+  color: var(--bg);
+}
+
+.ib-chip--two { flex-direction: column; gap: .1rem; padding-block: .45rem; }
+.ib-chip__note { font-size: .72rem; opacity: .8; }
+
+/* ---- Акцентный шрифт ---------------------------------------------------- */
+
+.ib-accent {
+  font-family: var(--font-accent, var(--font-display));
+  font-style: italic;
+  font-weight: 400;
+}
+
+/* ---- Сетка -------------------------------------------------------------- */
+
+@media (min-width: 1024px) {
+  .ib-grid12 {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    column-gap: var(--gap);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ib-more span { transition: none; }
+}

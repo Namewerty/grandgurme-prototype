@@ -1,0 +1,92 @@
+/* ============================================================================
+   accordion — вопросы и ответы группами; капсулы групп сверху.
+   Знак «+» → «×» — общий с list (list.css).
+   ============================================================================ */
+
+.ib-acc {
+  display: grid;
+  gap: clamp(1.75rem, 4vh, 2.5rem);
+  max-width: 60rem;
+}
+
+.ib-acc__filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+}
+
+.ib-acc__groups {
+  display: grid;
+  gap: clamp(2rem, 5vh, 3rem);
+}
+
+.ib-acc__group[hidden] { display: none; }
+
+.ib-acc__group-title {
+  margin: 0 0 .75rem;
+  font-size: clamp(1.35rem, 2.2vw, 1.75rem);
+  line-height: 1.2;
+}
+
+.ib-acc__items { border-top: 1px solid var(--hairline); }
+
+.ib-acc__item {
+  border-bottom: 1px solid var(--hairline);
+  scroll-margin-top: calc(var(--header-h) + 1.5rem);
+}
+
+.ib-acc__item[hidden] { display: none; }
+
+.ib-acc__q {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  min-height: 60px;
+  padding-block: 1rem;
+  font-size: 1.02rem;
+  font-weight: 500;
+  line-height: 1.45;
+  color: var(--fg);
+  cursor: pointer;
+  list-style: none;
+}
+
+.ib-acc__q::-webkit-details-marker { display: none; }
+.ib-acc__q::marker { content: ''; }
+.ib-acc__q:hover .ib-acc__q-text { color: var(--caspian-fg); }
+.ib-acc__q-text { transition: color var(--dur-line) var(--ease-out); }
+
+.ib-acc__a { overflow: hidden; }
+
+.ib-acc__a-inner {
+  display: grid;
+  gap: .8rem;
+  max-width: 62ch;
+  padding-bottom: 1.25rem;
+  font-size: .95rem;
+  line-height: 1.7;
+  color: var(--fg-mute);
+}
+
+.ib-acc__a-inner a {
+  color: var(--fg);
+  border-bottom: 1px solid var(--caspian);
+}
+
+.ib-acc__a-inner a:hover { color: var(--caspian-fg); }
+
+/* Подсветка найденного: золотое подчёркивание — линия, а не заливка. */
+.ib-acc mark {
+  background: none;
+  color: var(--fg);
+  text-decoration: underline;
+  text-decoration-color: var(--gold);
+  text-decoration-thickness: 2px;
+  text-underline-offset: .18em;
+}
+
+.ib-acc__empty {
+  font-size: 1rem;
+  color: var(--fg-mute);
+}

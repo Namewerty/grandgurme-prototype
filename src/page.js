@@ -13,10 +13,9 @@
    токены и базовая типографика. Их задача — показать, что навигация ведёт
    на живые адреса, а не в 404, и что структура сайта продумана целиком.
 
-   Четыре страницы собираются не по общему шаблону:
+   Три вида страниц собираются не по общему шаблону:
      /sitemap     — полный список адресов, он же проверка целостности карты;
                     карточки товара свёрнуты в одну строку с примером;
-     /production  — готовый текст: туда переехала секция «Происхождение»;
      /delivery    — «Доставка и оплата»: блоки через волосяную линию
                     (src/data/delivery.js);
      категории    — к описанию добавляется список подкатегорий ссылками.
@@ -36,7 +35,6 @@ import './styles/pages/page.css'
 
 import { GROUPS, ROUTES, allPages, findPage, staticPages } from './data/routes.js'
 import { categories } from './data/catalog.js'
-import { productionPage } from './data/production.js'
 import { deliveryPage } from './data/delivery.js'
 import { initHeader } from './js/sections/header.js'
 import { initFooter } from './js/sections/footer.js'
@@ -104,31 +102,6 @@ function sitemapBody() {
   }).join('')
 }
 
-/** Производство: единственная страница с готовым содержимым. */
-function productionBody() {
-  const page = productionPage
-  return `
-    ${page.paragraphs.map((text) => `<p class="page__p">${text}</p>`).join('')}
-
-    <dl class="page__facts">
-      ${page.facts
-        .map(
-          ({ value, label }) => `
-      <div class="page__fact">
-        <dt class="page__fact-num">${value}</dt>
-        <dd class="page__fact-label">${label}</dd>
-      </div>`,
-        )
-        .join('')}
-    </dl>
-
-    <h2 class="page__subtitle">${page.documentsTitle}</h2>
-    <ul class="page__docs">
-      ${page.documents.map((text) => `<li>${text}</li>`).join('')}
-    </ul>
-  `
-}
-
 /**
  * Доставка и оплата. Одна колонка в читаемую меру, блоки через волосяную
  * линию — ни вкладок, ни аккордеонов: страницу читают сверху вниз в поисках
@@ -171,10 +144,12 @@ const notFoundPage = staticPages.find((page) => page.path === ROUTES.notFound)
 
 /**
  * Страницы, которые уже сделаны и пометки «заглушка» не требуют:
- * производство с настоящим текстом, карта сайта и 404 — последняя
- * и должна выглядеть именно так, как выглядит.
+ * доставка с настоящим текстом, карта сайта и 404 — последняя
+ * и должна выглядеть именно так, как выглядит. «Производство и качество»
+ * с 28.09.2026 собирается из блоков (src/info.js), как и ещё восемь
+ * страниц раздела «Компания».
  */
-const READY = [ROUTES.production, ROUTES.delivery, ROUTES.sitemap, ROUTES.notFound]
+const READY = [ROUTES.delivery, ROUTES.sitemap, ROUTES.notFound]
 
 /** Надзаголовок: откуда пришли и что это за адрес. */
 function eyebrowFor(page) {
@@ -208,7 +183,6 @@ function searchBody() {
 function bodyFor(page) {
   if (page.path === ROUTES.sitemap) return sitemapBody()
   if (page.path === ROUTES.search) return searchBody()
-  if (page.path === ROUTES.production) return productionBody()
   if (page.path === ROUTES.delivery) return deliveryBody()
   if (page.template === 'category') return categoryBody(page)
 

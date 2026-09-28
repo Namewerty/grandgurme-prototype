@@ -11,7 +11,10 @@
    и строк — и подписи-врезки, отмеченные в задании словом «акцент».
    Заголовки остаются на Prata, текст — на Golos Text.                       */
 
-body.is-alt2 {
+/* body.is-info — информационные страницы раздела «Компания» (src/info/):
+   тот же акцентный шрифт и то же зерно, правила не копируются. */
+body.is-alt2,
+body.is-info {
   --font-accent: 'Cormorant Garamond', Georgia, serif;
 }
 
@@ -24,7 +27,8 @@ body.is-alt2 {
 
 body.is-alt2 #hero::after,
 body.is-alt2 #origin::after,
-body.is-alt2 #proof::after {
+body.is-alt2 #proof::after,
+body.is-info #main > .section--dark::after {
   content: '';
   position: absolute;
   inset: 0;
@@ -38,7 +42,10 @@ body.is-alt2 #proof::after {
 
 body.is-alt2 #hero > .section__layer,
 body.is-alt2 #origin > .section__layer,
-body.is-alt2 #proof > .section__layer {
+body.is-alt2 #proof > .section__layer,
+body.is-info #main > .section--dark > .section__layer,
+body.is-info #main > .section--dark > .container {
+  position: relative;
   z-index: 1;
 }
 

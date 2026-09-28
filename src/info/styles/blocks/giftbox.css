@@ -1,0 +1,158 @@
+/* ============================================================================
+   giftbox — форматы подарочных наборов: вкладки-капсулы, кадр в квадрате
+   --on-dark с multiply (колонки 1–6), паспорт справа, круги исполнения
+   под кадром у «Шкатулки».
+   ============================================================================ */
+
+.ib-gift { display: grid; gap: 1.75rem; }
+
+.ib-gift__tabs {
+  display: flex;
+  gap: .5rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  margin-inline: calc(-1 * var(--gutter));
+  padding-inline: var(--gutter);
+}
+
+.ib-gift__tabs::-webkit-scrollbar { display: none; }
+
+.ib-gift__tab {
+  flex: none;
+  min-height: 44px;
+  padding: 0 1.2rem;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+  font-size: .84rem;
+  font-weight: 500;
+  color: var(--fg-mute);
+  white-space: nowrap;
+  transition: color 300ms var(--ease-out), border-color 300ms var(--ease-out);
+}
+
+.ib-gift__tab:hover { color: var(--fg); }
+
+.ib-gift__tab[aria-selected='true'] {
+  border-color: var(--caspian);
+  color: var(--fg);
+}
+
+.ib-gift__body {
+  display: grid;
+  gap: 2rem;
+}
+
+.ib-gift__visual { display: grid; gap: 1.1rem; justify-items: center; }
+
+.ib-gift__frame {
+  position: relative;
+  z-index: 0;
+  width: min(100%, 520px);
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: var(--radius-card);
+  background: var(--on-dark);
+}
+
+.ib-gift__shot {
+  position: absolute;
+  inset: 0;
+}
+
+.ib-gift__shot .media {
+  width: 100%;
+  height: 100%;
+  background: transparent;
+}
+
+.ib-gift__shot img { mix-blend-mode: multiply; }
+
+.ib-gift__colors {
+  display: flex;
+  gap: .9rem;
+}
+
+.ib-gift__colors[hidden] { display: none; }
+
+.ib-gift__swatch {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+}
+
+.ib-gift__swatch::before {
+  content: '';
+  position: absolute;
+  inset: 8px;
+  border-radius: 50%;
+}
+
+.ib-gift__swatch--black::before { background: var(--void); }
+.ib-gift__swatch--blue::before { background: var(--gift-blue); }
+.ib-gift__swatch--white::before { background: var(--on-dark); border: 1px solid var(--hairline); }
+
+.ib-gift__swatch::after {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  transition: border-color 300ms var(--ease-out);
+}
+
+.ib-gift__swatch:hover::after { border-color: var(--hairline); }
+.ib-gift__swatch[aria-pressed='true']::after { border-color: var(--caspian); }
+
+.ib-gift__passport { align-self: center; min-width: 0; }
+
+.ib-gift__name {
+  margin: 0 0 1.25rem;
+  font-size: clamp(1.5rem, 2.6vw, 2.1rem);
+  line-height: 1.2;
+}
+
+.ib-gift__facts { border-top: 1px solid var(--hairline); }
+
+.ib-gift__fact {
+  display: grid;
+  gap: .3rem;
+  padding: .9rem 0;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.ib-gift__fact dt {
+  font-size: .72rem;
+  letter-spacing: var(--ls-eyebrow);
+  text-transform: uppercase;
+  color: var(--fg-mute);
+}
+
+.ib-gift__fact dd {
+  font-size: 1rem;
+  line-height: 1.55;
+  color: var(--fg);
+}
+
+.ib-gift__more { margin-top: 1.5rem; }
+
+@media (min-width: 640px) {
+  .ib-gift__fact {
+    grid-template-columns: minmax(8rem, 1fr) minmax(0, 2.5fr);
+    column-gap: 1.25rem;
+    align-items: baseline;
+  }
+}
+
+@media (min-width: 1024px) {
+  .ib-gift__tabs { flex-wrap: wrap; margin-inline: 0; padding-inline: 0; }
+
+  .ib-gift__body {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    column-gap: var(--gap);
+  }
+
+  .ib-gift__visual { grid-column: 1 / span 6; justify-items: start; }
+
+  .ib-gift__passport { grid-column: 8 / -1; }
+}

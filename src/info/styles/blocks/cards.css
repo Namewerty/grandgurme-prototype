@@ -1,0 +1,215 @@
+/* ============================================================================
+   cards — сетка карточек. Три вида: default (кадр 3:2 сверху), count
+   (число акцентом, без кадра), poster (кадр 4:5 на всю карточку, текст
+   снизу на затемнении). Колонки — --cols (2–4); планшет — 2, телефон — 1.
+   ============================================================================ */
+
+.ib-cards__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--gap);
+}
+
+@media (min-width: 640px) {
+  .ib-cards__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (min-width: 1024px) {
+  .ib-cards__grid { grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr)); }
+}
+
+.ib-cards__cell { display: flex; min-width: 0; }
+
+.ib-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: .6rem;
+  width: 100%;
+  color: var(--fg);
+}
+
+.ib-card__media {
+  margin-bottom: .6rem;
+  border-radius: var(--radius-card);
+}
+
+.ib-card__media img { transition: transform 600ms var(--ease-out); }
+
+.ib-card__tag {
+  font-size: .7rem;
+  letter-spacing: var(--ls-eyebrow);
+  text-transform: uppercase;
+  color: var(--gold-fg);
+}
+
+.ib-card__title {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  line-height: 1.25;
+}
+
+.ib-card__text {
+  font-size: .92rem;
+  line-height: 1.6;
+  color: var(--fg-mute);
+}
+
+.ib-card__more {
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  margin-top: auto;
+  padding-top: .5rem;
+  font-size: .76rem;
+  font-weight: 500;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--fg);
+}
+
+.ib-cards__arrow {
+  display: inline-block;
+  transition: transform 350ms var(--ease-out), color 350ms var(--ease-out);
+}
+
+a.ib-card:hover .ib-card__media img { transform: scale(1.04); }
+a.ib-card:hover .ib-cards__arrow { transform: translateX(6px); color: var(--caspian-fg); }
+a.ib-card:hover .ib-card__title { color: var(--fg); }
+a.ib-card:focus-visible { outline-offset: 6px; }
+
+/* ---- count: разделы каталога ------------------------------------------- */
+
+.ib-card--count {
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 11rem;
+  padding: 1.5rem 1.25rem 1.25rem;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-card);
+  transition: border-color var(--dur-line) var(--ease-out);
+}
+
+.ib-card--count .ib-card__title { font-size: 1.5rem; }
+
+.ib-card__count {
+  font-size: .85rem;
+  color: var(--fg-mute);
+}
+
+.ib-card__num {
+  font-family: var(--font-accent, var(--font-display));
+  font-style: italic;
+  font-size: 2.4rem;
+  line-height: 1;
+  color: var(--gold-fg);
+}
+
+.ib-card--count .ib-cards__arrow {
+  position: absolute;
+  right: 1.25rem;
+  bottom: 1.4rem;
+  color: var(--fg-mute);
+}
+
+a.ib-card--count:hover { border-color: var(--caspian); }
+
+@media (min-width: 1024px) {
+  .ib-cards--count .ib-cards__grid { grid-template-columns: repeat(var(--cols, 5), minmax(0, 1fr)); }
+}
+
+@media (min-width: 640px) and (max-width: 1023px) {
+  .ib-cards--count .ib-cards__grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+/* ---- poster: две марки --------------------------------------------------
+   Текст на кадре: затемнение rgba(10,13,17) снизу, текст --on-dark —
+   контраст держит затемнение, а не кадр. */
+
+.ib-card--poster {
+  overflow: hidden;
+  gap: 0;
+  border-radius: var(--radius-card);
+  color: var(--on-dark);
+  isolation: isolate;
+}
+
+.ib-card--poster .ib-card__media {
+  margin: 0;
+  border-radius: 0;
+}
+
+.ib-card--poster .ib-card__media img { transition: transform 700ms var(--ease-out); }
+
+.ib-card__shade {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(to top, rgba(10, 13, 17, .88) 0%, rgba(10, 13, 17, .6) 32%, rgba(10, 13, 17, 0) 62%);
+  pointer-events: none;
+}
+
+.ib-card__body {
+  position: absolute;
+  inset: auto 0 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: .45rem;
+  padding: clamp(1.25rem, 3vw, 2rem);
+  padding-right: 3.5rem;
+  transform: translateY(0);
+  transition: transform 500ms var(--ease-out);
+}
+
+.ib-card--poster .ib-card__note {
+  font-size: .7rem;
+  letter-spacing: var(--ls-eyebrow);
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+.ib-card--poster .ib-card__title {
+  font-size: clamp(1.6rem, 2.6vw, 2.3rem);
+  color: var(--on-dark);
+}
+
+.ib-card--poster .ib-card__text {
+  max-width: 40ch;
+  color: rgba(237, 238, 234, .86);
+}
+
+.ib-card--poster .ib-cards__arrow {
+  position: absolute;
+  right: clamp(1.25rem, 3vw, 2rem);
+  bottom: clamp(1.25rem, 3vw, 2rem);
+  z-index: 2;
+  font-size: 1.2rem;
+  color: var(--on-dark);
+}
+
+/* Наведение: кадр до 1.05, текст поднимается на 8px и открывает вторую
+   строку. Только там, где есть курсор: на касании вторая строка видна сразу. */
+@media (hover: hover) and (pointer: fine) {
+  /* Вторая строка (две строки текста) уходит под нижний край карточки. */
+  .ib-card--poster .ib-card__body { transform: translateY(calc(var(--text-h, 3.9em) + .45rem)); }
+  .ib-card--poster .ib-card__text {
+    opacity: 0;
+    transition: opacity 400ms var(--ease-out);
+  }
+
+  a.ib-card--poster:hover .ib-card__media img,
+  a.ib-card--poster:focus-visible .ib-card__media img { transform: scale(1.05); }
+
+  a.ib-card--poster:hover .ib-card__body,
+  a.ib-card--poster:focus-visible .ib-card__body { transform: translateY(-8px); }
+
+  a.ib-card--poster:hover .ib-card__text,
+  a.ib-card--poster:focus-visible .ib-card__text { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ib-card__media img,
+  .ib-card__body,
+  .ib-cards__arrow { transition: none; }
+}

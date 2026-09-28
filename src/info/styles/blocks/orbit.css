@@ -1,0 +1,198 @@
+/* ============================================================================
+   orbit — паспорт партии: банка в центре, орбита с пятью документами,
+   карточка справа. Вращение — CSS-анимацией: орбита на 360° за 60 с,
+   круги документов — обратно, чтобы оставаться вертикальными. Пауза —
+   при наведении (.is-hover) и после первого выбора (.is-stopped);
+   при reduced motion анимаций нет (base.css).
+   ============================================================================ */
+
+.ib-orbit__grid {
+  display: grid;
+  gap: 2.5rem;
+  align-items: center;
+}
+
+.ib-orbit__stage {
+  --doc: 64px;
+  --reach: 42%;
+  position: relative;
+  justify-self: center;
+  width: min(100%, 320px);
+  aspect-ratio: 1;
+}
+
+.ib-orbit__tin {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 46%;
+  transform: translate(-50%, -50%);
+}
+
+.ib-orbit__tin .media {
+  width: 100%;
+  background: var(--on-dark);
+}
+
+.ib-orbit__tin img { mix-blend-mode: multiply; }
+
+/* Вращается не сам слой орбиты, а угол --spin: у повёрнутого квадрата
+   габарит шире на 40 %, и на телефоне он давал горизонтальную прокрутку.
+   Где @property нет, орбита просто стоит. */
+@property --spin {
+  syntax: '<angle>';
+  inherits: true;
+  initial-value: 0deg;
+}
+
+.ib-orbit__ring {
+  position: absolute;
+  inset: 0;
+  animation: ib-orbit 60s linear infinite;
+}
+
+/* Сама орбита — волосяная окружность. */
+.ib-orbit__ring::before {
+  content: '';
+  position: absolute;
+  inset: calc(50% - var(--reach));
+  border: 1px solid var(--hairline);
+  border-radius: 50%;
+}
+
+.ib-orbit__slot {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: var(--doc);
+  height: var(--doc);
+  margin: calc(var(--doc) / -2) 0 0 calc(var(--doc) / -2);
+  /* Поворот на свой угол, сдвиг на радиус, обратный поворот — круг
+     документа остаётся вертикальным при любом --spin. */
+  transform:
+    rotate(calc(var(--a) + var(--spin)))
+    translateY(calc(-1 * var(--reach-px)))
+    rotate(calc(-1 * (var(--a) + var(--spin))));
+}
+
+.ib-orbit__upright {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.ib-orbit__grid.is-hover .ib-orbit__ring,
+.ib-orbit__grid.is-stopped .ib-orbit__ring { animation-play-state: paused; }
+
+.ib-orbit__doc {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  padding: .35rem;
+  border: 1px solid var(--hairline);
+  border-radius: 50%;
+  background: var(--bg);
+  color: var(--fg-mute);
+  transition: border-color 300ms var(--ease-out), color 300ms var(--ease-out);
+}
+
+.ib-orbit__short {
+  font-size: .62rem;
+  font-weight: 500;
+  line-height: 1.15;
+  letter-spacing: .02em;
+  text-align: center;
+}
+
+.ib-orbit__doc:hover { color: var(--fg); border-color: var(--gold); }
+
+.ib-orbit__doc.is-active {
+  border-color: var(--gold);
+  color: var(--fg);
+}
+
+/* Линия от выбранного документа к банке — вдоль радиуса, вращается
+   вместе с орбитой. */
+.ib-orbit__spoke {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 1px;
+  height: calc(var(--reach-px) - var(--doc) / 2 - var(--tin-r));
+  background: var(--gold);
+  opacity: 0;
+  transform-origin: 50% 0;
+  transform: rotate(calc(var(--a) + var(--spin) + 180deg)) translateY(var(--tin-r));
+  transition: opacity 300ms var(--ease-out);
+}
+
+.ib-orbit__spoke.is-active { opacity: 1; }
+
+.ib-orbit__card {
+  display: grid;
+  gap: 1rem;
+  align-content: start;
+}
+
+.ib-orbit__title {
+  margin: 0;
+  font-size: clamp(1.5rem, 2.4vw, 2rem);
+  line-height: 1.2;
+}
+
+.ib-orbit__facts { border-top: 1px solid var(--hairline); }
+
+.ib-orbit__facts > div {
+  display: grid;
+  gap: .3rem;
+  padding: .9rem 0;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.ib-orbit__facts dt {
+  font-size: .72rem;
+  letter-spacing: var(--ls-eyebrow);
+  text-transform: uppercase;
+  color: var(--fg-mute);
+}
+
+.ib-orbit__facts dd {
+  font-size: .95rem;
+  line-height: 1.6;
+  color: var(--fg);
+}
+
+@keyframes ib-orbit {
+  to { --spin: 360deg; }
+}
+
+/* Радиусы в пикселях: сдвиг translateY в процентах считался бы от самого
+   круга документа, а не от сцены. */
+.ib-orbit__stage { --reach-px: 134px; --tin-r: 74px; }
+
+@media (min-width: 1024px) {
+  .ib-orbit__grid {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    column-gap: var(--gap);
+  }
+
+  .ib-orbit__stage {
+    grid-column: 1 / span 7;
+    width: min(100%, 520px);
+    --reach-px: 218px;
+    --tin-r: 120px;
+  }
+
+  .ib-orbit__short { font-size: .68rem; }
+
+  .ib-orbit__card { grid-column: 8 / -1; }
+}
+
+@media (max-width: 359px) {
+  .ib-orbit__stage { width: 280px; --doc: 58px; --reach-px: 116px; --tin-r: 64px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ib-orbit__ring { animation: none; }
+}

@@ -1,0 +1,143 @@
+/* ============================================================================
+   inside — «Что в шкатулке»: кадр с метками (колонки 1–8) и список (9–12).
+   Метка — кружок 14px с золотым кольцом, пульсирует раз в 3 с.
+   ============================================================================ */
+
+.ib-inside__grid {
+  display: grid;
+  gap: 2rem;
+}
+
+.ib-inside__photo {
+  position: relative;
+  width: 100%;
+}
+
+.ib-inside__media { border-radius: var(--radius-card); }
+
+.ib-inside__spot {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  z-index: 2;
+}
+
+.ib-inside__mark {
+  position: relative;
+  display: block;
+  width: 44px;
+  height: 44px;
+  margin: -22px 0 0 -22px;
+  border-radius: 50%;
+}
+
+/* Сама метка: 14px, золотое кольцо, пульс — второе кольцо расходится. */
+.ib-inside__mark::before,
+.ib-inside__mark::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  border-radius: 50%;
+}
+
+.ib-inside__mark::before {
+  background: var(--on-dark);
+  border: 2px solid var(--gold);
+}
+
+.ib-inside__mark::after {
+  border: 1px solid var(--gold);
+  animation: ib-pulse 3s var(--ease-out) infinite;
+  animation-delay: var(--delay, 0s);
+}
+
+@keyframes ib-pulse {
+  0% { transform: scale(1); opacity: .9; }
+  45%, 100% { transform: scale(2.6); opacity: 0; }
+}
+
+.ib-inside__spot.is-active .ib-inside__mark::before { background: var(--caspian); border-color: var(--on-dark); }
+
+.ib-inside__tip {
+  position: absolute;
+  z-index: 3;
+  left: calc(var(--x) + 18px);
+  top: var(--y);
+  width: max-content;
+  /* До правого края кадра, не шире 16rem. */
+  max-width: min(16rem, calc(100% - var(--x) - 24px));
+  padding: .6rem .8rem;
+  border-radius: var(--radius-card-sm);
+  background: rgba(10, 13, 17, .88);
+  font-size: .82rem;
+  line-height: 1.45;
+  color: var(--on-dark);
+  opacity: 0;
+  transform: translateY(-50%) translateX(-4px);
+  pointer-events: none;
+  transition: opacity 250ms var(--ease-out), transform 250ms var(--ease-out);
+}
+
+.ib-inside__tip.is-left {
+  left: auto;
+  right: calc(100% - var(--x) + 18px);
+  max-width: min(16rem, calc(var(--x) - 24px));
+  transform: translateY(-50%) translateX(4px);
+}
+
+.ib-inside__tip.is-active {
+  opacity: 1;
+  transform: translateY(-50%);
+}
+
+.ib-inside__list {
+  display: grid;
+  align-content: start;
+  border-top: 1px solid var(--hairline);
+}
+
+.ib-inside__item {
+  display: grid;
+  grid-template-columns: 2.25rem minmax(0, 1fr);
+  gap: .75rem;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--hairline);
+  cursor: default;
+}
+
+.ib-inside__num {
+  font-family: var(--font-accent, var(--font-display));
+  font-style: italic;
+  font-size: 1.2rem;
+  line-height: 1.3;
+  color: var(--gold-fg);
+}
+
+.ib-inside__label {
+  font-size: .95rem;
+  line-height: 1.55;
+  color: var(--fg-mute);
+  transition: color 300ms var(--ease-out);
+}
+
+.ib-inside__item.is-active .ib-inside__label { color: var(--fg); }
+
+@media (min-width: 1024px) {
+  .ib-inside__grid {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    column-gap: var(--gap);
+    align-items: center;
+  }
+
+  .ib-inside__photo { grid-column: 1 / span 8; }
+  .ib-inside__list { grid-column: 9 / -1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ib-inside__mark::after { animation: none; opacity: 0; }
+  .ib-inside__tip, .ib-inside__label { transition: none; }
+}

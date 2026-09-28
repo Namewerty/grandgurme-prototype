@@ -1,0 +1,53 @@
+/* ============================================================================
+   doclist — документы списком: название, номер и срок, «Скачать PDF»
+   или «по запросу». Строки через волосяную линию.
+   ============================================================================ */
+
+.ib-docs { border-top: 1px solid var(--hairline); }
+
+.ib-docs__row {
+  display: grid;
+  gap: .4rem;
+  padding: 1.1rem 0;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.ib-docs__title {
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--fg);
+}
+
+.ib-docs__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .25rem 1rem;
+  font-size: .82rem;
+  color: var(--fg-mute);
+}
+
+.ib-docs__meta:empty { display: none; }
+
+.ib-docs__request {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  min-height: 44px;
+  font-size: .82rem;
+  color: var(--fg-mute);
+  transition: color var(--dur-line) var(--ease-out);
+}
+
+.ib-docs__request:hover { color: var(--caspian-fg); }
+
+@media (min-width: 768px) {
+  .ib-docs__row {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: center;
+    column-gap: 2rem;
+  }
+
+  .ib-docs__meta:empty { display: block; }
+  .ib-docs__request, .ib-docs__action { justify-self: end; }
+}

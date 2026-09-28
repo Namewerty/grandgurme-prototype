@@ -1,0 +1,346 @@
+/* ============================================================================
+   hero — первый экран информационной страницы (src/info/blocks/hero.js).
+   Три вида: stage (тёмный, кадр справа — раскладка первого экрана /alt2,
+   src/alt2/styles/stage.css), plate (кадр в круге с кольцом), compact.
+   H1 — Prata clamp(2.4rem, 4.4vw, 4.2rem).
+   ============================================================================ */
+
+.ib--hero {
+  --hero-h1: clamp(2.4rem, 4.4vw, 4.2rem);
+}
+
+.ib-hero__content {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1.1rem;
+  min-width: 0;
+}
+
+.ib-hero__crumbs { margin-bottom: .5rem; }
+
+.ib-hero__eyebrow { line-height: 1.5; }
+
+.ib-hero__title {
+  margin: 0;
+  font-size: var(--hero-h1);
+  line-height: 1.06;
+  color: var(--fg);
+  text-wrap: balance;
+}
+
+/* Поправка на обрезку глифов маской при входе — как .stage__line. */
+.ib-hero__line {
+  display: inline-block;
+  max-width: 100%;
+  padding-block: .16em;
+  margin-block: -.16em;
+}
+
+.ib-hero__lead {
+  max-width: 52ch;
+  font-size: clamp(1rem, 1.25vw, 1.125rem);
+  line-height: 1.6;
+  color: var(--fg-mute);
+  text-wrap: pretty;
+}
+
+.ib-hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .75rem;
+  margin-top: .5rem;
+}
+
+.ib-hero__facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 2.25rem;
+  margin-top: .75rem;
+  padding-top: 1.1rem;
+  border-top: 1px solid var(--hairline);
+}
+
+.ib-hero__fact dt {
+  font-family: var(--font-accent, var(--font-display));
+  font-style: italic;
+  font-size: clamp(1.6rem, 2.3vw, 2.2rem);
+  line-height: 1;
+  color: var(--gold-fg);
+  white-space: nowrap;
+}
+
+.ib-hero__fact dd {
+  margin-top: .35rem;
+  font-size: .78rem;
+  line-height: 1.4;
+  color: var(--fg-mute);
+}
+
+/* ---- Поиск (compact на /faq) --------------------------------------------- */
+
+.ib-hero__search {
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+  width: min(100%, 34rem);
+  min-height: 52px;
+  margin-top: .5rem;
+  padding-inline: 1.25rem;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+  transition: border-color var(--dur-line) var(--ease-out);
+}
+
+.ib-hero__search:hover { border-color: var(--gold); }
+.ib-hero__search:focus-within { border-color: var(--caspian); }
+
+.ib-hero__search svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: var(--fg-mute);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
+.ib-hero__search-input {
+  flex: 1;
+  min-width: 0;
+  min-height: 48px;
+  font-size: .95rem;
+  color: var(--fg);
+}
+
+.ib-hero__search-input::placeholder { color: var(--fg-mute); }
+.ib-hero__search-input:focus-visible { outline: none; }
+.ib-hero__search-input::-webkit-search-cancel-button { cursor: pointer; }
+
+/* ============================================================================
+   STAGE
+   Узкая раскладка — вне медиазапроса: кадр сверху (4:5, от 768px в портрете
+   1:1, на низком горизонтальном экране 16:9), нижние 22 % в --void, текст
+   под ним. Широкая — от 1024×600: текст в колонках 1–5, кадр от колонки 6
+   до края окна на всю высоту, высота max(78svh, 600px).
+   ============================================================================ */
+
+.ib-hero--stage {
+  --frame: 4 / 5;
+  margin-top: calc(-1 * var(--header-h));
+  overflow: hidden;
+}
+
+/* .ib.section задаёт отступы всем блокам — здесь свои, с той же
+   специфичностью. */
+.ib-hero--stage.ib.section {
+  padding: 0 0 clamp(2.25rem, 8vw, 3.5rem);
+}
+
+@media (orientation: portrait) and (min-width: 768px) {
+  .ib-hero--stage { --frame: 1 / 1; }
+}
+
+@media (orientation: landscape) {
+  .ib-hero--stage { --frame: 16 / 9; }
+}
+
+.ib-hero__media {
+  position: relative;
+  z-index: 0;
+  width: 100%;
+  aspect-ratio: var(--frame);
+  overflow: hidden;
+  background: var(--void);
+}
+
+/* С запасом по краям: кадр ходит за курсором на ±10 / ±6 px. */
+.ib-hero__frame {
+  position: absolute;
+  inset: -14px;
+  z-index: 0;
+}
+
+.ib-hero__frame .media { background: var(--void); }
+
+/* Затемнение: сверху под шапку (плотная часть на высоту шапки — как на
+   /alt2, там подобрано по контрасту строки поиска), снизу переход в --void. */
+.ib-hero__scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    linear-gradient(to bottom, rgba(10, 13, 17, .72) 0%, rgba(10, 13, 17, .6) 12%, rgba(10, 13, 17, 0) 30%),
+    linear-gradient(to bottom, rgba(10, 13, 17, 0) 78%, var(--void) 100%);
+}
+
+.ib-hero--stage .ib-hero__inner {
+  position: relative;
+  z-index: 2;
+  margin-top: -1.25rem;
+}
+
+.ib-hero--stage .ib-hero__crumbs { margin-bottom: .25rem; }
+
+/* Пэкшот на белом: круг --on-dark, кадр с multiply — белый фон растворяется.
+   Кольцо — приём .type__frame::after. */
+.ib-hero--circle .ib-hero__media { display: grid; place-items: center; }
+.ib-hero--circle .ib-hero__scrim { display: none; }
+
+.ib-hero__disc {
+  position: relative;
+  width: min(78%, 380px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--on-dark);
+}
+
+.ib-hero__disc::after {
+  content: '';
+  position: absolute;
+  inset: -12px;
+  border: 1px solid rgba(169, 135, 72, .45);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.ib-hero__disc .media {
+  width: 100%;
+  background: transparent;
+}
+
+.ib-hero__disc img { mix-blend-mode: multiply; }
+
+.ib-hero--circle .ib-hero__media { aspect-ratio: auto; padding: calc(var(--header-h) + 2.5rem) 0 2.5rem; }
+
+@media (min-width: 1024px) and (min-height: 600px) {
+  .ib-hero--stage {
+    display: flex;
+    align-items: center;
+    min-height: max(78svh, 600px);
+    /* H1 — кегль первого экрана /alt2: в пяти колонках строка
+       «для ресторанной кухни» при 4.4vw ломалась на три строки
+       (README, «Решения, принятые иначе»). */
+    --hero-h1: clamp(2.4rem, 3.4vw, 3.4rem);
+  }
+
+  .ib-hero--stage.ib.section {
+    padding: calc(var(--header-h) + clamp(1.25rem, 3.5vh, 2.5rem)) 0 clamp(1.75rem, 5vh, 3.25rem);
+  }
+
+  /* Каждая строка H1 — в одну строку, как на /alt2. */
+  .ib-hero--stage .ib-hero__line { white-space: nowrap; }
+
+  .ib-hero--stage .ib-hero__media {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: 0;
+    left: calc(
+      max(0px, (100% - var(--container)) / 2) + var(--gutter) +
+      (min(100%, var(--container)) - 2 * var(--gutter) + var(--gap)) * 5 / 12
+    );
+    width: auto;
+    aspect-ratio: auto;
+  }
+
+  .ib-hero__scrim {
+    background:
+      linear-gradient(to bottom, rgba(10, 13, 17, .86) 0%, rgba(10, 13, 17, .8) 9%, rgba(10, 13, 17, 0) 25%),
+      linear-gradient(to right, var(--void) 0%, rgba(10, 13, 17, 0) 12%);
+  }
+
+  .ib-hero--stage .ib-hero__inner {
+    width: 100%;
+    margin-top: 0;
+  }
+
+  /* Колонки 1–5. */
+  .ib-hero--stage .ib-hero__content {
+    width: calc((100% - 11 * var(--gap)) * 5 / 12 + 4 * var(--gap));
+  }
+
+  /* Круг — по центру правой половины окна, а не колонок 6–12. */
+  .ib-hero--circle .ib-hero__media {
+    left: 50%;
+    padding: var(--header-h) 0 0;
+  }
+
+  .ib-hero--circle .ib-hero__disc { width: min(560px, 70vh, 86%); }
+}
+
+/* Невысокие широкие экраны: H1 и зазоры ужимаются, чтобы факты и кнопки
+   остались в первом экране. */
+@media (min-width: 1024px) and (min-height: 600px) and (max-height: 820px) {
+  .ib--hero { --hero-h1: clamp(2.2rem, 3.6vw, 3.4rem); }
+  .ib-hero--stage { --hero-h1: clamp(2.2rem, 3vw, 2.9rem); }
+  .ib-hero__content { gap: .85rem; }
+  .ib-hero__lead { font-size: .98rem; line-height: 1.5; }
+}
+
+/* ============================================================================
+   PLATE — светлый, кадр в круге справа (колонки 8–12, не больше
+   min(520px, 60vh)); узкая раскладка — круг сверху по центру, до 360px.
+   ============================================================================ */
+
+.ib-hero--plate.ib.section {
+  padding-top: clamp(1.75rem, 5vh, 3.25rem);
+}
+
+.ib-hero__grid {
+  display: grid;
+  gap: 2.25rem;
+}
+
+.ib-hero__plate {
+  order: -1;
+  justify-self: center;
+  width: min(100%, 360px, 70vw);
+  padding: 14px;
+}
+
+.ib-hero__ring { position: relative; }
+
+.ib-hero__ring::after {
+  content: '';
+  position: absolute;
+  inset: -12px;
+  border: 1px solid rgba(169, 135, 72, .45);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.ib-hero__turn {
+  border-radius: 50%;
+  overflow: hidden;
+}
+
+.ib-hero__turn .media { width: 100%; }
+
+@media (min-width: 1024px) {
+  .ib-hero--plate .ib-hero__grid {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    column-gap: var(--gap);
+    align-items: center;
+  }
+
+  .ib-hero--plate .ib-hero__content { grid-column: 1 / span 6; }
+
+  .ib-hero__plate {
+    order: 0;
+    grid-column: 8 / span 5;
+    width: min(100%, 520px, 60vh);
+  }
+}
+
+/* ============================================================================
+   COMPACT — светлый, без кадра; lead до 60ch.
+   ============================================================================ */
+
+.ib-hero--compact.ib.section {
+  padding-top: clamp(1.75rem, 5vh, 3.25rem);
+  padding-bottom: var(--section-pad-tight);
+}
+
+.ib-hero--compact .ib-hero__lead { max-width: 60ch; }
