@@ -210,7 +210,13 @@
   background: transparent;
 }
 
-.ib-hero__disc img { mix-blend-mode: multiply; }
+/* Увеличение от центра в 1,25 раза: у крупного плана шкатулки белый угол
+   фона вверху справа (box-black-close.jpg), и в круге он читался светлым
+   клином. Как кадр «Подарочных наборов» на /alt2 (там 1,3). */
+.ib-hero__disc img {
+  mix-blend-mode: multiply;
+  transform: scale(1.25);
+}
 
 .ib-hero--circle .ib-hero__media { aspect-ratio: auto; padding: calc(var(--header-h) + 2.5rem) 0 2.5rem; }
 

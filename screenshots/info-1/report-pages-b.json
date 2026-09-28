@@ -1,0 +1,80 @@
+[
+ {
+  "name": "/brands: «Характер икры» без шапки секции, подпись — заголовок вступления",
+  "ok": true,
+  "info": {
+   "head": false,
+   "label": "caviar-title",
+   "tabs": 4
+  }
+ },
+ {
+  "name": "/brands: вкладка «Осётр» переключает паспорт, адрес получает ?line=",
+  "ok": true,
+  "info": {
+   "sel": "true",
+   "name": "Осётр персидский",
+   "url": "?line=osetr-persidskiy"
+  }
+ },
+ {
+  "name": "/brands: лупа под курсором",
+  "ok": true,
+  "info": ""
+ },
+ {
+  "name": "/brands: линейка зерна на месте",
+  "ok": true,
+  "info": 16
+ },
+ {
+  "name": "/brands?line=sevruga-payusnaya: открыта паюсная",
+  "ok": true,
+  "info": "Севрюга паюсная"
+ },
+ {
+  "name": "/brands: четыре формата подарка",
+  "ok": true,
+  "info": [
+   "Шкатулка",
+   "Деревянная шкатулка",
+   "Деревянная шкатулка, большая",
+   "Три вида икры"
+  ]
+ },
+ {
+  "name": "/brands: три цвета шкатулки меняют кадр",
+  "ok": true,
+  "info": [
+   "box:blue",
+   "box:white",
+   "box:black"
+  ]
+ },
+ {
+  "name": "/brands: форматы переключают кадр и паспорт, круги цвета только у шкатулки",
+  "ok": true,
+  "info": [
+   {
+    "shot": "wood",
+    "name": "Деревянная шкатулка",
+    "colors": false
+   },
+   {
+    "shot": "wood-large",
+    "name": "Деревянная шкатулка, большая",
+    "colors": false
+   },
+   {
+    "shot": "trio",
+    "name": "Три вида икры",
+    "colors": false
+   }
+  ]
+ },
+ {
+  "name": "/brands: кадр на --on-dark с multiply",
+  "ok": true,
+  "info": "rgb(237, 238, 234) multiply"
+ }
+]

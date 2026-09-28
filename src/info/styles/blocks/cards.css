@@ -73,9 +73,10 @@
   transition: transform 350ms var(--ease-out), color 350ms var(--ease-out);
 }
 
-a.ib-card:hover .ib-card__media img { transform: scale(1.04); }
-a.ib-card:hover .ib-cards__arrow { transform: translateX(6px); color: var(--caspian-fg); }
-a.ib-card:hover .ib-card__title { color: var(--fg); }
+/* Постер — своё наведение ниже: там текст светлый на затемнении кадра,
+   и --fg / --caspian-fg светлой темы сделали бы его невидимым. */
+a.ib-card:not(.ib-card--poster):hover .ib-card__media img { transform: scale(1.04); }
+a.ib-card:not(.ib-card--poster):hover .ib-cards__arrow { transform: translateX(6px); color: var(--caspian-fg); }
 a.ib-card:focus-visible { outline-offset: 6px; }
 
 /* ---- count: разделы каталога ------------------------------------------- */
@@ -145,7 +146,9 @@ a.ib-card--count:hover { border-color: var(--caspian); }
   position: absolute;
   inset: 0;
   z-index: 1;
-  background: linear-gradient(to top, rgba(10, 13, 17, .88) 0%, rgba(10, 13, 17, .6) 32%, rgba(10, 13, 17, 0) 62%);
+  /* Плотность подобрана по контрасту подписей над светлыми кадрами
+     (золотая тарелка): подпись марки --gold держит 4,5:1 и выше. */
+  background: linear-gradient(to top, rgba(10, 13, 17, .94) 0%, rgba(10, 13, 17, .82) 34%, rgba(10, 13, 17, .35) 58%, rgba(10, 13, 17, 0) 78%);
   pointer-events: none;
 }
 
@@ -206,6 +209,8 @@ a.ib-card--count:hover { border-color: var(--caspian); }
 
   a.ib-card--poster:hover .ib-card__text,
   a.ib-card--poster:focus-visible .ib-card__text { opacity: 1; }
+
+  a.ib-card--poster:hover .ib-cards__arrow { transform: translateX(6px); }
 }
 
 @media (prefers-reduced-motion: reduce) {

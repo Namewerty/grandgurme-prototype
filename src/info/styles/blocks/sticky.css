@@ -21,7 +21,13 @@
   pointer-events: auto;
 }
 
-.ib-sticky__btn { min-height: 52px; padding-inline: 1.75rem; }
+/* Кнопка висит и над тёмными блоками: тёмная капсула сливалась бы с ними —
+   контур золотой, как ободок банки. */
+.ib-sticky__btn {
+  min-height: 52px;
+  padding-inline: 1.75rem;
+  border-color: var(--gold);
+}
 
 @media (max-width: 767px) {
   .ib--sticky {

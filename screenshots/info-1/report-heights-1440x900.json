@@ -1,0 +1,419 @@
+{
+ "/partners": {
+  "total": 7529,
+  "blocks": [
+   {
+    "id": "top",
+    "ib": "hero",
+    "dark": true,
+    "h": 702
+   },
+   {
+    "id": "where",
+    "ib": "timezones",
+    "dark": false,
+    "h": 923
+   },
+   {
+    "id": "tasting",
+    "ib": "tasting",
+    "dark": true,
+    "h": 697
+   },
+   {
+    "id": "portion",
+    "ib": "portion",
+    "dark": false,
+    "h": 669
+   },
+   {
+    "id": "range",
+    "ib": "list",
+    "dark": false,
+    "h": 619
+   },
+   {
+    "id": "segments",
+    "ib": "cards",
+    "dark": false,
+    "h": 648
+   },
+   {
+    "id": "docs",
+    "ib": "table",
+    "dark": true,
+    "h": 434
+   },
+   {
+    "id": "start",
+    "ib": "steps",
+    "dark": false,
+    "h": 458
+   },
+   {
+    "id": "terms",
+    "ib": "table",
+    "dark": false,
+    "h": 240
+   },
+   {
+    "id": "request",
+    "ib": "form",
+    "dark": false,
+    "h": 970
+   },
+   {
+    "id": "next",
+    "ib": "next",
+    "dark": false,
+    "h": 318
+   }
+  ]
+ },
+ "/about": {
+  "total": 5769,
+  "blocks": [
+   {
+    "id": "top",
+    "ib": "hero",
+    "dark": true,
+    "h": 702
+   },
+   {
+    "id": "story",
+    "ib": "text",
+    "dark": false,
+    "h": 537
+   },
+   {
+    "id": "facts",
+    "ib": "facts",
+    "dark": false,
+    "h": 235
+   },
+   {
+    "id": "brands",
+    "ib": "cards",
+    "dark": false,
+    "h": 882
+   },
+   {
+    "id": "world",
+    "ib": "timezones",
+    "dark": true,
+    "h": 532
+   },
+   {
+    "id": "boutique",
+    "ib": "split",
+    "dark": false,
+    "h": 767
+   },
+   {
+    "id": "principles",
+    "ib": "list",
+    "dark": false,
+    "h": 619
+   },
+   {
+    "id": "company",
+    "ib": "table",
+    "dark": false,
+    "h": 332
+   },
+   {
+    "id": "next",
+    "ib": "next",
+    "dark": false,
+    "h": 312
+   }
+  ]
+ },
+ "/brands": {
+  "total": 6053,
+  "blocks": [
+   {
+    "id": "top",
+    "ib": "hero",
+    "dark": false,
+    "h": 624
+   },
+   {
+    "id": "contents",
+    "ib": "subnav",
+    "dark": false,
+    "h": 86
+   },
+   {
+    "id": "caviar",
+    "ib": "text",
+    "dark": false,
+    "h": 261
+   },
+   {
+    "id": "character",
+    "ib": "alt2-character",
+    "dark": false,
+    "h": 1286
+   },
+   {
+    "id": "fish",
+    "ib": "text",
+    "dark": true,
+    "h": 379
+   },
+   {
+    "id": "fish-list",
+    "ib": "list",
+    "dark": true,
+    "h": 614
+   },
+   {
+    "id": "gifts",
+    "ib": "giftbox",
+    "dark": false,
+    "h": 1021
+   },
+   {
+    "id": "europe",
+    "ib": "cards",
+    "dark": false,
+    "h": 530
+   },
+   {
+    "id": "next",
+    "ib": "next",
+    "dark": false,
+    "h": 318
+   }
+  ]
+ },
+ "/production": {
+  "total": 6718,
+  "blocks": [
+   {
+    "id": "top",
+    "ib": "hero",
+    "dark": true,
+    "h": 702
+   },
+   {
+    "id": "origin",
+    "ib": "alt2-origin",
+    "dark": true,
+    "h": 3382
+   },
+   {
+    "id": "check",
+    "ib": "list",
+    "dark": false,
+    "h": 753
+   },
+   {
+    "id": "facts",
+    "ib": "facts",
+    "dark": false,
+    "h": 235
+   },
+   {
+    "id": "docs",
+    "ib": "cta",
+    "dark": true,
+    "h": 457
+   },
+   {
+    "id": "next",
+    "ib": "next",
+    "dark": false,
+    "h": 339
+   }
+  ]
+ },
+ "/documents": {
+  "total": 4176,
+  "blocks": [
+   {
+    "id": "top",
+    "ib": "hero",
+    "dark": false,
+    "h": 624
+   },
+   {
+    "id": "orbit",
+    "ib": "orbit",
+    "dark": true,
+    "h": 848
+   },
+   {
+    "id": "list",
+    "ib": "doclist",
+    "dark": false,
+    "h": 635
+   },
+   {
+    "id": "request",
+    "ib": "form",
+    "dark": false,
+    "h": 843
+   },
+   {
+    "id": "next",
+    "ib": "next",
+    "dark": false,
+    "h": 292
+   }
+  ]
+ },
+ "/corporate": {
+  "total": 5485,
+  "blocks": [
+   {
+    "id": "top",
+    "ib": "hero",
+    "dark": true,
+    "h": 702
+   },
+   {
+    "id": "formats",
+    "ib": "giftbox",
+    "dark": false,
+    "h": 1006
+   },
+   {
+    "id": "inside",
+    "ib": "inside",
+    "dark": true,
+    "h": 1141
+   },
+   {
+    "id": "how",
+    "ib": "steps",
+    "dark": false,
+    "h": 381
+   },
+   {
+    "id": "terms",
+    "ib": "table",
+    "dark": false,
+    "h": 186
+   },
+   {
+    "id": "request",
+    "ib": "form",
+    "dark": false,
+    "h": 905
+   },
+   {
+    "id": "next",
+    "ib": "next",
+    "dark": false,
+    "h": 312
+   }
+  ]
+ },
+ "/contacts": {
+  "total": 4330,
+  "blocks": [
+   {
+    "id": "top",
+    "ib": "hero",
+    "dark": false,
+    "h": 298
+   },
+   {
+    "id": "channels",
+    "ib": "channels",
+    "dark": false,
+    "h": 294
+   },
+   {
+    "id": "boutique",
+    "ib": "boutique",
+    "dark": true,
+    "h": 767
+   },
+   {
+    "id": "directions",
+    "ib": "table",
+    "dark": false,
+    "h": 306
+   },
+   {
+    "id": "dubai",
+    "ib": "split",
+    "dark": false,
+    "h": 740
+   },
+   {
+    "id": "company",
+    "ib": "table",
+    "dark": false,
+    "h": 332
+   },
+   {
+    "id": "write",
+    "ib": "form",
+    "dark": false,
+    "h": 659
+   }
+  ]
+ },
+ "/faq": {
+  "total": 3571,
+  "blocks": [
+   {
+    "id": "top",
+    "ib": "hero",
+    "dark": false,
+    "h": 347
+   },
+   {
+    "id": "answers",
+    "ib": "accordion",
+    "dark": false,
+    "h": 1834
+   },
+   {
+    "id": "ask",
+    "ib": "cta",
+    "dark": true,
+    "h": 457
+   }
+  ]
+ },
+ "/storage": {
+  "total": 4048,
+  "blocks": [
+   {
+    "id": "top",
+    "ib": "hero",
+    "dark": false,
+    "h": 624
+   },
+   {
+    "id": "cold",
+    "ib": "thermo",
+    "dark": true,
+    "h": 835
+   },
+   {
+    "id": "serve",
+    "ib": "gallery",
+    "dark": false,
+    "h": 790
+   },
+   {
+    "id": "guests",
+    "ib": "guests",
+    "dark": false,
+    "h": 554
+   },
+   {
+    "id": "next",
+    "ib": "next",
+    "dark": false,
+    "h": 312
+   }
+  ]
+ }
+}

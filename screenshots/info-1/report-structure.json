@@ -1,0 +1,416 @@
+[
+ {
+  "name": "/partners: блоки по порядку и на своих фонах",
+  "ok": true,
+  "info": {
+   "got": [
+    "top:dark",
+    "where:light",
+    "tasting:dark",
+    "portion:light",
+    "range:light",
+    "segments:light",
+    "docs:dark",
+    "start:light",
+    "terms:light",
+    "request:light",
+    "next:light"
+   ]
+  }
+ },
+ {
+  "name": "/partners: title, description, noindex, крошки, is-info",
+  "ok": true,
+  "info": {
+   "title": "Ресторанам и отелям — №1 Гранд Гурмэ",
+   "desc": "Икра и рыба для ресторанов, отелей и кейтеринга: дегустация на вашей кухне, расчёт порции и полный пакет документов.",
+   "robots": "noindex",
+   "crumbs": [
+    "Главная→/",
+    "Компания→/about",
+    "Ресторанам и отелям"
+   ],
+   "h1": "Икра №1 Caviarдля ресторанной кухни",
+   "info": true,
+   "font": "'Cormorant Garamond', Georgia, serif"
+  }
+ },
+ {
+  "name": "/partners: «Дальше» — /documents, /brands, /corporate, адреса живые",
+  "ok": true,
+  "info": {
+   "next": [
+    "/documents",
+    "/brands",
+    "/corporate"
+   ],
+   "alive": [
+    true,
+    true,
+    true
+   ]
+  }
+ },
+ {
+  "name": "/about: блоки по порядку и на своих фонах",
+  "ok": true,
+  "info": {
+   "got": [
+    "top:dark",
+    "story:light",
+    "facts:light",
+    "brands:light",
+    "world:dark",
+    "boutique:light",
+    "principles:light",
+    "company:light",
+    "next:light"
+   ]
+  }
+ },
+ {
+  "name": "/about: title, description, noindex, крошки, is-info",
+  "ok": true,
+  "info": {
+   "title": "О компании — №1 Гранд Гурмэ",
+   "desc": "История семейного дела с 1982 года, собственные марки №1 Caviar и Siberian Luxury Bar, гастробутик в Москве и представительства в мире.",
+   "robots": "noindex",
+   "crumbs": [
+    "Главная→/",
+    "О компании"
+   ],
+   "h1": "Семейное делос 1982 года",
+   "info": true,
+   "font": "'Cormorant Garamond', Georgia, serif"
+  }
+ },
+ {
+  "name": "/about: «Дальше» — /brands, /production, /partners, адреса живые",
+  "ok": true,
+  "info": {
+   "next": [
+    "/brands",
+    "/production",
+    "/partners"
+   ],
+   "alive": [
+    true,
+    true,
+    true
+   ]
+  }
+ },
+ {
+  "name": "/brands: блоки по порядку и на своих фонах",
+  "ok": true,
+  "info": {
+   "got": [
+    "top:light",
+    "contents:light",
+    "caviar:light",
+    "character:light",
+    "fish:dark",
+    "fish-list:dark",
+    "gifts:light",
+    "europe:light",
+    "next:light"
+   ]
+  }
+ },
+ {
+  "name": "/brands: title, description, noindex, крошки, is-info",
+  "ok": true,
+  "info": {
+   "title": "Наши бренды — №1 Гранд Гурмэ",
+   "desc": "Икра №1 Caviar и рыба Siberian Luxury Bar: девять линеек икры, рыба северных рек, подарочные наборы и европейская гастрономия.",
+   "robots": "noindex",
+   "crumbs": [
+    "Главная→/",
+    "Компания→/about",
+    "Наши бренды"
+   ],
+   "h1": "№1 Caviarи Siberian Luxury Bar",
+   "info": true,
+   "font": "'Cormorant Garamond', Georgia, serif"
+  }
+ },
+ {
+  "name": "/brands: «Дальше» — /production, /corporate, /storage, адреса живые",
+  "ok": true,
+  "info": {
+   "next": [
+    "/production",
+    "/corporate",
+    "/storage"
+   ],
+   "alive": [
+    true,
+    true,
+    true
+   ]
+  }
+ },
+ {
+  "name": "/production: блоки по порядку и на своих фонах",
+  "ok": true,
+  "info": {
+   "got": [
+    "top:dark",
+    "origin:dark",
+    "check:light",
+    "facts:light",
+    "docs:dark",
+    "next:light"
+   ]
+  }
+ },
+ {
+  "name": "/production: title, description, noindex, крошки, is-info",
+  "ok": true,
+  "info": {
+   "title": "Производство и качество — №1 Гранд Гурмэ",
+   "desc": "Как делают икру №1 Caviar и рыбу Siberian Luxury Bar: от воды до упаковки. Как проверить банку самостоятельно.",
+   "robots": "noindex",
+   "crumbs": [
+    "Главная→/",
+    "Компания→/about",
+    "Производство и качество"
+   ],
+   "h1": "От водыдо упаковки",
+   "info": true,
+   "font": "'Cormorant Garamond', Georgia, serif"
+  }
+ },
+ {
+  "name": "/production: «Дальше» — /documents, /brands, /storage, адреса живые",
+  "ok": true,
+  "info": {
+   "next": [
+    "/documents",
+    "/brands",
+    "/storage"
+   ],
+   "alive": [
+    true,
+    true,
+    true
+   ]
+  }
+ },
+ {
+  "name": "/documents: блоки по порядку и на своих фонах",
+  "ok": true,
+  "info": {
+   "got": [
+    "top:light",
+    "orbit:dark",
+    "list:light",
+    "request:light",
+    "next:light"
+   ]
+  }
+ },
+ {
+  "name": "/documents: title, description, noindex, крошки, is-info",
+  "ok": true,
+  "info": {
+   "title": "Документы и сертификаты — №1 Гранд Гурмэ",
+   "desc": "Декларации ТР ЕАЭС, разрешения СИТЕС, документы в «Меркурии» и маркировка «Честный знак»: что подтверждает каждый и как его проверить.",
+   "robots": "noindex",
+   "crumbs": [
+    "Главная→/",
+    "Компания→/about",
+    "Документы и сертификаты"
+   ],
+   "h1": "Документыи сертификаты",
+   "info": true,
+   "font": "'Cormorant Garamond', Georgia, serif"
+  }
+ },
+ {
+  "name": "/documents: «Дальше» — /production, /partners, /faq, адреса живые",
+  "ok": true,
+  "info": {
+   "next": [
+    "/production",
+    "/partners",
+    "/faq"
+   ],
+   "alive": [
+    true,
+    true,
+    true
+   ]
+  }
+ },
+ {
+  "name": "/corporate: блоки по порядку и на своих фонах",
+  "ok": true,
+  "info": {
+   "got": [
+    "top:dark",
+    "formats:light",
+    "inside:dark",
+    "how:light",
+    "terms:light",
+    "request:light",
+    "next:light"
+   ]
+  }
+ },
+ {
+  "name": "/corporate: title, description, noindex, крошки, is-info",
+  "ok": true,
+  "info": {
+   "title": "Корпоративные заказы и подарки — №1 Гранд Гурмэ",
+   "desc": "Подарки с икрой №1 Caviar для партнёров и сотрудников: шкатулки, готовые к вручению, и расчёт заказа под ваш список.",
+   "robots": "noindex",
+   "crumbs": [
+    "Главная→/",
+    "Компания→/about",
+    "Корпоративные заказы и подарки"
+   ],
+   "h1": "Икра №1 Caviarв подарок партнёрам",
+   "info": true,
+   "font": "'Cormorant Garamond', Georgia, serif"
+  }
+ },
+ {
+  "name": "/corporate: «Дальше» — /brands, /partners, /delivery, адреса живые",
+  "ok": true,
+  "info": {
+   "next": [
+    "/brands",
+    "/partners",
+    "/delivery"
+   ],
+   "alive": [
+    true,
+    true,
+    true
+   ]
+  }
+ },
+ {
+  "name": "/contacts: блоки по порядку и на своих фонах",
+  "ok": true,
+  "info": {
+   "got": [
+    "top:light",
+    "channels:light",
+    "boutique:dark",
+    "directions:light",
+    "dubai:light",
+    "company:light",
+    "write:light"
+   ]
+  }
+ },
+ {
+  "name": "/contacts: title, description, noindex, крошки, is-info",
+  "ok": true,
+  "info": {
+   "title": "Контакты — №1 Гранд Гурмэ",
+   "desc": "Телефон, мессенджеры и почта, гастробутик на Софийской набережной, реквизиты и форма обратной связи.",
+   "robots": "noindex",
+   "crumbs": [
+    "Главная→/",
+    "Компания→/about",
+    "Контакты"
+   ],
+   "h1": "Контакты",
+   "info": true,
+   "font": "'Cormorant Garamond', Georgia, serif"
+  }
+ },
+ {
+  "name": "/contacts: «Дальше» — нет, адреса живые",
+  "ok": true,
+  "info": {
+   "next": [],
+   "alive": []
+  }
+ },
+ {
+  "name": "/faq: блоки по порядку и на своих фонах",
+  "ok": true,
+  "info": {
+   "got": [
+    "top:light",
+    "answers:light",
+    "ask:dark"
+   ]
+  }
+ },
+ {
+  "name": "/faq: title, description, noindex, крошки, is-info",
+  "ok": true,
+  "info": {
+   "title": "Вопросы и ответы — №1 Гранд Гурмэ",
+   "desc": "Ответы на частые вопросы о заказе, доставке, икре, хранении и документах.",
+   "robots": "noindex",
+   "crumbs": [
+    "Главная→/",
+    "Компания→/about",
+    "Вопросы и ответы"
+   ],
+   "h1": "Вопросы и ответы",
+   "info": true,
+   "font": "'Cormorant Garamond', Georgia, serif"
+  }
+ },
+ {
+  "name": "/faq: «Дальше» — нет, адреса живые",
+  "ok": true,
+  "info": {
+   "next": [],
+   "alive": []
+  }
+ },
+ {
+  "name": "/storage: блоки по порядку и на своих фонах",
+  "ok": true,
+  "info": {
+   "got": [
+    "top:light",
+    "cold:dark",
+    "serve:light",
+    "guests:light",
+    "next:light"
+   ]
+  }
+ },
+ {
+  "name": "/storage: title, description, noindex, крошки, is-info",
+  "ok": true,
+  "info": {
+   "title": "Как хранить и подавать — №1 Гранд Гурмэ",
+   "desc": "Температура хранения икры, рыбы и морепродуктов, подача и расчёт икры на число гостей.",
+   "robots": "noindex",
+   "crumbs": [
+    "Главная→/",
+    "Компания→/about",
+    "Как хранить и подавать"
+   ],
+   "h1": "Как хранитьи подавать",
+   "info": true,
+   "font": "'Cormorant Garamond', Georgia, serif"
+  }
+ },
+ {
+  "name": "/storage: «Дальше» — /delivery, /brands, /faq, адреса живые",
+  "ok": true,
+  "info": {
+   "next": [
+    "/delivery",
+    "/brands",
+    "/faq"
+   ],
+   "alive": [
+    true,
+    true,
+    true
+   ]
+  }
+ }
+]

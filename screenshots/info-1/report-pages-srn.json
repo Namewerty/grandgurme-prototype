@@ -1,0 +1,226 @@
+[
+ {
+  "name": "/storage: термометр — две полосы продуктов и пунктир камеры",
+  "ok": true,
+  "info": {
+   "bars": [
+    "black",
+    "frozen",
+    "fridge:ref"
+   ],
+   "dash": "dashed"
+  }
+ },
+ {
+  "name": "/storage: ртуть поднялась до −2 °C, выбор меняет карточку",
+  "ok": true,
+  "info": {
+   "lvl": "64.286%",
+   "card": "−18 °C и ниже Замороженные морепродукты Морозильная камера. Размораживают медленно, в холодильнике."
+  }
+ },
+ {
+  "name": "/storage: 6 гостей × 30 г → «180 г икры», «Например: 113 г + 2 × 50 г»",
+  "ok": true,
+  "info": {
+   "g": "180 г икры",
+   "p": "Например: 113 г + 2 × 50 г",
+   "href": "/catalog/chernaya-ikra?sub=fasovka-113",
+   "jars": [
+    "113",
+    "50",
+    "50"
+   ]
+  }
+ },
+ {
+  "name": "/storage: 2 гостя × 50 г → «100 г икры», набор по правилу наименьшего остатка",
+  "ok": true,
+  "info": {
+   "g": "100 г икры",
+   "p": "Например: 2 × 50 г",
+   "href": "/catalog/chernaya-ikra?sub=fasovka-50",
+   "jars": [
+    "50",
+    "50"
+   ]
+  }
+ },
+ {
+  "name": "/storage: 50 гостей × 50 г → «2 500 г икры», «Например: 2 × 1000 г + 500 г»",
+  "ok": true,
+  "info": {
+   "g": "2 500 г икры",
+   "p": "Например: 2 × 1000 г + 500 г",
+   "href": "/catalog/chernaya-ikra",
+   "jars": [
+    "1000",
+    "1000",
+    "500"
+   ]
+  }
+ },
+ {
+  "name": "/storage: степпер гостей — компонент qty, на 50 кнопка «+» выключена",
+  "ok": true,
+  "info": {
+   "cls": "qty",
+   "max": "50",
+   "plus": true
+  }
+ },
+ {
+  "name": "reduced /partners: всё видно сразу, счётчики на конечных значениях, автосмены и вращения нет",
+  "ok": true,
+  "info": {
+   "hidden": 0,
+   "lenis": false,
+   "animated": false,
+   "facts": [],
+   "ring": null,
+   "reel": "none",
+   "auto": [
+    0,
+    0
+   ]
+  }
+ },
+ {
+  "name": "reduced /documents: всё видно сразу, счётчики на конечных значениях, автосмены и вращения нет",
+  "ok": true,
+  "info": {
+   "hidden": 0,
+   "lenis": false,
+   "animated": false,
+   "facts": [],
+   "ring": "none",
+   "reel": null,
+   "auto": null
+  }
+ },
+ {
+  "name": "reduced /about: всё видно сразу, счётчики на конечных значениях, автосмены и вращения нет",
+  "ok": true,
+  "info": {
+   "hidden": 0,
+   "lenis": false,
+   "animated": false,
+   "facts": [
+    "300",
+    "50",
+    "4"
+   ],
+   "ring": null,
+   "reel": null,
+   "auto": null
+  }
+ },
+ {
+  "name": "reduced /storage: всё видно сразу, счётчики на конечных значениях, автосмены и вращения нет",
+  "ok": true,
+  "info": {
+   "hidden": 0,
+   "lenis": false,
+   "animated": false,
+   "facts": [],
+   "ring": null,
+   "reel": null,
+   "auto": null
+  }
+ },
+ {
+  "name": "reduced: интерактив работает (порции 125 / 50)",
+  "ok": true,
+  "info": "2 порции по 50 г"
+ },
+ {
+  "name": "снимок /partners: разметка из bitrix/info-snapshots оживает тем же init",
+  "ok": true,
+  "info": {
+   "snap": "1",
+   "blocks": 11,
+   "scripts": 0,
+   "tz": "12:48",
+   "portion": "6 порций по 20 г",
+   "guests": null,
+   "orbit": null,
+   "acc": 0,
+   "character": false,
+   "errors": []
+  }
+ },
+ {
+  "name": "снимок /faq: разметка из bitrix/info-snapshots оживает тем же init",
+  "ok": true,
+  "info": {
+   "snap": "1",
+   "blocks": 3,
+   "scripts": 0,
+   "tz": null,
+   "portion": null,
+   "guests": null,
+   "orbit": null,
+   "acc": 19,
+   "character": false,
+   "errors": []
+  }
+ },
+ {
+  "name": "снимок /storage: разметка из bitrix/info-snapshots оживает тем же init",
+  "ok": true,
+  "info": {
+   "snap": "1",
+   "blocks": 5,
+   "scripts": 0,
+   "tz": null,
+   "portion": null,
+   "guests": "Например: 113 г + 2 × 50 г",
+   "orbit": null,
+   "acc": 0,
+   "character": false,
+   "errors": []
+  }
+ },
+ {
+  "name": "снимок /documents: разметка из bitrix/info-snapshots оживает тем же init",
+  "ok": true,
+  "info": {
+   "snap": "1",
+   "blocks": 5,
+   "scripts": 0,
+   "tz": null,
+   "portion": null,
+   "guests": null,
+   "orbit": "Декларация ТР ЕАЭС",
+   "acc": 0,
+   "character": false,
+   "errors": []
+  }
+ },
+ {
+  "name": "снимок /brands: разметка из bitrix/info-snapshots оживает тем же init",
+  "ok": true,
+  "info": {
+   "snap": "1",
+   "blocks": 8,
+   "scripts": 0,
+   "tz": null,
+   "portion": null,
+   "guests": null,
+   "orbit": null,
+   "acc": 0,
+   "character": true,
+   "errors": []
+  }
+ },
+ {
+  "name": "снимок /faq: поиск работает по разметке снимка",
+  "ok": true,
+  "info": [
+   "zabojnaya",
+   "kod-sites",
+   "hranenie",
+   "chestnyj-znak"
+  ]
+ }
+]

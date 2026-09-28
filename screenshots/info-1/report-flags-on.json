@@ -1,0 +1,72 @@
+[
+ {
+  "name": "флаги: кадр вечера — восьмой в ленте подач",
+  "ok": true,
+  "info": [
+   "scallop-smoke.jpg",
+   "tartare-pearl-spoon.jpg",
+   "caviar-cake.jpg",
+   "benedict-caviar.jpg",
+   "oysters-platter.jpg",
+   "blue-dish.jpg",
+   "violet-dish.jpg",
+   "event-night.jpg",
+   "blini-tin.jpg",
+   "canapes-tray.jpg",
+   "red-caviar-oyster.jpg",
+   "silver-dish-toasts.jpg",
+   "pasta-caviar.jpg"
+  ]
+ },
+ {
+  "name": "флаги: блок #collab на месте — между условиями и заявкой, тёмный",
+  "ok": true,
+  "info": {
+   "title": "№1 Caviar × Giorgio Armani, №1 Caviar × Jacob & Co",
+   "dark": true,
+   "img": "/media/info/collab/jacob-co-box.jpg",
+   "next": "request",
+   "prev": "terms"
+  }
+ },
+ {
+  "name": "флаги: названия заведений в карточках точек",
+  "ok": true,
+  "info": {
+   "dubai": [
+    "Belcanto (Dubai Opera)",
+    "Sakhalin Dubai",
+    "Chalet Berezka",
+    "Nahaté Dubai",
+    "Plumpy",
+    "Josette",
+    "CutFish Dubai",
+    "Address Hotels + Resorts",
+    "Capital Club Dubai",
+    "Jetex"
+   ],
+   "miami+new-york": [
+    "Sexy Fish",
+    "Cipriani Wall Street",
+    "Serafina Manhattan",
+    "Jean-Georges",
+    "Aquavit",
+    "Daniel",
+    "Borgata Hotel Casino & Spa",
+    "Trump Plaza"
+   ],
+   "europe": [
+    "Hôtel de Paris (Монако)",
+    "Billionaire (Монако, Санкт-Мориц, Порто-Черво)",
+    "Le Lana (Куршевель)",
+    "Belmond Splendido (Портофино)",
+    "Villa Alpabella (Форте-дей-Марми)"
+   ],
+   "las-vegas": [
+    "Resorts World Las Vegas",
+    "Caspian's Rock & Roe",
+    "Aqua"
+   ]
+  }
+ }
+]
