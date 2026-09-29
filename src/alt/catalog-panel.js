@@ -48,7 +48,7 @@ import {
   categories,
   collections,
   defaultCategorySlug,
-  navImage,
+  tileImage,
   subHref,
 } from '../data/catalog.js'
 import { groupedCategories } from './nav.js'
@@ -105,7 +105,7 @@ function subcategoryCard(category, sub) {
       <a class="navcard" href="${subHref(category.slug, sub.slug)}">
         <span class="navcard__media"
               data-media="image"
-              data-src="${navImage(category.slug, sub.slug)}"
+              data-src="${tileImage(category, sub)}"
               data-ratio="${NAV_CARD_RATIO}"
               data-class="navcard__frame"
               data-alt="${category.name} — ${sub.name}"></span>

@@ -58,6 +58,16 @@ export const navImage = (categorySlug, subSlug) =>
   `${NAV_MEDIA_ROOT}/${categorySlug}-${subSlug}.jpg`
 
 /**
+ * Кадр плитки: свой (sub.image — пэкшоты банок чёрной икры) или ожидаемый
+ * кадр съёмки панели. Панель и список съёмки берут путь только отсюда.
+ */
+export const tileImage = (category, sub) => sub.image || navImage(category.slug, sub.slug)
+
+/* Пэкшоты банок линеек чёрной икры — те же файлы, что поле tin
+   в src/data/caviar-lines.js (public/media/alt2/types/). */
+const tin = (line) => `/media/alt2/types/tin-${line}.jpg`
+
+/**
  * Пропорция карточек в панели. Близко к квадрату, но чуть ниже: два ряда
  * карточек 1:1 не помещались в отведённые панели две трети экрана.
  * Файлы просим квадратные — CSS обрежет их по этой пропорции сам.
@@ -78,6 +88,16 @@ export const NAV_CARD_RATIO = '4:3'
  * первыми должны стоять те, за которыми приходят. По этому же числу
  * обрезается перечень кадров для съёмки (scripts/media-list.mjs):
  * фотографировать то, что панель не покажет, незачем.
+ *
+ * ПЛИТКИ ПАНЕЛИ С 29.09.2026. Плиток по весу и фасовке нет ни в одном
+ * разделе. Подкатегория здесь — плитка панели и сохранённый фильтр
+ * (subFilters в src/data/facets.js), а не обязательно подраздел 1С:
+ * у красной икры и видов рыбы code1c нет. Поля плитки:
+ *   image  свой кадр вместо /media/nav/<раздел>-<плитка>.jpg (tileImage);
+ *   line   slug линейки в caviar-lines.js (или массив) — под названием зерно;
+ *   group  четвёрка с подписью (category.groups), сейчас только у рыбы.
+ * category.tile: 'pack' — кадры раздела вписываются целиком на светлую
+ * подложку (пэкшоты банок на белом), а не кадрируются.
  */
 export const PANEL_MAX_CARDS = 8
 
@@ -90,21 +110,42 @@ export const categories = [
     lead:
       'Осетровая икра: девять линеек, шесть фасовок от 50 г до килограмма, ' +
       'банка металл, банка стекло и паюсная в пакете.',
-    /* Подкатегории разведены по трём осям, но каждая лежит РОВНО НА ОДНОЙ
-       (правило subFilters из src/data/facets.js): четыре по виду рыбы, одна
-       по линейке (паюсная — прессованная икра, отдельный тип продукта) и три
-       по фасовке. Линейки целиком — на странице раздела строкой капсул: их
-       девять, в панель они не помещаются, и снимать девять почти одинаковых
-       банок ради панели незачем. */
+    /* ПЛИТКИ — ПО ЛИНЕЙКАМ (29.09.2026). Виды (белуга, осётр…) и фасовки
+       из панели убраны: виды на странице раздела и так стоят первой строкой
+       капсул, фасовка — пилюлей. Линеек девять, мест в панели восемь,
+       поэтому обе севрюги — зернистая и паюсная — одной карточкой.
+       Каждая плитка — правило grade в subFilters (src/data/facets.js);
+       прежние ссылки ?sub=beluga, ?sub=fasovka-50 и т. д. там оставлены
+       рабочими, в панели их нет.
+       Кадр — пэкшот банки линейки на белом фоне (tile: 'pack': вписан
+       целиком на ровную светлую подложку), под названием — размер зерна
+       из caviar-lines.js (line — slug линейки там). */
+    tile: 'pack',
     subs: [
-      { slug: 'beluga', name: 'Белуга' },
-      { slug: 'osetr', name: 'Осётр' },
-      { slug: 'sevruga', name: 'Севрюга' },
-      { slug: 'beluga-sterlyad', name: 'Белуга и стерлядь' },
-      { slug: 'payusnaya', name: 'Паюсная' },
-      { slug: 'fasovka-50', name: 'Фасовка 50 г' },
-      { slug: 'fasovka-113', name: 'Фасовка 113 г' },
-      { slug: 'fasovka-250', name: 'Фасовка 250 г' },
+      { slug: 'beluga-royal', name: 'Белуга Роял', line: 'beluga-royal', image: tin('beluga-royal') },
+      { slug: 'beluga-diamond', name: 'Белуга Даймонд', line: 'beluga-diamond', image: tin('beluga-diamond') },
+      { slug: 'beluga-premium', name: 'Белуга Премиум', line: 'beluga-premium', image: tin('beluga-premium') },
+      {
+        slug: 'beluga-sterlyad-selected',
+        name: 'Белуга и стерлядь SELECTED',
+        line: 'beluga-sterlyad-selected',
+        image: tin('beluga-sterlyad-selected'),
+      },
+      { slug: 'osetr-persidskiy', name: 'Осётр персидский', line: 'osetr-persidskiy', image: tin('osetr-persidskiy') },
+      {
+        slug: 'osetr-russkiy-premium',
+        name: 'Осётр русский Премиум',
+        line: 'osetr-russkiy-premium',
+        image: tin('osetr-russkiy-premium'),
+      },
+      {
+        slug: 'osetr-premium-sturgeon',
+        name: 'Осётр Премиум STURGEON',
+        line: 'osetr-premium-sturgeon',
+        image: tin('osetr-premium-sturgeon'),
+      },
+      /* Обе севрюги одной плиткой: под названием — зерно обеих линеек. */
+      { slug: 'sevruga', name: 'Севрюга', line: ['sevruga', 'sevruga-payusnaya'], image: tin('sevruga') },
     ],
   },
   {
@@ -118,12 +159,20 @@ export const categories = [
        У разделов без этого поля отсутствие на складе означает заявку
        менеджеру (kindOf в src/data/fulfillment.js). */
     fulfillment: 'preorder',
-    /* Единственная подкатегория — «Другая икра» из 1С (2 позиции). Своего
-       места на верхнем уровне ей не хватает, а по смыслу она стоит рядом
-       с красной. Разбивки самой лососёвой икры по видам рыбы в выгрузке нет:
-       все 18 позиций лежат в разделе без подразделов. Появится — заводить
-       её здесь, а не придумывать. */
-    subs: [{ slug: 'drugaya-ikra', name: 'Другая икра', code1c: 'drugaya_ikra' }],
+    /* ПЛИТКИ — ПО ВИДУ РЫБЫ (29.09.2026). Карточка «Другая икра» (подраздел
+       1С) убрана: в снимке стенда под ней нет ни одной позиции. Вместо неё —
+       виды, которые реально есть у позиций раздела (ось species в
+       redCaviarSchema), по убыванию числа позиций в снимке от 22.09.2026:
+       кета 5 · горбуша 3 · кижуч 3 · нерка 1 (при равенстве — порядок оси).
+       Правило каждой — species в subFilters (src/data/facets.js).
+       Фотографий под виды нет: панель рисует карточку-заглушку (название
+       крупно, число позиций мелко), ожидаемые кадры — в navImageList. */
+    subs: [
+      { slug: 'keta', name: 'Кета' },
+      { slug: 'gorbusha', name: 'Горбуша' },
+      { slug: 'kizhuch', name: 'Кижуч' },
+      { slug: 'nerka', name: 'Нерка' },
+    ],
   },
   {
     slug: 'ryba',
@@ -132,13 +181,19 @@ export const categories = [
     icon: 'catFish',
     code1c: 'ryba',
     lead: 'Холодное и горячее копчение, слабосолёная, вяленая и сушёная.',
-    /* Реальные подразделы рыбы в 1С — это РОВНО ось «Обработка», четыре
-       значения. Оси «Вид рыбы» в учёте не заведено: её значения придётся
-       собирать из названий товаров, поэтому в панели видов больше нет.
-       Прежние «Лосось и форель», «Осетрина», «Белая рыба» были придуманы
-       целиком. Вид остаётся фасетой на странице раздела — там он берётся
-       из самих позиций.
-       Порядок — по числу позиций в выгрузке: 47 · 35 · 22 · 17. */
+    /* ДВЕ ЧЕТВЁРКИ С ПОДПИСЯМИ (29.09.2026, groups ниже).
+       Первая — способ приготовления: РОВНО четыре подраздела 1С, порядок
+       по числу позиций в выгрузке: 47 · 35 · 22 · 17.
+       Вторая — четыре вида рыбы с наибольшим числом позиций в снимке
+       (ось species в fishSchema, attrs.species позиций): лосось 7 · форель 3 ·
+       палтус 3 · нерка 2 (осётр — 1 позиция, в четвёрку не вошёл). Оси
+       «Вид рыбы» в 1С нет — вид собран из названий товаров, поэтому список
+       пересчитывается по данным при каждой новой выгрузке.
+       Кадров видов нет — карточки-заглушки, пути — в navImageList. */
+    groups: [
+      { key: 'processing', label: 'Способ приготовления' },
+      { key: 'species', label: 'Вид рыбы' },
+    ],
     subs: [
       {
         slug: 'holodnoe-kopchenie',
@@ -156,6 +211,10 @@ export const categories = [
         name: 'Горячего копчения',
         code1c: 'ryba_goryachego_kopcheniya',
       },
+      { slug: 'losos', name: 'Лосось', group: 'species' },
+      { slug: 'forel', name: 'Форель', group: 'species' },
+      { slug: 'paltus', name: 'Палтус', group: 'species' },
+      { slug: 'nerka', name: 'Нерка', group: 'species' },
     ],
   },
   {
@@ -345,7 +404,7 @@ export function navImageList() {
   categories.forEach((category) => {
     category.subs.forEach((sub) => {
       list.push({
-        path: navImage(category.slug, sub.slug),
+        path: tileImage(category, sub),
         alt: `${category.name} — ${sub.name}`,
       })
     })

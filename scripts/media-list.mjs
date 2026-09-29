@@ -13,15 +13,18 @@
 import { fileURLToPath } from 'node:url'
 import fs from 'node:fs'
 
-import { PANEL_MAX_CARDS, categories, collections, navImage } from '../src/data/catalog.js'
+import { PANEL_MAX_CARDS, categories, collections, tileImage } from '../src/data/catalog.js'
 
 const FILE = fileURLToPath(new URL('../public/media/README.md', import.meta.url))
 const START = '<!-- NAV:START -->'
 const END = '<!-- NAV:END -->'
 
 // Панель показывает не больше PANEL_MAX_CARDS подкатегорий в категории —
-// снимать то, что в неё не попадёт, незачем.
-const shown = (category) => category.subs.slice(0, PANEL_MAX_CARDS)
+// снимать то, что в неё не попадёт, незачем. Плитки со своим кадром
+// (sub.image — пэкшоты банок чёрной икры, уже лежат в public/media/alt2)
+// съёмки не требуют: в перечень идут только кадры /media/nav/.
+const shown = (category) =>
+  category.subs.slice(0, PANEL_MAX_CARDS).filter((sub) => tileImage(category, sub).startsWith('/media/nav/'))
 const total = categories.reduce((sum, category) => sum + shown(category).length, 0)
 
 const body = [
@@ -35,9 +38,11 @@ const body = [
     // Пустая строка под названием читалась бы как забытый список.
     shown(category).length
       ? shown(category)
-          .map((sub) => `\`${navImage(category.slug, sub.slug).replace('/media/nav/', '')}\``)
+          .map((sub) => `\`${tileImage(category, sub).replace('/media/nav/', '')}\``)
           .join(' · ')
-      : '_Подкатегорий нет — кадры не нужны._',
+      : category.subs.length
+        ? '_Плитки — пэкшоты банок линеек (public/media/alt2/types/), снимать не нужно._'
+        : '_Подкатегорий нет — кадры не нужны._',
     '',
   ]),
   '**Подборки — горизонтальные, 3:2, 900×600**',

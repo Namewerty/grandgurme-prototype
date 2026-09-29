@@ -65,19 +65,19 @@
 
 <!-- NAV:START -->
 
-Всего кадров подкатегорий: **31**, плюс 2 кадра подборок.
+Всего кадров подкатегорий: **30**, плюс 2 кадра подборок.
 
 **Чёрная икра**
 
-`chernaya-ikra-beluga.jpg` · `chernaya-ikra-osetr.jpg` · `chernaya-ikra-sevruga.jpg` · `chernaya-ikra-beluga-sterlyad.jpg` · `chernaya-ikra-payusnaya.jpg` · `chernaya-ikra-fasovka-50.jpg` · `chernaya-ikra-fasovka-113.jpg` · `chernaya-ikra-fasovka-250.jpg`
+_Плитки — пэкшоты банок линеек (public/media/alt2/types/), снимать не нужно._
 
 **Красная икра**
 
-`krasnaya-ikra-drugaya-ikra.jpg`
+`krasnaya-ikra-keta.jpg` · `krasnaya-ikra-gorbusha.jpg` · `krasnaya-ikra-kizhuch.jpg` · `krasnaya-ikra-nerka.jpg`
 
 **Рыба**
 
-`ryba-holodnoe-kopchenie.jpg` · `ryba-slabosolenaya.jpg` · `ryba-vyalenaya-sushenaya.jpg` · `ryba-goryachee-kopchenie.jpg`
+`ryba-holodnoe-kopchenie.jpg` · `ryba-slabosolenaya.jpg` · `ryba-vyalenaya-sushenaya.jpg` · `ryba-goryachee-kopchenie.jpg` · `ryba-losos.jpg` · `ryba-forel.jpg` · `ryba-paltus.jpg` · `ryba-nerka.jpg`
 
 **Крабы и морепродукты**
 

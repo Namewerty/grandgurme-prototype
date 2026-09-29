@@ -33,10 +33,13 @@ import {
   categories,
   collections,
   defaultCategorySlug,
-  navImage,
   subHref,
+  tileImage,
 } from '../../data/catalog.js'
-import { createImage } from '../media.js'
+import { getProducts } from '../../data/catalog-products.js'
+import { findLine } from '../../data/caviar-lines.js'
+import { subFilterFor } from '../../data/facets.js'
+import { plural } from '../catalog/model.js'
 
 const PANEL_ID = 'megapanel-catalog'
 
@@ -58,20 +61,90 @@ function categoryList() {
   `
 }
 
+/* ---------------------------------------------------------------- плитки
+
+   ТРИ ВИДА ПЛИТКИ (29.09.2026).
+     фото      кадр /media/nav/<раздел>-<плитка>.jpg, кадрируется по 4:3;
+     банка     tile: 'pack' у раздела (чёрная икра): пэкшот банки линейки
+               на белом вписан целиком на ровную светлую подложку одного тона,
+               под названием — зерно из caviar-lines.js;
+     заглушка  кадра ещё нет (виды красной икры и рыбы, пять разделов без
+               съёмки): тёплая подложка, название крупно, число позиций
+               мелко. Лежит под кадром и видна, только пока его нет, —
+               снимут кадр и положат файл, плитка станет фото сама.
+   Имени файла и пропорции, как у заглушек остальных медиа, здесь нет:
+   техническая подпись в меню читалась бы на показе как поломка.        */
+
+const positionsText = (n) => `${n} ${plural(n, 'позиция', 'позиции', 'позиций')}`
+
+/** Сколько позиций раздела откроет плитка. null — правила или позиций нет. */
+function tileCount(category, sub) {
+  const rule = subFilterFor(category.slug, sub.slug)
+  const products = getProducts(category.slug)
+  if (!rule || !products.length) return null
+  return products.filter((product) => rule.values.includes(product.attrs?.[rule.key])).length
+}
+
+/** «зерно 3,6–3,9 мм», у двух севрюг — «зерно 2,5 мм · паюсная». */
+function grainNote(sub) {
+  const lines = [sub.line].flat().map(findLine).filter(Boolean)
+  if (!lines.length) return ''
+  const parts = lines.map((line) => (line.grain.min == null ? line.short.toLowerCase() : line.grain.label))
+  return `зерно ${parts.join(' · ')}`
+}
+
 function subcategoryCard(category, sub) {
+  const count = tileCount(category, sub)
+  const note = grainNote(sub)
   return `
     <li class="megagrid__cell">
-      <a class="navcard" href="${subHref(category.slug, sub.slug)}">
-        <span class="navcard__media"
-              data-media="image"
-              data-src="${navImage(category.slug, sub.slug)}"
-              data-ratio="${NAV_CARD_RATIO}"
-              data-class="navcard__frame"
-              data-alt="${category.name} — ${sub.name}"></span>
+      <a class="navcard${category.tile === 'pack' ? ' navcard--pack' : ''}" href="${subHref(category.slug, sub.slug)}"
+         aria-label="${sub.name}${note ? `, ${note}` : ''}">
+        <span class="navcard__visual">
+          <span class="navcard__stub" aria-hidden="true">
+            <span class="navcard__stub-name">${sub.name}</span>
+            ${count ? `<span class="navcard__stub-count">${positionsText(count)}</span>` : ''}
+          </span>
+          <span class="navcard__media"
+                data-media="image"
+                data-src="${tileImage(category, sub)}"
+                data-ratio="${NAV_CARD_RATIO}"
+                data-class="navcard__frame"
+                data-alt="${category.name} — ${sub.name}"></span>
+        </span>
         <span class="navcard__name">${sub.name}</span>
+        ${note ? `<span class="navcard__note">${note}</span>` : ''}
       </a>
     </li>
   `
+}
+
+/**
+ * Сетка плиток раздела. Колонок столько, сколько карточек, но от двух до
+ * четырёх: три карточки в сетке на четыре оставляли дыру в первом ряду.
+ * У раздела с группами (рыба) — две подписанные четвёрки.
+ */
+function tilesGrid(category) {
+  const subs = category.subs.slice(0, PANEL_MAX_CARDS)
+  const grid = (list) => `
+    <ul class="megagrid" style="--cols: ${Math.min(4, Math.max(2, list.length))}">
+      ${list.map((sub) => subcategoryCard(category, sub)).join('')}
+    </ul>`
+
+  if (!category.groups?.length) return grid(subs)
+
+  const first = category.groups[0].key
+  return category.groups
+    .map((group) => {
+      const list = subs.filter((sub) => (sub.group || first) === group.key)
+      if (!list.length) return ''
+      return `
+        <div class="megagroup">
+          <p class="megagroup__label">${group.label}</p>
+          ${grid(list)}
+        </div>`
+    })
+    .join('')
 }
 
 /*
@@ -95,16 +168,7 @@ function panes() {
           (category) => `
         <section class="megapane" id="pane-${category.slug}" data-pane="${category.slug}"
                  aria-label="${category.name}">
-          ${
-            category.subs.length
-              ? `<ul class="megagrid">
-            ${category.subs
-              .slice(0, PANEL_MAX_CARDS)
-              .map((sub) => subcategoryCard(category, sub))
-              .join('')}
-          </ul>`
-              : `<p class="megapane__lead">${category.lead}</p>`
-          }
+          ${category.subs.length ? tilesGrid(category) : `<p class="megapane__lead">${category.lead}</p>`}
           <a class="megapane__all" href="/catalog/${category.slug}">
             Все товары раздела «${category.name}»
           </a>
