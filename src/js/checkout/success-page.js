@@ -23,7 +23,7 @@ import { contacts } from '../../data/nav.js'
 import { ROUTES, staticPages } from '../../data/routes.js'
 import { formatDayMonth, fromIsoDay, isSameDay } from '../../data/fulfillment.js'
 import { escapeHtml } from '../catalog/model.js'
-import { boxNote, fillText, lineSumLabel, sumLabel } from '../cart/summary.js'
+import { boxNote, fillText, lineSumLabel, orderDelivery, sumLabel } from '../cart/summary.js'
 import { getOrder, getRequest } from './submit.js'
 import { accountCopy } from '../../data/account-copy.js'
 import { currentUser } from '../account/session.js'
@@ -179,11 +179,19 @@ const linesList = (items, { sums }) => `
 function orderItemsBlock(order) {
   if (!order?.items?.length) return ''
   const approx = Boolean(order.totals.approx)
+  const goods = sumLabel({ value: order.totals.sum, approx })
+  // С 29.09.2026 в заказе записана доставка по зоне: товары, доставка
+  // и итог к оплате. У старых заказов — только сумма товаров.
+  const paid = orderDelivery(order)
+  const sub = (label, value) =>
+    `<p class="order-lines__total order-lines__total--sub"><span>${label}</span><span>${value}</span></p>`
   return `
     <section class="order-done__block" aria-labelledby="order-items">
       <h2 class="co-label" id="order-items">${copy.itemsTitle}</h2>
       ${linesList(order.items, { sums: true })}
-      <p class="order-lines__total"><span>${copy.total}</span><span>${sumLabel({ value: order.totals.sum, approx })}</span></p>
+      ${paid ? sub(checkoutCopy.summary.sum, goods) + sub(checkoutCopy.summary.delivery, paid.delivery) : ''}
+      ${paid?.exact ? sub(checkoutCopy.when.exact.surchargeRow, paid.exact) : ''}
+      <p class="order-lines__total"><span>${copy.total}</span><span>${paid ? paid.total : goods}</span></p>
       ${approx ? `<p class="order-lines__approx">${copy.approxNote}</p>` : ''}
     </section>`
 }

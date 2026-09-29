@@ -26,6 +26,7 @@
    Ничего не читает и не рисует при импорте.
    ============================================================================ */
 
+import { findZone } from '../../data/delivery-zones.js'
 import { findProductBySlug } from '../../data/catalog-products.js'
 import { optionalEmail, phoneDigits, rules } from '../checkout/validate.js'
 import {
@@ -69,9 +70,12 @@ import {
  * @typedef {object} Address
  * @property {string} id
  * @property {string} label       «Дом», «Работа» — необязательно
- * @property {string} street      улица и дом; город всегда Москва
+ * @property {string} street      улица и дом; за МКАД — с городом или посёлком
  * @property {string} apartment
  * @property {string} intercom
+ * @property {string|null} zone  зона доставки (src/data/delivery-zones.js);
+ *                               у адресов до 29.09.2026 её нет — выбирается
+ *                               на оформлении
  * @property {boolean} isDefault
  * @property {string} createdAt   ISO
  *
@@ -440,6 +444,7 @@ export async function saveAddress(address) {
     street: String(address.street).trim(),
     apartment: String(address.apartment || '').trim(),
     intercom: String(address.intercom || '').trim(),
+    zone: findZone(address.zone) ? address.zone : existing?.zone || null,
     isDefault: Boolean(address.isDefault) || !list.length || Boolean(existing?.isDefault),
     createdAt: existing?.createdAt || new Date().toISOString(),
   }
@@ -487,6 +492,8 @@ export async function saveProfile({ name = '', lastName = '', email = '', market
 
   const emailError = optionalEmail(email)
   if (emailError) return { ok: false, errors: { email: emailError } }
+  const nameError = rules.name(name)
+  if (nameError) return { ok: false, errors: { name: nameError } }
 
   return writeProfile(user.id, {
     name: name.trim(),

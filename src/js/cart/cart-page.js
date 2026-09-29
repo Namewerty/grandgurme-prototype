@@ -22,15 +22,24 @@
    «Выбрать другие» → окно выбора (box-dialog.js); «+» и «−» степпера
    добавляют и снимают коробки сами (store.js → fitPacks), сумма точная.
 
+   ДО БЕСПЛАТНОЙ ДОСТАВКИ (29.09.2026). Под строками сводки — «До бесплатной
+   доставки … — N ₽» и тонкая золотая полоса. Зона — из основного адреса
+   вошедшего, иначе ТТК (src/data/delivery-zones.js), и строка называет
+   зону. Порог достигнут — «Доставка по Москве бесплатно». Считается по сумме
+   заказа: позиции заявки в неё не входят.
+
    Хранилища страница не знает: только API store.js. Функции разметки
    принимают простой объект позиции.
    ============================================================================ */
 
 import gsap from 'gsap'
 import { cartCopy } from '../../data/cart-copy.js'
+import { DEFAULT_ZONE, findZone, toFreeDelivery } from '../../data/delivery-zones.js'
 import { KINDS } from '../../data/fulfillment.js'
 import { ROUTES } from '../../data/routes.js'
-import { escapeHtml } from '../catalog/model.js'
+import { escapeHtml, formatPrice } from '../catalog/model.js'
+import { getAddresses } from '../account/api.js'
+import { currentUser, onChange as onAccountChange } from '../account/session.js'
 import { createImage } from '../media.js'
 import { icons } from '../icons.js'
 import { createQtyStepper } from '../components/qty-stepper.js'
@@ -100,6 +109,10 @@ function layout() {
               <div class="summary__row"><dt>${s.sum}</dt><dd data-sum></dd></div>
               <div class="summary__row"><dt>${s.delivery}</dt><dd>${s.deliveryValue}</dd></div>
             </dl>
+            <div class="summary__free" data-free>
+              <p class="summary__free-text" data-free-text aria-live="polite"></p>
+              <span class="summary__free-bar" aria-hidden="true"><span data-free-bar></span></span>
+            </div>
             <p class="summary__total">
               <span>${s.total}</span>
               <span class="summary__total-value" data-total aria-live="polite"></span>
@@ -331,6 +344,9 @@ export function initCartPage(mount) {
       sum: body.querySelector('[data-sum]'),
       total: body.querySelector('[data-total]'),
       approxNote: body.querySelector('[data-approx-note]'),
+      free: body.querySelector('[data-free]'),
+      freeText: body.querySelector('[data-free-text]'),
+      freeBar: body.querySelector('[data-free-bar]'),
       splitHint: body.querySelector('[data-split-hint]'),
       requestBlock: body.querySelector('[data-request-block]'),
       requestNote: body.querySelector('[data-request-note]'),
@@ -384,8 +400,37 @@ export function initCartPage(mount) {
     body.innerHTML = emptyState()
   }
 
+  /**
+   * Зона для строки «До бесплатной доставки»: основной адрес вошедшего
+   * (или первый сохранённый), у которого зона указана; иначе ТТК.
+   */
+  let zone = { key: DEFAULT_ZONE, fromAddress: false }
+  async function loadZone() {
+    const addresses = currentUser() ? await getAddresses() : []
+    const saved = [addresses.find((a) => a.isDefault), ...addresses].find((a) => findZone(a?.zone))
+    zone = saved ? { key: saved.zone, fromAddress: true } : { key: DEFAULT_ZONE, fromAddress: false }
+    if (els) paintSummary(cart.getTotals())
+  }
+
+  function paintFree(totals) {
+    const s = copy.summary
+    const current = findZone(zone.key)
+    const sum = totals.order.sum
+    const left = toFreeDelivery(current.key, sum)
+    const moscow = ['ttk', 'mkad'].includes(current.key)
+    // «По Москве бесплатно» — только когда сумма дотянула до порога обеих
+    // московских зон; иначе строка называет свою зону (см. cart-copy.js).
+    const moscowFree = moscow && toFreeDelivery('mkad', sum) === 0
+    els.freeText.textContent = left
+      ? fillText(s.freeLeft, { where: current.inText, sum: formatPrice(left) })
+      : fillText(s.freeReached, { where: moscowFree ? s.freeMoscow : current.inText })
+    els.free.classList.toggle('is-reached', !left)
+    els.freeBar.style.width = `${Math.min(100, (sum / current.freeFrom) * 100)}%`
+  }
+
   function paintSummary(totals) {
     const t = summaryTexts(totals)
+    if (t.showOrder) paintFree(totals)
 
     els.orderBlock.hidden = !t.showOrder
     // Промокод — только к заказу: к заявке его применить не к чему.
@@ -463,4 +508,8 @@ export function initCartPage(mount) {
 
   sync()
   cart.subscribe(sync)
+  // Зона — из адресов кабинета: вошли или вышли в соседней вкладке —
+  // строка «До бесплатной доставки» пересчитывается.
+  loadZone()
+  onAccountChange(loadZone)
 }

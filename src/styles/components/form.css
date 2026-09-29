@@ -13,6 +13,13 @@
 
    Поля — капсулы на волосяной линии, как поле виджета эксперта. Бирюзовый —
    только фокус; выбранная капсула залита --fg, как активная капсула в каталоге.
+
+   ОШИБКА — КРАСНАЯ (--danger), А НЕ ЗОЛОТАЯ (29.09.2026): золотой рамкой на
+   сайте обведено всё подряд, и поле с ошибкой от соседних не отличалось.
+   Обязательное поле отмечено красной звёздочкой у подписи (.field__req,
+   разметка — src/js/components/required.js); «необязательно» у остальных
+   осталось. Ошибка показывается по уходу с незаполненного поля и при
+   отправке, фокус при отправке уходит на первое поле с ошибкой.
    ============================================================================ */
 
 /* ---- Поля ---------------------------------------------------------------- */
@@ -40,6 +47,9 @@
 }
 
 .field__optional { opacity: .8; }
+
+/* Звёздочка обязательного поля (.field__req) — в base.css: виджет эксперта
+   живёт на всех страницах, а этот файл грузят не все. */
 
 .field__input {
   width: 100%;
@@ -75,14 +85,56 @@ textarea.field__input {
   border-color: var(--caspian);
 }
 
-.field__input[aria-invalid='true'] { border-color: var(--gold); }
+.field__input[aria-invalid='true'],
+.field__input[aria-invalid='true']:hover { border-color: var(--danger); }
 
 /* Ошибка текстом под полем, а не всплывающая: всплывающую не перечитать. */
 .field__error {
   font-size: .75rem;
   line-height: 1.4;
-  color: var(--gold-fg);
+  color: var(--danger);
 }
+
+/* ---- Выпадающий список ---------------------------------------------------
+   Капсула со стрелкой, родная стрелка спрятана. Один вид на весь сайт:
+   зона и время доставки на оформлении (.field__select) и выбор на формах
+   информационных страниц (.ib-select, src/info/blocks/form.js) —
+   правила перенесены сюда из src/info/styles/blocks/form.css 29.09.2026. */
+
+.ib-select,
+.field__select {
+  position: relative;
+  display: block;
+}
+
+.ib-select::after,
+.field__select::after {
+  content: '';
+  position: absolute;
+  right: 1.2rem;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  border-right: 1px solid var(--fg-mute);
+  border-bottom: 1px solid var(--fg-mute);
+  transform: translateY(-70%) rotate(45deg);
+  pointer-events: none;
+}
+
+.ib-select select,
+.field__select select {
+  appearance: none;
+  padding-right: 2.75rem;
+  cursor: pointer;
+}
+
+.field__select select:disabled {
+  cursor: not-allowed;
+  opacity: .55;
+}
+
+.ib-select option,
+.field__select option { color: var(--ink); background: var(--pearl); }
 
 .field__error[hidden] { display: none; }
 
@@ -176,7 +228,7 @@ textarea.field__input {
   outline-offset: 3px;
 }
 
-.cap input[aria-invalid='true'] + .cap__face { border-color: var(--gold); }
+.cap input[aria-invalid='true'] + .cap__face { border-color: var(--danger); }
 
 .cap input:disabled { cursor: not-allowed; }
 
@@ -245,4 +297,4 @@ textarea.field__input {
   outline-offset: 3px;
 }
 
-.check input[aria-invalid='true'] ~ .check__box { border-color: var(--gold); }
+.check input[aria-invalid='true'] ~ .check__box { border-color: var(--danger); }

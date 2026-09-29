@@ -32,6 +32,7 @@ import { accountCopy } from '../../data/account-copy.js'
 import { checkoutCopy } from '../../data/checkout-copy.js'
 import { escapeHtml } from '../catalog/model.js'
 import { PHONE_LENGTH, formatPhone, maskPhone, optionalEmail, phoneDigits, rules } from '../checkout/validate.js'
+import { REQUIRED_MARK } from '../components/required.js'
 import { icons } from '../icons.js'
 import { completeProfile, requestCode as requestCodeLocal, verifyCode as verifyCodeLocal } from './api.js'
 import { createCodeStep } from './code-input.js'
@@ -44,7 +45,7 @@ const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 const field = ({ id, name, label, type = 'text', autocomplete, inputmode, placeholder, hint, optional }) => `
   <div class="field">
     <label class="field__label" for="${id}">
-      ${label}${optional ? `<span class="field__optional"> · ${checkoutCopy.optional}</span>` : ''}
+      ${label}${optional ? `<span class="field__optional"> · ${checkoutCopy.optional}</span>` : REQUIRED_MARK}
     </label>
     <input class="field__input" id="${id}" name="${name}" type="${type}"
            ${autocomplete ? `autocomplete="${autocomplete}"` : ''} ${inputmode ? `inputmode="${inputmode}"` : ''}
@@ -149,7 +150,7 @@ export function createLoginFlow(
                  aria-describedby="login-consent-error">
           <span class="check__box" aria-hidden="true">${icons.check}</span>
           <span>${c.consent.before} <a href="${c.consent.consent.href}">${c.consent.consent.label}</a>
-            ${c.consent.middle} <a href="${c.consent.privacy.href}">${c.consent.privacy.label}</a></span>
+            ${c.consent.middle} <a href="${c.consent.privacy.href}">${c.consent.privacy.label}</a>${REQUIRED_MARK}</span>
         </label>
         <p class="field__error" id="login-consent-error" hidden></p>
       </div>
@@ -172,7 +173,8 @@ export function createLoginFlow(
       return digits.length < PHONE_LENGTH ? rules.phone(input.value) : ''
     }
 
-    input.addEventListener('blur', () => showError(input, input.value.trim() ? phoneError() : ''))
+    // Пустой номер — ошибка и по уходу с поля (правило всех форм сайта).
+    input.addEventListener('blur', () => showError(input, phoneError()))
     input.addEventListener('input', () => {
       if (!phoneError()) showError(input, '')
     })
@@ -303,6 +305,7 @@ export function createLoginFlow(
     const button = form.querySelector('[type="submit"]')
 
     f.name.addEventListener('input', () => f.name.value.trim() && showError(f.name, ''))
+    f.name.addEventListener('blur', () => showError(f.name, rules.name(f.name.value)))
     f.email.addEventListener('blur', () => showError(f.email, optionalEmail(f.email.value)))
     f.email.addEventListener('input', () => !optionalEmail(f.email.value) && showError(f.email, ''))
 

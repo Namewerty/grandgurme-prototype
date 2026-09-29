@@ -24,32 +24,9 @@
 
 .ib-form__chips .field__label { margin-bottom: .2rem; }
 
-/* select — капсула со стрелкой; родная стрелка спрятана. */
-.ib-select {
-  position: relative;
-  display: block;
-}
-
-.ib-select::after {
-  content: '';
-  position: absolute;
-  right: 1.2rem;
-  top: 50%;
-  width: 7px;
-  height: 7px;
-  border-right: 1px solid var(--fg-mute);
-  border-bottom: 1px solid var(--fg-mute);
-  transform: translateY(-70%) rotate(45deg);
-  pointer-events: none;
-}
-
-.ib-select select {
-  appearance: none;
-  padding-right: 2.75rem;
-  cursor: pointer;
-}
-
-.ib-select option { color: var(--ink); background: var(--pearl); }
+/* select — капсула со стрелкой: правила .ib-select с 29.09.2026 живут
+   в общем components/form.css — тот же вид у выбора зоны и времени
+   на оформлении. Состояния ошибки полей — там же, цветом --danger. */
 
 .ib-form__consent { display: grid; gap: .35rem; }
 

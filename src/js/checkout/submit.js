@@ -34,8 +34,13 @@ import { saveAddress } from '../account/api.js'
  * @param {object} payload { mode, contact, order|null, request|null } —
  *   см. collectPayload в checkout-page.js. contact.userId — вошедший или null.
  *   У заказа shipments: одна или две отгрузки, у каждой items (id позиций),
- *   date, interval; addressId — выбранный сохранённый адрес либо null
- *   и saveAddress — сохранить ли введённый.
+ *   date, slot — { mode: 'interval', interval } или { mode: 'exact', time: 'HH:MM' }
+ *   (29.09.2026), interval — подпись времени для показа («10:00–14:00»,
+ *   «к 15:30»), delivery — стоимость доставки этой отгрузки по зоне;
+ *   receive.zone — ключ зоны (src/data/delivery-zones.js); totals.delivery,
+ *   totals.exact и totals.total — доставка, доплата за точное время и к оплате;
+ *   addressId — выбранный сохранённый адрес либо null и saveAddress —
+ *   сохранить ли введённый.
  * @returns {Promise<{ order: number|null, request: number|null }>}
  */
 export async function submitCheckout(payload) {
@@ -56,8 +61,10 @@ export async function submitCheckout(payload) {
     })
 
     if (userId && wantsSave && data.receive?.method === 'delivery') {
-      const { street, apartment, intercom } = data.receive
-      await saveAddress({ street, apartment, intercom })
+      // Зона сохраняется вместе с адресом: на следующем оформлении
+      // сохранённый адрес подставит её сам.
+      const { street, apartment, intercom, zone } = data.receive
+      await saveAddress({ street, apartment, intercom, zone })
     }
   }
 

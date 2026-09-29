@@ -19,6 +19,7 @@ import { checkoutCopy } from '../../../data/checkout-copy.js'
 import { ROUTES } from '../../../data/routes.js'
 import { showToast } from '../../cart/toast.js'
 import { PHONE_LENGTH, maskPhone, optionalEmail, phoneDigits, rules } from '../../checkout/validate.js'
+import { REQUIRED_MARK } from '../../components/required.js'
 import { icons } from '../../icons.js'
 import { getLenis } from '../../scroll.js'
 import { confirmPhoneChange, deleteAccount, requestPhoneChange, saveProfile } from '../api.js'
@@ -56,8 +57,10 @@ export async function initProfilePage(mount) {
     <form class="acc-form" method="post" novalidate data-profile-form>
       <div class="fields">
         <div class="field">
-          <label class="field__label" for="pf-name">${copy.name.label}</label>
-          <input class="field__input" id="pf-name" name="name" type="text" autocomplete="given-name">
+          <label class="field__label" for="pf-name">${copy.name.label}${REQUIRED_MARK}</label>
+          <input class="field__input" id="pf-name" name="name" type="text" autocomplete="given-name"
+                 aria-required="true" aria-describedby="pf-name-error">
+          <p class="field__error" id="pf-name-error" hidden></p>
         </div>
         <div class="field">
           <label class="field__label" for="pf-last">${copy.lastName.label}${optional}</label>
@@ -106,6 +109,7 @@ export async function initProfilePage(mount) {
   const f = form.elements
   const save = form.querySelector('[type="submit"]')
   const emailError = form.querySelector('#pf-email-error')
+  const nameError = form.querySelector('#pf-name-error')
 
   let saved = {
     name: user.name || '',
@@ -132,23 +136,46 @@ export async function initProfilePage(mount) {
     f.email.setAttribute('aria-invalid', String(Boolean(message)))
   }
 
+  // Имя обязательно — как на шаге входа (completeProfile): пустое имя
+  // в профиле раньше сохранялось молча.
+  const showNameError = (message) => {
+    nameError.textContent = message
+    nameError.hidden = !message
+    f.name.setAttribute('aria-invalid', String(Boolean(message)))
+  }
+
   fillForm()
   form.addEventListener('input', () => {
     save.disabled = !isDirty()
     if (!optionalEmail(f.email.value)) showEmailError('')
+    if (!rules.name(f.name.value)) showNameError('')
   })
   f.email.addEventListener('blur', () => showEmailError(optionalEmail(f.email.value)))
+  f.name.addEventListener('blur', () => showNameError(rules.name(f.name.value)))
 
   form.addEventListener('submit', async (event) => {
     event.preventDefault()
     if (save.disabled) return
 
+    // Ошибки показываются все сразу, фокус — на первое поле с ошибкой.
+    const invalid = [
+      [f.name, rules.name(f.name.value), showNameError],
+      [f.email, optionalEmail(f.email.value), showEmailError],
+    ]
+    invalid.forEach(([, message, show]) => show(message))
+    const first = invalid.find(([, message]) => message)
+    if (first) {
+      first[0].focus()
+      return
+    }
+
     save.disabled = true
     const result = await saveProfile(current())
     if (!result.ok) {
       save.disabled = false
+      showNameError(result.errors.name || '')
       showEmailError(result.errors.email || '')
-      f.email.focus()
+      ;(result.errors.name ? f.name : f.email).focus()
       return
     }
     saved = current()
@@ -177,7 +204,7 @@ export async function initProfilePage(mount) {
     phoneRow.innerHTML = `
       <div class="acc-panel" role="group" aria-label="${c.title}">
         <div class="field">
-          <label class="field__label" for="pf-new-phone">${c.label}</label>
+          <label class="field__label" for="pf-new-phone">${c.label}${REQUIRED_MARK}</label>
           <input class="field__input" id="pf-new-phone" name="newPhone" form="pf-phone-form" type="tel"
                  autocomplete="tel" inputmode="tel" placeholder="${accountCopy.login.phone.placeholder}"
                  aria-required="true" aria-describedby="pf-new-phone-error">

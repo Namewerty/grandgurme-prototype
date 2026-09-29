@@ -129,7 +129,9 @@ const totalsOf = (items, readyAt) => {
 
 const contactOf = (user) => ({ name: user.name, phone: formatPhone(user.phone), email: '' })
 
-const HOME = { method: 'delivery', city: CITY, street: 'Примерная улица, 1', apartment: '5', intercom: '5' }
+// Зоны демо-адресов (src/data/delivery-zones.js): адреса вымышленные, зоны —
+// чтобы оформление и корзина на показе считали доставку, а не просили зону.
+const HOME = { method: 'delivery', city: CITY, street: 'Примерная улица, 1', apartment: '5', intercom: '5', zone: 'mkad' }
 const PICKUP = { method: 'pickup', point: pickupPoints[0] || null }
 
 function order({ number, user, daysAgo, receive, shipments, items, status, requestNumber = null, payment = 'card' }) {
@@ -227,7 +229,7 @@ function demoOrders() {
       receive: HOME,
       items: canceledItems,
       shipments: [
-        { kind: 'all', items: ids(canceledItems), date: dayFrom(-49), interval: INTERVALS[3], status: 'accepted' },
+        { kind: 'all', items: ids(canceledItems), date: dayFrom(-49), interval: INTERVALS[2], status: 'accepted' },
       ],
       status: 'canceled',
     }),
@@ -277,13 +279,14 @@ function demoRequests() {
 function demoAddresses() {
   const createdAt = isoAt(60, 10)
   return [
-    { id: 'demo-home', label: 'Дом', street: HOME.street, apartment: '5', intercom: '5', isDefault: true, createdAt },
+    { id: 'demo-home', label: 'Дом', street: HOME.street, apartment: '5', intercom: '5', zone: 'mkad', isDefault: true, createdAt },
     {
       id: 'demo-work',
       label: 'Работа',
       street: 'Образцовый проезд, 10',
       apartment: 'офис 12',
       intercom: '',
+      zone: 'ttk',
       isDefault: false,
       createdAt: isoAt(30, 10),
     },

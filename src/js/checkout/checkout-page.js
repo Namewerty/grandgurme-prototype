@@ -43,6 +43,20 @@
    сообщение над составом и новую сумму; следующее нажатие отправляет.
    Коробки берутся только через границу cart/boxes.js.
 
+   ДОСТАВКА ПО ЗОНАМ (29.09.2026, src/data/delivery-zones.js). Под адресом —
+   поле «Зона доставки» (src/js/checkout/zones.js): с ключом геокодера зона
+   определяется по адресу, без него её выбирают из списка, рядом карта зон
+   боевого сайта. Сохранённый адрес подставляет свою зону. Сводка пишет
+   стоимость: «700 ₽», «Бесплатно» (сумма товаров от порога зоны, самовывоз)
+   или «выберите адрес», пока зоны нет; Итого = товары + доставка.
+   Две доставки считаются отдельно, порог — по сумме товаров каждой.
+
+   К ТОЧНОМУ ВРЕМЕНИ. Рядом с интервалами — капсула «К точному времени»:
+   выбор с шагом 15 минут в окне доставки, сегодня — не раньше чем через
+   два часа (EXACT_TIME). Под выбором строка «Привезём к 15:30, четверг,
+   2 октября». У самовывоза варианта нет. В заказ уходит slot:
+   { mode: 'exact', time } или { mode: 'interval', interval }.
+
    Отправка — одна функция submitCheckout (submit.js), на Битриксе она
    заменяется целиком. Хранилища эта страница не знает.
    ============================================================================ */
@@ -55,20 +69,24 @@ import {
   addDays,
   formatDayMonth,
   formatWeekday,
+  fromIsoDay,
   isOrderKind,
   isSameDay,
   toIsoDay,
 } from '../../data/fulfillment.js'
 import { packPrice, pickPacks } from '../../data/boxes.js'
+import { EXACT_TIME, deliveryCost, exactTimes, findZone } from '../../data/delivery-zones.js'
 import { escapeHtml, formatPrice } from '../catalog/model.js'
 import { createImage } from '../media.js'
 import { icons } from '../icons.js'
 import { getLenis } from '../scroll.js'
 import { findPack, getFreePacks } from '../cart/boxes.js'
 import * as cart from '../cart/store.js'
-import { boxNote, fillText, kindOrder, modeOf, positionsLabel, sumLabel } from '../cart/summary.js'
+import { boxNote, fillText, kindOrder, lineSum, modeOf, positionsLabel, sumLabel } from '../cart/summary.js'
+import { REQUIRED_MARK } from '../components/required.js'
 import { formatPhone, maskPhone, phoneDigits, rules } from './validate.js'
 import { submitCheckout } from './submit.js'
+import { wireZoneField, zoneFieldMarkup } from './zones.js'
 import { accountCopy } from '../../data/account-copy.js'
 import { MAX_ADDRESSES, getAddresses } from '../account/api.js'
 import { currentUser, onChange as onAccountChange } from '../account/session.js'
@@ -83,7 +101,14 @@ const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 /** Лента дней: две недели вперёд, включая первый день. */
 const DAYS_AHEAD = 14
 
+/** Значение капсулы «К точному времени» в ряду интервалов. */
+const EXACT = 'exact'
+
 const DAY_SHORT = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'short' })
+const WEEKDAY_LONG = new Intl.DateTimeFormat('ru-RU', { weekday: 'long' })
+
+/** «четверг, 2 октября» — строка под выбором точного времени. */
+const dayLong = (date) => `${WEEKDAY_LONG.format(date)}, ${formatDayMonth(date)}`
 
 /* ------------------------------------------------------------- состояние */
 
@@ -127,7 +152,7 @@ const step = (n, id, title, body) => `
     </div>
   </section>`
 
-function field({ id, name, label, type = 'text', autocomplete, placeholder, inputmode, optional, wide }) {
+function field({ id, name, label, type = 'text', autocomplete, placeholder, inputmode, optional, wide, hint }) {
   const attrs = [
     `id="${id}"`,
     `name="${name}"`,
@@ -136,7 +161,7 @@ function field({ id, name, label, type = 'text', autocomplete, placeholder, inpu
     placeholder && `placeholder="${placeholder}"`,
     inputmode && `inputmode="${inputmode}"`,
     !optional && 'aria-required="true"',
-    `aria-describedby="${id}-error"`,
+    `aria-describedby="${[hint && `${id}-hint`, `${id}-error`].filter(Boolean).join(' ')}"`,
   ]
     .filter(Boolean)
     .join(' ')
@@ -144,9 +169,10 @@ function field({ id, name, label, type = 'text', autocomplete, placeholder, inpu
   return `
     <div class="field${wide ? ' field--wide' : ''}">
       <label class="field__label" for="${id}">
-        ${label}${optional ? `<span class="field__optional"> — ${copy.optional}</span>` : ''}
+        ${label}${optional ? `<span class="field__optional"> — ${copy.optional}</span>` : REQUIRED_MARK}
       </label>
       <input class="field__input" ${attrs}>
+      ${hint ? `<p class="field__hint" id="${id}-hint">${hint}</p>` : ''}
       <p class="field__error" id="${id}-error" hidden></p>
     </div>`
 }
@@ -298,12 +324,14 @@ function receiveStep(n, account) {
     <div class="co-panel" data-panel="delivery">
       ${hasSaved ? addressCards(account.addresses) : ''}
       <div class="fields" data-new-address${hasSaved ? ' hidden' : ''}>
-        <div class="field field--wide">
-          <span class="field__label">${r.city.label}</span>
-          <p class="field__static">${r.city.value}</p>
-          <p class="field__hint">${r.city.hint} <a href="${r.city.hintLink.href}">${r.city.hintLink.label}</a></p>
-        </div>
-        ${field({ id: 'co-street', name: 'street', label: r.street.label, autocomplete: 'address-line1', wide: true })}
+        ${field({
+          id: 'co-street',
+          name: 'street',
+          label: r.street.label,
+          autocomplete: 'address-line1',
+          wide: true,
+          hint: r.street.hint,
+        })}
         ${field({
           id: 'co-apartment',
           name: 'apartment',
@@ -313,6 +341,11 @@ function receiveStep(n, account) {
         })}
         ${field({ id: 'co-intercom', name: 'intercom', label: r.intercom.label, optional: true })}
         ${saveAddressRow(account)}
+      </div>
+      <!-- Зона — и для нового адреса, и для сохранённого: у сохранённого
+           она подставляется сама (src/js/checkout/zones.js). -->
+      <div class="fields co-zone">
+        ${zoneFieldMarkup({ id: 'co-zone', name: 'zone' })}
       </div>
     </div>
 
@@ -357,7 +390,12 @@ function shipmentFields({ key, from, length, readyAt, checked, hint }) {
   }).join('')
 
   const errorId = `co-interval${suffix}-error`
+  const e = w.exact
+  const timeId = `co-time${suffix}`
 
+  // Интервалы из окна доставки и капсула «К точному времени» (EXACT) рядом:
+  // это тот же выбор «когда», а не отдельный шаг. У самовывоза её нет —
+  // прячется в switchMethod.
   return `
     <fieldset class="group">
       <legend class="field__label">${w.dateLegend}</legend>
@@ -366,12 +404,26 @@ function shipmentFields({ key, from, length, readyAt, checked, hint }) {
     </fieldset>
 
     <fieldset class="group" aria-describedby="${errorId}">
-      <legend class="field__label">${w.intervalLegend}</legend>
+      <legend class="field__label">${w.intervalLegend}${REQUIRED_MARK}</legend>
       <div class="caps">
         ${w.intervals.map((label) => cap({ name: `interval${suffix}`, value: label, label })).join('')}
+        ${cap({ name: `interval${suffix}`, value: EXACT, label: e.cap, modifier: 'exact' })}
       </div>
       <p class="field__error" id="${errorId}" hidden></p>
-    </fieldset>`
+    </fieldset>
+
+    <div class="exact" data-exact="${key}" hidden>
+      <div class="field exact__field">
+        <label class="field__label" for="${timeId}">${e.label}${REQUIRED_MARK}</label>
+        <div class="field__select">
+          <select class="field__input" id="${timeId}" name="time${suffix}" aria-required="true"
+                  aria-describedby="${timeId}-note ${timeId}-error"></select>
+        </div>
+        <p class="field__error" id="${timeId}-error" hidden></p>
+      </div>
+      <p class="exact__summary" id="${timeId}-note" data-exact-note aria-live="polite"></p>
+      <p class="field__hint">${EXACT_TIME.lateMin ? fillText(e.hintLate, { min: EXACT_TIME.lateMin }) : e.hint}</p>
+    </div>`
 }
 
 /**
@@ -460,7 +512,7 @@ const readyLine = (text, attrs = '') =>
  */
 function paymentStep(n, plan) {
   const p = copy.payment
-  const options = plan.hasPreorderBoxes ? p.options.filter((o) => o.value === 'on-receipt') : p.options
+  const options = plan.hasPreorderBoxes ? [p.onReceipt] : p.options
   const notes = [
     plan.hasPreorderBoxes ? readyLine(p.preorderBoxes) : '',
     plan.mode === 'both'
@@ -548,7 +600,7 @@ function consentStep(n) {
                aria-describedby="co-consent-error">
         <span class="check__box" aria-hidden="true">${icons.check}</span>
         <span>${c.before} <a href="${c.terms.href}">${c.terms.label}</a>
-          ${c.middle} <a href="${c.privacy.href}">${c.privacy.label}</a></span>
+          ${c.middle} <a href="${c.privacy.href}">${c.privacy.label}</a>${REQUIRED_MARK}</span>
       </label>
       <p class="field__error" id="co-consent-error" hidden></p>
     </div>`,
@@ -559,10 +611,14 @@ function summaryMarkup(plan) {
   const s = copy.summary
   const requestOnly = plan.mode === 'request'
 
+  // Доставка: одна строка или две (раздельная доставка); доплата за точное
+  // время — своей строкой и только если она не ноль (EXACT_TIME.surcharge).
   const orderRows = `
     <dl class="summary__rows">
       <div class="summary__row"><dt>${s.sum}</dt><dd data-sum></dd></div>
-      <div class="summary__row"><dt>${s.delivery}</dt><dd data-delivery></dd></div>
+      <div class="summary__row"><dt data-delivery-label>${s.delivery}</dt><dd data-delivery></dd></div>
+      <div class="summary__row" data-delivery-later-row hidden><dt>${s.deliveryLater}</dt><dd data-delivery-later></dd></div>
+      <div class="summary__row" data-exact-row hidden><dt>${copy.when.exact.surchargeRow}</dt><dd data-exact-cost></dd></div>
     </dl>
     <p class="summary__total">
       <span>${s.total}</span>
@@ -738,12 +794,64 @@ export async function initCheckoutPage(mount, { demo = null } = {}) {
     orderOnly: mount.querySelector('[data-order-only]'),
     sum: mount.querySelector('[data-sum]'),
     delivery: mount.querySelector('[data-delivery]'),
+    deliveryLabel: mount.querySelector('[data-delivery-label]'),
+    deliveryLaterRow: mount.querySelector('[data-delivery-later-row]'),
+    deliveryLater: mount.querySelector('[data-delivery-later]'),
+    exactRow: mount.querySelector('[data-exact-row]'),
+    exactCost: mount.querySelector('[data-exact-cost]'),
     total: mount.querySelector('[data-total]'),
     positions: mount.querySelector('[data-positions]'),
   }
 
   const method = () => (plan.hasOrder ? f.method.value : null)
   const split = () => (plan.canSplit ? f.split.value : 'one')
+
+  /* ---- зона доставки ----------------------------------------------------- */
+
+  // Поле зоны (src/js/checkout/zones.js): по уходу с «Улицы и дома» зона
+  // определяется по адресу, если есть ключ геокодера; иначе выбирают сами.
+  const zoneRoot = mount.querySelector('[data-zone-field]')
+  const zoneField = zoneRoot
+    ? wireZoneField(zoneRoot, { address: f.street, onChange: () => paintSummary() })
+    : null
+  const zoneKey = () => (method() === 'delivery' ? zoneField?.select.value || '' : '')
+
+  /** Сохранённый адрес подставляет свою зону; у адреса без зоны — выбор. */
+  const applySavedZone = () => {
+    const saved = savedAddress()
+    if (saved && zoneField) zoneField.set(findZone(saved.zone) ? saved.zone : '')
+  }
+
+  /* ---- стоимость -------------------------------------------------------- */
+
+  const sumOf = (lines) => Math.round(lines.reduce((n, line) => n + (lineSum(line).value || 0), 0) * 100) / 100
+
+  /** Выбрано ли «к точному времени» у отгрузки ('' | 'stock' | 'preorder'). */
+  const isExact = (key) => (f[`interval${key ? `_${key}` : ''}`]?.value || '') === EXACT
+
+  /**
+   * Доставка по отгрузкам: [{ key, cost }]. cost null — зона не выбрана,
+   * 0 — бесплатно (самовывоз или сумма от порога зоны). Порог сравнивается
+   * с суммой товаров КАЖДОЙ отгрузки: две доставки — два расчёта.
+   */
+  function deliveryParts(now) {
+    const shipments =
+      split() === 'two'
+        ? [
+            { key: 'stock', lines: now.stockItems },
+            { key: 'preorder', lines: now.preorderItems },
+          ]
+        : [{ key: '', lines: now.orderItems }]
+    return shipments.map(({ key, lines }) => ({
+      key,
+      goods: sumOf(lines),
+      cost: method() === 'pickup' ? 0 : deliveryCost(zoneKey(), sumOf(lines)),
+      exact: method() === 'delivery' && isExact(key) ? EXACT_TIME.surcharge : 0,
+    }))
+  }
+
+  const costLabel = (cost) =>
+    cost == null ? copy.summary.deliveryChoose : cost === 0 ? copy.summary.free : formatPrice(cost)
 
   /* ---- сводка ---------------------------------------------------------- */
 
@@ -781,15 +889,28 @@ export async function initCheckoutPage(mount, { demo = null } = {}) {
     }
 
     if (next.hasOrder) {
-      const total = sumLabel({ value: next.totals.order.sum, approx: next.totals.order.approx })
-      els.sum.textContent = total
-      els.delivery.textContent =
-        method() === 'pickup'
-          ? copy.summary.pickupValue
-          : split() === 'two'
-            ? copy.summary.deliveryTwo
-            : copy.summary.deliveryValue
+      const approx = Boolean(next.totals.order.approx)
+      const goods = sumLabel({ value: next.totals.order.sum, approx })
+      const parts = deliveryParts(next)
+      const two = parts.length === 2
+      const s = copy.summary
+
+      els.sum.textContent = goods
+      els.deliveryLabel.textContent = two ? s.deliveryNow : s.delivery
+      els.delivery.textContent = method() === 'pickup' ? s.pickupValue : costLabel(parts[0].cost)
+      els.deliveryLaterRow.hidden = !two
+      if (two) els.deliveryLater.textContent = method() === 'pickup' ? s.pickupValue : costLabel(parts[1].cost)
+
+      const exact = parts.reduce((n, part) => n + part.exact, 0)
+      els.exactRow.hidden = !exact
+      els.exactCost.textContent = exact ? formatPrice(exact) : ''
+
+      // Итого = товары + доставка (+ доплата за точное время). Пока зоны
+      // нет, доставку не прибавить — итог пишется по товарам.
+      const delivery = parts.reduce((n, part) => n + (part.cost || 0), 0)
+      const total = sumLabel({ value: next.totals.order.sum + delivery + exact, approx })
       els.total.textContent = total
+      // Заказ с заявкой: онлайн оплачивается заказ целиком, с доставкой.
       if (els.orderOnly) els.orderOnly.textContent = fillText(copy.payment.orderOnly, { sum: total })
     } else {
       els.positions.textContent = String(next.totals.request.positions)
@@ -946,15 +1067,93 @@ export async function initCheckoutPage(mount, { demo = null } = {}) {
     return message ? f.consent : null
   }
 
+  /** Зона нужна только доставке: при самовывозе поле скрыто. */
+  const checkZone = () => (method() === 'delivery' && zoneField ? zoneField.validate() : null)
+
+  /* ---- к точному времени ------------------------------------------------ */
+
+  const exactCopy = copy.when.exact
+  const suffixOf = (key) => (key ? `_${key}` : '')
+
+  /**
+   * Время «к столу» на выбранный в ленте день. Сегодня — не раньше, чем через
+   * EXACT_TIME.leadMin; вышло за конец окна — на сегодня точного времени нет,
+   * список выключен и сказано почему. Под заказ ограничение даёт сама лента:
+   * дни раньше готовности в ней выключены.
+   */
+  function fillTimes(key) {
+    const suffix = suffixOf(key)
+    const select = f[`time${suffix}`]
+    const panel = mount.querySelector(`[data-exact="${key}"]`)
+    if (!select || !panel) return
+    const day = fromIsoDay(f[`date${suffix}`]?.value) || new Date()
+    const times = exactTimes(day, new Date())
+    const before = select.value
+    select.innerHTML =
+      `<option value="">${exactCopy.placeholder}</option>` +
+      times.map((t) => `<option value="${t}"${t === before ? ' selected' : ''}>${t}</option>`).join('')
+    select.disabled = !times.length
+    paintExactNote(key, times.length ? '' : exactCopy.unavailableToday)
+  }
+
+  /** «Привезём к 15:30, четверг, 2 октября» — из того, что реально выбрано. */
+  function paintExactNote(key, override = '') {
+    const suffix = suffixOf(key)
+    const note = mount.querySelector(`[data-exact="${key}"] [data-exact-note]`)
+    if (!note) return
+    const time = f[`time${suffix}`]?.value
+    const day = fromIsoDay(f[`date${suffix}`]?.value)
+    note.textContent = override || (time && day ? fillText(exactCopy.summary, { time, day: dayLong(day) }) : '')
+  }
+
+  /** Показать или спрятать выбор времени у отгрузки по выбранной капсуле. */
+  function syncExact(key) {
+    const panel = mount.querySelector(`[data-exact="${key}"]`)
+    if (!panel) return
+    const on = method() === 'delivery' && isExact(key)
+    if (on && panel.hidden) {
+      fillTimes(key)
+      reveal(panel)
+    }
+    panel.hidden = !on
+    if (!on) showError(f[`time${suffixOf(key)}`], '')
+  }
+
+  const checkExact = (key) => {
+    if (!isExact(key)) return null
+    const select = f[`time${suffixOf(key)}`]
+    const message = select.value ? '' : exactCopy.error
+    showError(select, message)
+    return message ? select : null
+  }
+
   form.addEventListener('change', (event) => {
     const { name, value } = event.target
     const interval = name.match(/^interval(?:_(stock|preorder))?$/)
-    if (interval) checkInterval(interval[1] || '')
+    if (interval) {
+      checkInterval(interval[1] || '')
+      syncExact(interval[1] || '')
+      paintSummary()
+    }
+    const date = name.match(/^date(?:_(stock|preorder))?$/)
+    if (date && isExact(date[1] || '')) fillTimes(date[1] || '')
+    const time = name.match(/^time(?:_(stock|preorder))?$/)
+    if (time) {
+      if (value) showError(event.target, '')
+      paintExactNote(time[1] || '')
+    }
     if (name === 'consent' && f.consent.checked) showError(f.consent, '')
     if (name === 'method') switchMethod(value)
     if (name === 'split') switchSplit(value)
     if (name === 'address') switchAddress(value)
   })
+
+  // Обязательный выбор времени: ошибка и по уходу с пустого списка.
+  form.querySelectorAll('select[name^="time"]').forEach((select) =>
+    select.addEventListener('blur', () => {
+      if (!select.value && !select.disabled) showError(select, exactCopy.error)
+    }),
+  )
 
   /* ---- способ получения и разделение ----------------------------------- */
 
@@ -969,7 +1168,19 @@ export async function initCheckoutPage(mount, { demo = null } = {}) {
       panel.hidden = !on
       if (on) reveal(panel)
     })
-    if (value !== 'delivery') showError(f.street, '')
+    if (value !== 'delivery') {
+      showError(f.street, '')
+      zoneField?.clear()
+    }
+
+    // Точного времени у самовывоза нет: капсула прячется, выбранная —
+    // снимается, иначе скрытый выбор остался бы обязательным.
+    mount.querySelectorAll('.cap--exact').forEach((node) => {
+      const input = node.querySelector('input')
+      node.hidden = value !== 'delivery'
+      if (value !== 'delivery' && input.checked) input.checked = false
+    })
+    ;['', 'stock', 'preorder'].forEach(syncExact)
 
     // Подписи выбора разделения: «доставкой» или «визитом».
     if (plan.canSplit) {
@@ -991,9 +1202,11 @@ export async function initCheckoutPage(mount, { demo = null } = {}) {
     fields.hidden = !on
     if (on) {
       reveal(fields)
+      zoneField?.set('')
       f.street.focus({ preventScroll: true })
     } else {
       showError(f.street, '')
+      applySavedZone()
     }
   }
 
@@ -1006,6 +1219,10 @@ export async function initCheckoutPage(mount, { demo = null } = {}) {
     // Ошибки скрытых рядов снимаются: проверяется только то, что видно.
     if (value === 'two') clearInterval('')
     else ['stock', 'preorder'].forEach(clearInterval)
+    ;(value === 'two' ? [''] : ['stock', 'preorder']).forEach((key) => {
+      const select = f[`time${suffixOf(key)}`]
+      if (select) showError(select, '')
+    })
     paintSummary()
   }
 
@@ -1038,30 +1255,57 @@ export async function initCheckoutPage(mount, { demo = null } = {}) {
       // Сохранённый адрес уходит в заказ целиком: запись заказа читается
       // и без кабинета. Рядом — addressId; у нового адреса он null.
       const saved = savedAddress()
+      const zone = findZone(zoneKey())
       const receive =
         method() === 'delivery'
           ? {
               method: 'delivery',
-              city: copy.receive.city.value,
+              // Город — только внутри МКАД; за МКАД он записан в самом адресе.
+              city: zone && ['ttk', 'mkad'].includes(zone.key) ? copy.receive.city.value : '',
               street: saved ? saved.street : value('street'),
               apartment: saved ? saved.apartment : value('apartment'),
               intercom: saved ? saved.intercom : value('intercom'),
+              zone: zone?.key || null,
             }
           : { method: 'pickup', point: pickupPoints.find((p) => p.id === pickupId) || null }
 
       const ids = (list) => list.map((line) => line.id)
+      const parts = deliveryParts(now)
+
+      /**
+       * Время отгрузки: slot — то, что уходит в заказ,
+       *   { mode: 'exact', time: 'HH:MM' } или { mode: 'interval', interval };
+       * interval — подпись для страницы успеха и кабинета («к 15:30»
+       * или «10:00–14:00»): их разметка читает строку и не меняется.
+       */
+      const slotOf = (key) => {
+        const suffix = suffixOf(key)
+        if (isExact(key) && method() === 'delivery') {
+          const time = value(`time${suffix}`)
+          return { slot: { mode: 'exact', time }, interval: fillText(exactCopy.inOrder, { time }) }
+        }
+        const interval = value(`interval${suffix}`)
+        return { slot: { mode: 'interval', interval }, interval }
+      }
+      const shipment = (kind, key, items, part) => ({
+        kind,
+        items: ids(items),
+        date: value(`date${suffixOf(key)}`),
+        ...slotOf(key),
+        delivery: part.cost ?? 0,
+        exactSurcharge: part.exact,
+      })
+
       const shipments =
         split() === 'two'
           ? [
-              { kind: 'stock', items: ids(now.stockItems), date: value('date_stock'), interval: value('interval_stock') },
-              {
-                kind: 'preorder',
-                items: ids(now.preorderItems),
-                date: value('date_preorder'),
-                interval: value('interval_preorder'),
-              },
+              shipment('stock', 'stock', now.stockItems, parts[0]),
+              shipment('preorder', 'preorder', now.preorderItems, parts[1]),
             ]
-          : [{ kind: 'all', items: ids(now.orderItems), date: value('date'), interval: value('interval') }]
+          : [shipment('all', '', now.orderItems, parts[0])]
+
+      const delivery = parts.reduce((n, part) => n + (part.cost || 0), 0)
+      const exact = parts.reduce((n, part) => n + part.exact, 0)
 
       order = {
         receive,
@@ -1078,6 +1322,11 @@ export async function initCheckoutPage(mount, { demo = null } = {}) {
           count: now.totals.order.count,
           positions: now.totals.order.positions,
           sum: now.totals.order.sum,
+          // Доставка по зоне (сумма по отгрузкам) и доплата за точное время;
+          // total — к оплате. У заказов до 29.09.2026 этих полей нет.
+          delivery,
+          exact,
+          total: Math.round((now.totals.order.sum + delivery + exact) * 100) / 100,
           // Есть коробки под заказ — сумма приблизительная, до фасовки.
           approx: Boolean(now.totals.order.approx),
           readyAt: toIsoDay(now.totals.order.readyAt),
@@ -1097,9 +1346,12 @@ export async function initCheckoutPage(mount, { demo = null } = {}) {
 
     TEXT_FIELDS.forEach((name) => touched.add(name))
     // Порядок проверок — порядок полей на странице: фокус уйдёт на первое.
-    const invalid = [...TEXT_FIELDS.map(checkText), ...activeShipments().map(checkInterval), checkConsent()].filter(
-      Boolean,
-    )
+    const invalid = [
+      ...TEXT_FIELDS.map(checkText),
+      checkZone(),
+      ...activeShipments().flatMap((key) => [checkInterval(key), checkExact(key)]),
+      checkConsent(),
+    ].filter(Boolean)
     if (invalid.length) {
       focusInvalid(invalid[0])
       return
@@ -1137,6 +1389,7 @@ export async function initCheckoutPage(mount, { demo = null } = {}) {
     }
   })
 
+  applySavedZone()
   paintSummary()
 
   // Состав поменяли в соседней вкладке — сводка следует за ним. Ленту дней

@@ -22,6 +22,7 @@
 
 import { esc, ext, head, inline, section } from './_html.js'
 import { icons } from '../../js/icons.js'
+import { REQUIRED_MARK } from '../../js/components/required.js'
 import { reduced, scrollToEl } from './_motion.js'
 
 const UTM = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term']
@@ -30,7 +31,8 @@ const optionOf = (o) => (typeof o === 'string' ? { value: o, label: o } : o)
 
 function field(f, d) {
   const id = `${d.form}-${f.name}`
-  const opt = f.required ? '' : ` <span class="field__optional">· ${esc(d.ui.optional)}</span>`
+  // Обязательное — красная звёздочка, необязательное — «необязательно» (29.09.2026).
+  const opt = f.required ? REQUIRED_MARK : ` <span class="field__optional">· ${esc(d.ui.optional)}</span>`
   const err = `<p class="field__error" id="${id}-error" data-error hidden></p>`
   const req = f.required ? ' required aria-required="true"' : ''
   const auto = f.autocomplete ? ` autocomplete="${esc(f.autocomplete)}"` : ''
@@ -117,9 +119,9 @@ export function buildForm(d) {
             </div>
             <div class="ib-form__consent">
               <label class="check">
-                <input type="checkbox" name="consent" id="${esc(d.form)}-consent" aria-describedby="${esc(d.form)}-consent-error">
+                <input type="checkbox" name="consent" id="${esc(d.form)}-consent" aria-required="true" aria-describedby="${esc(d.form)}-consent-error">
                 <span class="check__box">${icons.check}</span>
-                <span>${inline(ui.consent)}</span>
+                <span>${inline(ui.consent)}${REQUIRED_MARK}</span>
               </label>
               <p class="field__error" id="${esc(d.form)}-consent-error" data-consent-error hidden>${esc(ui.consentError)}</p>
             </div>
@@ -209,9 +211,9 @@ export function initForm(root) {
 
   form.querySelectorAll('[data-field]').forEach((fieldEl) => {
     const input = fieldEl.querySelector('.field__input')
-    input?.addEventListener('blur', () => {
-      if (input.getAttribute('aria-invalid') === 'true') check(fieldEl)
-    })
+    // Ушли с незаполненного обязательного поля — ошибка сразу, как на
+    // оформлении; пока печатают, новая ошибка не появляется.
+    input?.addEventListener('blur', () => check(fieldEl))
     input?.addEventListener('input', () => {
       if (input.getAttribute('aria-invalid') === 'true') check(fieldEl)
     })

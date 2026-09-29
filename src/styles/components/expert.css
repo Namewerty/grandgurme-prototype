@@ -224,14 +224,14 @@ textarea.expert__input {
 .expert__input::placeholder { color: var(--fg-mute); opacity: .8; }
 .expert__input:focus { outline: none; border-color: var(--caspian); }
 
-.expert__field.has-error .expert__input { border-color: var(--gold); }
+.expert__field.has-error .expert__input { border-color: var(--danger); }
 
 /* Сообщение об ошибке под полем, а не всплывающее: всплывающее нельзя
    перечитать, и скринридер объявляет его один раз. */
 .expert__error {
   font-size: .72rem;
   line-height: 1.4;
-  color: var(--gold-fg);
+  color: var(--danger);
 }
 
 .expert__error[hidden] { display: none; }

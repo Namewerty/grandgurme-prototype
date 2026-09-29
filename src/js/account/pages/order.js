@@ -20,7 +20,7 @@ import { accountCopy } from '../../../data/account-copy.js'
 import { checkoutCopy } from '../../../data/checkout-copy.js'
 import { ROUTES } from '../../../data/routes.js'
 import { showToast } from '../../cart/toast.js'
-import { boxNote, lineSumLabel, sumLabel } from '../../cart/summary.js'
+import { boxNote, lineSumLabel, orderDelivery, sumLabel } from '../../cart/summary.js'
 import { escapeHtml } from '../../catalog/model.js'
 import { icons } from '../../icons.js'
 import { createImage } from '../../media.js'
@@ -167,10 +167,12 @@ function receiveText(order) {
   return [copy.receiveDelivery, address].filter(Boolean).join(' · ')
 }
 
+/** Доставка: с 29.09.2026 — стоимость из заказа, у старых заказов — прежняя строка. */
 function deliveryValue(order) {
+  const paid = orderDelivery(order)
+  if (paid) return paid.delivery
   const s = checkoutCopy.summary
-  if (order.receive?.method === 'pickup') return s.pickupValue
-  return (order.shipments || []).length === 2 ? s.deliveryTwo : s.deliveryValue
+  return order.receive?.method === 'pickup' ? s.pickupValue : s.deliveryLegacy
 }
 
 export async function initOrderPage(mount) {
@@ -196,10 +198,14 @@ export async function initOrderPage(mount) {
     return
   }
 
-  const payment = checkoutCopy.payment.options.find((option) => option.value === order.payment)?.label || ''
+  const payment =
+    [...checkoutCopy.payment.options, checkoutCopy.payment.onReceipt].find((option) => option.value === order.payment)
+      ?.label || ''
   const canceled = order.status === 'canceled'
   // Коробки под заказ: сумма приблизительная до фасовки.
-  const total = sumLabel({ value: order.totals?.sum ?? 0, approx: Boolean(order.totals?.approx) })
+  const goods = sumLabel({ value: order.totals?.sum ?? 0, approx: Boolean(order.totals?.approx) })
+  const paid = orderDelivery(order)
+  const total = paid ? paid.total : goods
 
   main.innerHTML = `
     <div class="acc-order">
@@ -244,8 +250,13 @@ export async function initOrderPage(mount) {
           <h2 class="summary__title">${copy.summaryTitle}</h2>
           <dl class="summary__rows">
             <div class="summary__row"><dt>${copy.count}</dt><dd>${order.totals?.count ?? ''}</dd></div>
-            <div class="summary__row"><dt>${copy.sum}</dt><dd>${total}</dd></div>
+            <div class="summary__row"><dt>${copy.sum}</dt><dd>${goods}</dd></div>
             <div class="summary__row"><dt>${copy.delivery}</dt><dd>${deliveryValue(order)}</dd></div>
+            ${
+              paid?.exact
+                ? `<div class="summary__row"><dt>${checkoutCopy.when.exact.surchargeRow}</dt><dd>${paid.exact}</dd></div>`
+                : ''
+            }
           </dl>
           <p class="summary__total">
             <span>${copy.total}</span>

@@ -14,6 +14,7 @@
    ============================================================================ */
 
 import { cartCopy } from '../../data/cart-copy.js'
+import { checkoutCopy } from '../../data/checkout-copy.js'
 import { boxLabelApprox, packPrice, packsWord, weightsText } from '../../data/boxes.js'
 import { KINDS, formatDayMonth } from '../../data/fulfillment.js'
 import { approxLabel, formatPrice, plural } from '../catalog/model.js'
@@ -105,6 +106,25 @@ export function boxNote(line) {
   const packs = cartPacks(line)
   if (packs.length) return chosenText(packs.map((p) => p.weightG))
   return `${approx} · ${boxCopy.weighLater}`
+}
+
+/**
+ * Доставка записанного заказа словами — «Заказ принят» и заказ в кабинете.
+ * null — заказ до 29.09.2026: стоимости доставки в нём нет, и показывать
+ * её цифрой нечем.
+ *   delivery  «Бесплатно» или «700 ₽» (две доставки — сумма обеих);
+ *   exact     доплата за точное время или null;
+ *   total     к оплате: товары + доставка + доплата.
+ */
+export function orderDelivery(order) {
+  const t = order?.totals || {}
+  if (typeof t.delivery !== 'number') return null
+  const free = checkoutCopy.summary.free
+  return {
+    delivery: order.receive?.method === 'pickup' || t.delivery === 0 ? free : formatPrice(t.delivery),
+    exact: t.exact ? formatPrice(t.exact) : null,
+    total: sumLabel({ value: t.total ?? t.sum, approx: Boolean(t.approx) }),
+  }
 }
 
 /** Строка под заголовком группы. */

@@ -26,6 +26,7 @@
    ============================================================================ */
 
 import { expertCopy } from '../data/expert.js'
+import { REQUIRED_MARK } from './components/required.js'
 import { icons } from './icons.js'
 import { watchBetweenHeroAndFooter } from './scroll.js'
 
@@ -41,14 +42,15 @@ const form = copy.form
 const field = ({ id, label, placeholder, optional, multiline = false, rows = 3 }) => `
   <div class="expert__field">
     <label class="expert__label" for="${id}">
-      ${label}${optional ? `<span class="expert__optional"> — ${form.optional}</span>` : ''}
+      ${label}${optional ? `<span class="expert__optional"> — ${form.optional}</span>` : REQUIRED_MARK}
     </label>
     ${
       multiline
         ? `<textarea class="expert__input" id="${id}" name="${id}" rows="${rows}"
                      placeholder="${placeholder}"></textarea>`
         : `<input class="expert__input" id="${id}" name="${id}" type="text"
-                  placeholder="${placeholder}" autocomplete="off">`
+                  placeholder="${placeholder}" autocomplete="off"${optional ? '' : ' aria-required="true"'}
+                  aria-describedby="${id}-error">`
     }
     <p class="expert__error" id="${id}-error" hidden></p>
   </div>`
@@ -80,11 +82,11 @@ function render(mount) {
 
         <div class="expert__field expert__field--consent">
           <label class="expert__consent" for="expert-consent">
-            <input type="checkbox" id="expert-consent" name="consent"
+            <input type="checkbox" id="expert-consent" name="consent" aria-required="true"
                    aria-describedby="expert-consent-error">
             <span class="expert__check" aria-hidden="true">${icons.check}</span>
             <span>${form.consent.text}
-              <a href="${form.consent.href}">${form.consent.linkLabel}</a></span>
+              <a href="${form.consent.href}">${form.consent.linkLabel}</a>${REQUIRED_MARK}</span>
           </label>
           <p class="expert__error" id="expert-consent-error" hidden></p>
         </div>
@@ -196,6 +198,13 @@ export function initExpert(mount) {
 
   contact.addEventListener('input', () => {
     if (contact.value.trim()) setError(contact, contactError, '')
+  })
+  // Ушли с пустого обязательного поля к другому полю формы — ошибка сразу
+  // (правило всех форм). Закрыли панель — ошибки нет: иначе она ждала бы
+  // человека при следующем открытии виджета.
+  contact.addEventListener('blur', (event) => {
+    if (!formEl.contains(event.relatedTarget)) return
+    if (!contact.value.trim()) setError(contact, contactError, expertCopy.form.contact.error)
   })
 
   /* ---- отправка --------------------------------------------------------- */

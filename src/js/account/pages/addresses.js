@@ -7,8 +7,14 @@
    удаление подтверждается там же, на месте карточки.
 
    Поля и тексты ошибок — те же, что на оформлении (checkout-copy.js → receive,
-   validate.js): город зафиксирован, Москва. До 10 адресов; первый становится
-   основным сам; удалили основной — основным становится самый ранний.
+   validate.js). До 10 адресов; первый становится основным сам; удалили
+   основной — основным становится самый ранний.
+
+   ЗОНА ДОСТАВКИ (29.09.2026) — то же поле, что на оформлении
+   (src/js/checkout/zones.js): обязательное, сохраняется с адресом, и на
+   оформлении сохранённый адрес подставляет её сам. На карточке зона —
+   строкой «Зона: в пределах МКАД · 900 ₽». У адресов, сохранённых раньше,
+   зоны нет: карточка просит её указать.
 
    Вызывает api.js: getAddresses() при открытии и после каждого изменения,
    saveAddress, deleteAddress, setDefaultAddress.
@@ -16,8 +22,11 @@
 
 import { accountCopy } from '../../../data/account-copy.js'
 import { checkoutCopy } from '../../../data/checkout-copy.js'
-import { escapeHtml } from '../../catalog/model.js'
+import { findZone } from '../../../data/delivery-zones.js'
+import { escapeHtml, formatPrice } from '../../catalog/model.js'
 import { rules } from '../../checkout/validate.js'
+import { wireZoneField, zoneFieldMarkup } from '../../checkout/zones.js'
+import { REQUIRED_MARK } from '../../components/required.js'
 import { icons } from '../../icons.js'
 import { MAX_ADDRESSES, deleteAddress, getAddresses, saveAddress, setDefaultAddress } from '../api.js'
 import { accountTrail, emptyState, fill, renderFrame, requireUser, setTitle, watchSession } from '../layout.js'
@@ -33,6 +42,12 @@ export const addressDetails = (address) =>
   ]
     .filter(Boolean)
     .join(' · ')
+
+/** «Зона: в пределах МКАД · 900 ₽»; у адреса без зоны — просьба её указать. */
+export const addressZone = (address) => {
+  const zone = findZone(address.zone)
+  return zone ? fill(copy.zone, { name: zone.short, price: formatPrice(zone.price) }) : copy.noZone
+}
 
 export async function initAddressesPage(mount) {
   const user = requireUser()
@@ -63,6 +78,7 @@ export async function initAddressesPage(mount) {
       <h2 class="addr-card__title">${escapeHtml(address.label || address.street)}</h2>
       ${address.label ? `<p class="addr-card__line">${escapeHtml(address.street)}</p>` : ''}
       ${details ? `<p class="addr-card__line addr-card__line--mute">${escapeHtml(details)}</p>` : ''}
+      <p class="addr-card__line addr-card__line--mute${findZone(address.zone) ? '' : ' addr-card__line--warn'}">${escapeHtml(addressZone(address))}</p>
       ${address.isDefault ? `<p class="addr-card__default">${copy.default}</p>` : ''}
       <p class="addr-card__actions">
         <button type="button" class="link-btn" data-act="edit" data-focus="edit-${address.id}">${copy.edit}</button>
@@ -137,14 +153,10 @@ export async function initAddressesPage(mount) {
                  placeholder="${copy.form.label.placeholder}">
         </div>
         <div class="field field--wide">
-          <span class="field__label">${receive.city.label}</span>
-          <p class="field__static">${receive.city.value}</p>
-          <p class="field__hint">${receive.city.hint} <a href="${receive.city.hintLink.href}">${receive.city.hintLink.label}</a></p>
-        </div>
-        <div class="field field--wide">
-          <label class="field__label" for="addr-street">${receive.street.label}</label>
+          <label class="field__label" for="addr-street">${receive.street.label}${REQUIRED_MARK}</label>
           <input class="field__input" id="addr-street" name="street" type="text" autocomplete="address-line1"
-                 aria-required="true" aria-describedby="addr-street-error">
+                 aria-required="true" aria-describedby="addr-street-hint addr-street-error">
+          <p class="field__hint" id="addr-street-hint">${receive.street.hint}</p>
           <p class="field__error" id="addr-street-error" hidden></p>
         </div>
         <div class="field">
@@ -155,6 +167,7 @@ export async function initAddressesPage(mount) {
           <label class="field__label" for="addr-intercom">${receive.intercom.label}${optional}</label>
           <input class="field__input" id="addr-intercom" name="intercom" type="text" autocomplete="off">
         </div>
+        ${zoneFieldMarkup({ id: 'addr-zone', name: 'zone', value: address?.zone || '' })}
         <div class="field field--wide">
           <label class="check" for="addr-default">
             <input type="checkbox" id="addr-default" name="isDefault">
@@ -189,16 +202,19 @@ export async function initAddressesPage(mount) {
     }
     f.street.addEventListener('blur', () => showStreet(rules.street(f.street.value)))
     f.street.addEventListener('input', () => !rules.street(f.street.value) && showStreet(''))
+    const zone = wireZoneField(el.querySelector('[data-zone-field]'), { address: f.street })
 
     el.addEventListener('submit', async (event) => {
       event.preventDefault()
       const submit = el.querySelector('[type="submit"]')
       if (submit.disabled) return
 
+      // Обе ошибки показываются сразу, фокус — на первое поле с ошибкой.
       const message = rules.street(f.street.value)
       showStreet(message)
-      if (message) {
-        f.street.focus()
+      const zoneInvalid = zone.validate()
+      if (message || zoneInvalid) {
+        ;(message ? f.street : zoneInvalid).focus()
         return
       }
 
@@ -209,6 +225,7 @@ export async function initAddressesPage(mount) {
         street: f.street.value,
         apartment: f.apartment.value,
         intercom: f.intercom.value,
+        zone: f.zone.value,
         isDefault: f.isDefault.checked,
       })
       submit.disabled = false

@@ -184,3 +184,38 @@
 @media (max-width: 1023px) {
   .summary-sticky { position: static; }
 }
+
+/* ---- До бесплатной доставки (корзина, 29.09.2026) --------------------------
+   Строка и тонкая полоса в фирменном золоте под строками сводки. Порог
+   достигнут — полоса полная, строка «Доставка по Москве бесплатно».        */
+
+.summary__free { margin-top: .9rem; }
+
+.summary__free-text {
+  margin: 0;
+  font-size: .82rem;
+  line-height: 1.5;
+  color: var(--fg-mute);
+  text-wrap: pretty;
+}
+
+.summary__free.is-reached .summary__free-text { color: var(--fg); }
+
+.summary__free-bar {
+  position: relative;
+  display: block;
+  height: 2px;
+  margin-top: .5rem;
+  background: var(--hairline);
+  overflow: hidden;
+}
+
+.summary__free-bar span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  display: block;
+  background: var(--gold);
+  transition: width 400ms var(--ease-out);
+}
+
+.summary__order[hidden] .summary__free { display: none; }

@@ -445,3 +445,37 @@
 
   .order-done__actions .btn { flex: 1 1 12rem; }
 }
+
+/* ---- Зона доставки (29.09.2026, src/js/checkout/zones.js) ------------------
+   Поле под адресом: выпадающий список (components/form.css → .field__select),
+   подпись с границей и порогом, ссылка на карту зон.                       */
+
+.co-zone { margin-top: 1rem; }
+
+.zone-field__map { margin: .15rem 0 0; }
+
+/* ---- К точному времени ------------------------------------------------------
+   Капсула в ряду интервалов, под ней — выбор времени и строка «Привезём
+   к 15:30, четверг, 2 октября».                                            */
+
+.cap[hidden] { display: none; }
+
+.exact {
+  display: grid;
+  gap: .5rem;
+  max-width: 22rem;
+}
+
+.exact[hidden] { display: none; }
+
+.exact__summary {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  line-height: 1.4;
+  color: var(--fg);
+}
+
+.exact__summary:empty { display: none; }
+
+.exact .field__hint { margin: 0; }

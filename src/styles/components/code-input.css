@@ -38,7 +38,7 @@
 
 .code-input__cell.is-active { border-color: var(--caspian); }
 
-.code-input.is-invalid .code-input__cell { border-color: var(--gold); }
+.code-input.is-invalid .code-input__cell { border-color: var(--danger); }
 .code-input.is-invalid .code-input__cell.is-active { border-color: var(--caspian); }
 
 .code-input.is-disabled .code-input__cell { opacity: .45; }

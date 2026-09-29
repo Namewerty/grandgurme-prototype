@@ -36,6 +36,7 @@ import './styles/pages/page.css'
 import { GROUPS, ROUTES, allPages, findPage, staticPages } from './data/routes.js'
 import { categories } from './data/catalog.js'
 import { deliveryPage } from './data/delivery.js'
+import { formatPrice } from './js/catalog/model.js'
 import { initHeader } from './js/sections/header.js'
 import { initFooter } from './js/sections/footer.js'
 
@@ -115,6 +116,36 @@ function deliveryBody() {
       ${list.map(({ term, value }) => `<div class="page__row"><dt>${term}</dt><dd>${value}</dd></div>`).join('')}
     </dl>`
 
+  // Таблица зон: цифры только из src/data/delivery-zones.js.
+  const zones = (block) => `
+    <table class="page__zones">
+      <thead>
+        <tr>
+          <th scope="col">${block.zoneHead.zone}</th>
+          <th scope="col">${block.zoneHead.price}</th>
+          <th scope="col">${block.zoneHead.free}</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${block.zones
+          .map(
+            (zone) => `
+          <tr>
+            <th scope="row">${zone.name}<span class="page__zone-hint">${zone.hint}</span></th>
+            <td>${formatPrice(zone.price)}</td>
+            <td>${formatPrice(zone.freeFrom)}</td>
+          </tr>`,
+          )
+          .join('')}
+      </tbody>
+    </table>`
+
+  // Карта — тот же конструктор Яндекс.Карт, что на боевом сайте.
+  const map = (m) => `
+    <div class="page__map">
+      <iframe src="${m.src}" title="${m.title}" loading="lazy" allowfullscreen></iframe>
+    </div>`
+
   const points = (list) => `
     <ul class="page__docs">
       ${list.map((p) => `<li><b>${p.name}</b> · ${p.city}, ${p.address} · ${p.hours}</li>`).join('')}
@@ -127,6 +158,8 @@ function deliveryBody() {
       <section class="page__block" aria-labelledby="delivery-${block.id}">
         <h2 class="page__subtitle" id="delivery-${block.id}">${block.title}</h2>
         ${(block.text || []).map((text) => `<p class="page__p">${text}</p>`).join('')}
+        ${block.zones ? zones(block) : ''}
+        ${block.map ? map(block.map) : ''}
         ${block.rows ? rows(block.rows) : ''}
         ${block.points ? points(block.points) : ''}
       </section>`,
