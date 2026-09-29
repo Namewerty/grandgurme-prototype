@@ -17,6 +17,7 @@
 
 import { BENEFITS, DEFAULT_SORT } from '../../data/facets.js'
 import { categoryCopy } from '../../data/category-copy.js'
+import { rangeUsable } from './range.js'
 
 /* --------------------------------------------------------------- утилиты */
 
@@ -177,10 +178,13 @@ export function matches(product, state, index, excludeKey = null) {
     if (!selected.includes(product.attrs?.[key])) return false
   }
 
+  /* Позиция без значения (цена по запросу) в выдаче, пока диапазон полный,
+     и уходит из неё, как только диапазон сузили: обещать, что она в него
+     попадает, нечем. */
   for (const [key, value] of Object.entries(state.ranges)) {
     if (key === excludeKey || !rangeActive(state, index, key)) continue
-    const field = index.ranges[key].field
-    if (product[field] < value.min || product[field] > value.max) return false
+    const own = product[index.ranges[key].field]
+    if (typeof own !== 'number' || own < value.min || own > value.max) return false
   }
 
   return true
@@ -245,6 +249,18 @@ export function facetCounts(products, state, index, key) {
   }))
 }
 
+/**
+ * Работает ли диапазон в текущей выборке: все фильтры, кроме него самого,
+ * плюс правило наличия — то есть ровно то, что человек сейчас видит.
+ * Меньше двух разных значений — пилюля неактивна (правило в range.js).
+ */
+export function rangeWorks(products, state, index, key) {
+  const bound = index.ranges[key]
+  if (!bound) return false
+  const pool = applyStock(products.filter((product) => matches(product, state, index, key)), state)
+  return rangeUsable(pool, bound.field, bound)
+}
+
 /** «Выгода» считается так же фасетно: собственный набор из подсчёта выпадает. */
 export function benefitCounts(products, state, index) {
   const pool = products.filter((product) => matches(product, state, index, 'benefit'))
@@ -257,15 +273,23 @@ export function benefitCounts(products, state, index) {
 
 /* -------------------------------------------------------------- сортировка */
 
+/** Позиции без цены — в конце при любом направлении сортировки по цене. */
+const byPrice = (direction) => (a, b) => {
+  const pa = typeof a.price === 'number'
+  const pb = typeof b.price === 'number'
+  if (!pa || !pb) return Number(pb) - Number(pa)
+  return direction * (a.price - b.price)
+}
+
 export function sortProducts(list, sortKey = DEFAULT_SORT) {
   const arr = list.slice()
 
   switch (sortKey) {
     case 'price_asc':
-      arr.sort((a, b) => a.price - b.price)
+      arr.sort(byPrice(1))
       break
     case 'price_desc':
-      arr.sort((a, b) => b.price - a.price)
+      arr.sort(byPrice(-1))
       break
     case 'discount':
       arr.sort((a, b) => discountShare(b) - discountShare(a))

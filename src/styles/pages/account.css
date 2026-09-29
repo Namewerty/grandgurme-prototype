@@ -647,6 +647,27 @@
 .acc-caps,
 .fav__caps { margin-top: 1.25rem; }
 
+/* Строка фильтров избранного: капсулы вида и пилюля «Цена» (29.09.2026).
+   position: relative — якорь поповера цены на телефоне, где .drop
+   становится static и поповер растягивается на ширину строки. */
+.fav__filters {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .75rem 1rem;
+  margin-top: 1.25rem;
+}
+
+.fav__filters .fav__caps { margin-top: 0; }
+
+.fav__none {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: .88rem;
+  color: var(--fg-mute);
+}
+
 .acc-caps[hidden] { display: none; }
 
 .cap.is-active .cap__face {

@@ -27,6 +27,7 @@ import './styles/components/toast.css'
 import './styles/components/crumbs.css'
 import './styles/components/product-card.css'
 import './styles/components/stock-tag.css'
+import './styles/components/filters.css'
 import './styles/pages/category.css'
 
 import { initHeader } from './js/sections/header.js'

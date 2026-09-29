@@ -33,9 +33,11 @@ import {
   highlight,
   normalize,
   rangeActive,
+  rangeWorks,
   stockView,
   totalActive,
 } from './model.js'
+import { formatNumber, idlePillMarkup, rangeMarkup, wireRange } from './range.js'
 
 const copy = categoryCopy.filters
 
@@ -161,12 +163,24 @@ export function renderStockRow(ctx) {
 
 /* -------------------------------------------------------- панель пилюль */
 
+/**
+ * Пилюля диапазона, которому не на чем работать (в выборке меньше двух
+ * разных значений): на месте, но приглушена, поповер не открывает,
+ * подсказка — по наведению и фокусу. Фокус у неё остаётся намеренно:
+ * иначе с клавиатуры подсказку не прочитать.
+ */
+export const rangeIdle = (ctx, pill) =>
+  pill.type === 'range' && !rangeWorks(ctx.products, ctx.state, ctx.index, pill.key)
+
 export function renderBar(ctx) {
   const { schema, state, index } = ctx
 
   const pills = schema.pills
     .map((pill) => {
       const n = activeCount(pill, state, index)
+      if (rangeIdle(ctx, pill)) {
+        return idlePillMarkup({ id: `pill-${pill.key}`, key: pill.key, label: escapeHtml(pill.label), count: n })
+      }
       const open = popover.key === pill.key && popover.anchorId === `pill-${pill.key}`
       return `
       <button type="button" class="pill${n ? ' is-active' : ''}${open ? ' is-open' : ''}"
@@ -312,6 +326,12 @@ export function renderPopover(ctx) {
     return
   }
 
+  // Другие фильтры сузили выборку до одной цены — ползунку не на чем стоять.
+  if (rangeIdle(ctx, pill)) {
+    closePopover(ctx, { restoreFocus: false })
+    return
+  }
+
   if (pill.type === 'benefit') {
     root.innerHTML = `
       <div class="pop__list">
@@ -407,100 +427,28 @@ function renderListPopover(ctx, pill, root) {
 
 /* ---------------------------------------------------------- диапазон */
 
+/* Разметка и проводка диапазона — общие с шитом и избранным (range.js). */
 function renderRangePopover(ctx, pill, root) {
   const bound = ctx.index.ranges[pill.key]
-  const value = ctx.state.ranges[pill.key]
-  const isPrice = pill.key === 'price'
 
   root.innerHTML = `
-    <div class="range">
-      <div class="range__slider">
-        <span class="range__track" aria-hidden="true"></span>
-        <span class="range__fill" data-range-fill aria-hidden="true"></span>
-        <input type="range" class="range__input range__input--min" data-range-min
-               min="${bound.min}" max="${bound.max}" value="${value.min}" aria-label="${copy.from}">
-        <input type="range" class="range__input range__input--max" data-range-max
-               min="${bound.min}" max="${bound.max}" value="${value.max}" aria-label="${copy.to}">
-      </div>
-      <div class="range__fields">
-        <input type="number" data-range-field-min value="${value.min}" aria-label="${copy.from}">
-        <span aria-hidden="true">—</span>
-        <input type="number" data-range-field-max value="${value.max}" aria-label="${copy.to}">
-      </div>
-      ${
-        isPrice
-          ? `<div class="range__presets">
-              ${copy.pricePresets
-                .map(
-                  (preset) => `
-                <button type="button" data-action="preset" data-key="${pill.key}"
-                        data-min="${Math.max(bound.min, preset.min)}"
-                        data-max="${Math.min(bound.max, preset.max)}">${preset.label}</button>`,
-                )
-                .join('')}
-            </div>`
-          : ''
-      }
-    </div>
+    ${rangeMarkup({
+      bound,
+      value: ctx.state.ranges[pill.key],
+      unit: pill.unit,
+      presets: pill.key === 'price',
+      key: pill.key,
+    })}
     ${popFooter('reset-range', pill.key)}`
 
   wireRange(root, bound, (min, max) => ctx.setRange(pill.key, min, max))
 }
 
-/**
- * Два ползунка на одной дорожке. Значение применяется на change, а не на
- * input: пересчитывать выдачу на каждый пиксель перетаскивания — значит
- * дёргать сетку под рукой.
- */
-export function wireRange(root, bound, apply) {
-  const min = root.querySelector('[data-range-min]')
-  const max = root.querySelector('[data-range-max]')
-  const fieldMin = root.querySelector('[data-range-field-min]')
-  const fieldMax = root.querySelector('[data-range-field-max]')
-  const fill = root.querySelector('[data-range-fill]')
-  if (!min || !max) return
-
-  const span = bound.max - bound.min || 1
-
-  const paint = () => {
-    const lo = Number(min.value)
-    const hi = Number(max.value)
-    fill.style.left = `${((lo - bound.min) / span) * 100}%`
-    fill.style.width = `${Math.max(0, ((hi - lo) / span) * 100)}%`
-    fieldMin.value = lo
-    fieldMax.value = hi
-  }
-
-  paint()
-
-  min.addEventListener('input', () => {
-    if (Number(min.value) > Number(max.value)) min.value = max.value
-    paint()
-  })
-  max.addEventListener('input', () => {
-    if (Number(max.value) < Number(min.value)) max.value = min.value
-    paint()
-  })
-
-  const commit = () => apply(Number(min.value), Number(max.value))
-  min.addEventListener('change', commit)
-  max.addEventListener('change', commit)
-
-  const commitField = (field, target, clamp) => {
-    field.addEventListener('blur', () => {
-      const raw = Number(field.value)
-      target.value = clamp(Number.isFinite(raw) ? raw : Number(target.value))
-      paint()
-      commit()
-    })
-    field.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter') field.blur()
-    })
-  }
-
-  commitField(fieldMin, min, (v) => Math.min(Math.max(v, bound.min), Number(max.value)))
-  commitField(fieldMax, max, (v) => Math.max(Math.min(v, bound.max), Number(min.value)))
-}
+/** Подпись активного диапазона: «5 000 ₽ — 20 000 ₽», «100–500 г». */
+export const rangeLabel = (pill, value) =>
+  pill.key === 'price'
+    ? `${formatPrice(value.min)} — ${formatPrice(value.max)}`
+    : `${formatNumber(value.min)}–${formatNumber(value.max)} ${pill.unit}`
 
 /* ------------------------------------------------- применённые фильтры */
 
@@ -526,12 +474,7 @@ export function renderAppliedChips(ctx) {
     .filter((pill) => pill.type === 'range')
     .forEach((pill) => {
       if (!rangeActive(state, index, pill.key)) return
-      const value = state.ranges[pill.key]
-      const label =
-        pill.key === 'price'
-          ? `${formatPrice(value.min)} — ${formatPrice(value.max)}`
-          : `${value.min}–${value.max} ${pill.unit}`
-      chips.push({ label, action: 'clear-range', key: pill.key })
+      chips.push({ label: rangeLabel(pill, state.ranges[pill.key]), action: 'clear-range', key: pill.key })
     })
 
   ctx.els.applied.innerHTML = chips.length

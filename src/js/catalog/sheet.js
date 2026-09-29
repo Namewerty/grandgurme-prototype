@@ -17,7 +17,6 @@
 import { categoryCopy } from '../../data/category-copy.js'
 import { sortsFor } from '../../data/facets.js'
 import { icons } from '../icons.js'
-import { wireRange } from './filters.js'
 import {
   activeCount,
   benefitCounts,
@@ -25,7 +24,9 @@ import {
   facetCounts,
   filterAll,
   foundLabel,
+  rangeWorks,
 } from './model.js'
+import { rangeHintMarkup, rangeMarkup, wireRange } from './range.js'
 import { cloneState, defaultState } from './state.js'
 
 const copy = categoryCopy.sheet
@@ -174,28 +175,16 @@ function sheetOption({ action, key, value, label, count, checked }) {
     </button>`
 }
 
+/* Та же разметка, что в поповере пилюли (range.js). Готовых диапазонов
+   в шите нет: кнопки пресетов применяли бы фильтр мимо черновика. */
 function rangeBody(ctx, facet) {
-  const bound = ctx.index.ranges[facet.key]
-  const value = draft.ranges[facet.key]
-
-  return `
-    <div class="range" data-sheet-range="${facet.key}">
-      <div class="range__slider">
-        <span class="range__track" aria-hidden="true"></span>
-        <span class="range__fill" data-range-fill aria-hidden="true"></span>
-        <input type="range" class="range__input range__input--min" data-range-min
-               min="${bound.min}" max="${bound.max}" value="${value.min}"
-               aria-label="${categoryCopy.filters.from}">
-        <input type="range" class="range__input range__input--max" data-range-max
-               min="${bound.min}" max="${bound.max}" value="${value.max}"
-               aria-label="${categoryCopy.filters.to}">
-      </div>
-      <div class="range__fields">
-        <input type="number" data-range-field-min value="${value.min}">
-        <span aria-hidden="true">—</span>
-        <input type="number" data-range-field-max value="${value.max}">
-      </div>
-    </div>`
+  if (!rangeWorks(ctx.products, draft, ctx.index, facet.key)) return rangeHintMarkup(facet.key)
+  return rangeMarkup({
+    bound: ctx.index.ranges[facet.key],
+    value: draft.ranges[facet.key],
+    unit: facet.unit,
+    attrs: `data-sheet-range="${facet.key}"`,
+  })
 }
 
 function wireSheetRanges(ctx) {

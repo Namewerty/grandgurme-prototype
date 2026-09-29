@@ -1,0 +1,280 @@
+/* ============================================================================
+   Органы фильтра, общие для каталога и избранного: пилюля, раскрывающийся
+   список <details class="drop"> и диапазон «от — до».
+
+   Вынесены из pages/category.css 29.09.2026, когда пилюля «Цена» появилась
+   в избранном (src/js/account/pages/favorites.js): одна разметка диапазона
+   (src/js/catalog/range.js) — один набор стилей, а не копия в account.css.
+   ============================================================================ */
+
+/* ---- Пилюля -------------------------------------------------------------- */
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  min-height: 36px;
+  padding: .4rem .9rem;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+  font-family: var(--font-body);
+  font-size: .78rem;
+  line-height: 1.2;
+  color: var(--fg);
+  white-space: nowrap;
+  transition: border-color var(--dur-line) var(--ease-out),
+              color var(--dur-line) var(--ease-out);
+}
+
+.pill:hover { border-color: var(--gold); }
+
+/* Неактивная пилюля диапазона: на месте, приглушена, поповер не открывает.
+   Подсказка — по наведению и фокусу; на телефоне пилюль нет, там ту же
+   строку показывает шит вместо ползунка. */
+.pill.is-idle {
+  position: relative;
+  color: var(--fg-mute);
+  border-style: dashed;
+  cursor: default;
+}
+
+.pill.is-idle:hover { border-color: var(--hairline); }
+.pill.is-idle .pill__chevron { opacity: .4; }
+
+.pill__hint {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + .45rem);
+  left: 50%;
+  width: max-content;
+  max-width: 240px;
+  padding: .5rem .75rem;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-card-sm, 10px);
+  background: var(--bg);
+  box-shadow: 0 6px 20px rgba(10, 13, 17, .08);
+  font-size: .75rem;
+  line-height: 1.4;
+  white-space: normal;
+  color: var(--fg);
+  opacity: 0;
+  visibility: hidden;
+  transform: translate(-50%, -4px);
+  transition: opacity 160ms var(--ease-out), transform 160ms var(--ease-out), visibility 0s linear 160ms;
+  pointer-events: none;
+}
+
+.pill.is-idle:hover .pill__hint,
+.pill.is-idle:focus-visible .pill__hint {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, 0);
+  transition: opacity 160ms var(--ease-out), transform 160ms var(--ease-out), visibility 0s;
+}
+.pill.is-active,
+.pill.is-open { border-color: var(--ink); }
+
+.pill__chevron { display: flex; transition: transform var(--dur-line) var(--ease-out); }
+.pill.is-open .pill__chevron { transform: rotate(180deg); }
+
+.pill__chevron svg {
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.pill__count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 .3rem;
+  border-radius: var(--radius-pill);
+  font-size: .62rem;
+  font-weight: 500;
+  color: var(--pearl);
+  background: var(--caspian);
+}
+
+/* ---- Раскрывающийся список фасеты (серверный каталог) -------------------
+   На Битриксе фильтры — ссылки, и поповера со скриптом там нет. Пилюля
+   раскрывает <details class="drop">: список опций-ссылок под ней, тот же
+   вид, что у поповера прототипа (#catalog-popover), без единой строки JS. */
+
+.drop { position: relative; display: inline-flex; }
+.drop > summary { cursor: pointer; list-style: none; }
+.drop > summary::-webkit-details-marker { display: none; }
+.drop > summary::marker { content: ''; }
+.drop[open] > summary { border-color: var(--ink); }
+.drop[open] .pill__chevron { transform: rotate(180deg); }
+
+.drop__pop {
+  position: absolute;
+  z-index: 60;
+  top: calc(100% + .4rem);
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  width: 260px;
+  max-height: 340px;
+  border: 1px solid var(--gold);
+  border-radius: var(--radius-card);
+  background: var(--bg);
+  overflow: hidden;
+}
+
+.drop__pop--wide { width: 300px; }
+
+.drop__pop .pop__list {
+  flex: 1 1 0%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.drop .opt { min-height: 36px; }
+
+@media (max-width: 767px) {
+  .drop { position: static; }
+  .drop__pop { left: 0; right: 0; width: auto; }
+}
+
+.pop__footer {
+  padding: .75rem 1rem;
+  border-top: 1px solid var(--hairline);
+  font-size: .8rem;
+  color: var(--fg-mute);
+}
+
+/* ---- Диапазон ------------------------------------------------------------ */
+
+.range { padding: 1rem; }
+
+.range__slider {
+  position: relative;
+  height: 24px;
+}
+
+.range__track,
+.range__fill {
+  position: absolute;
+  top: 11px;
+  height: 1px;
+}
+
+.range__track {
+  left: 0;
+  right: 0;
+  background: var(--hairline);
+}
+
+.range__fill { background: var(--gold); }
+
+/* Два нативных ползунка друг над другом: своя реализация перетаскивания
+   отобрала бы клавиатуру и тач-жесты, а нативный input их уже умеет. */
+.range__input {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 24px;
+  margin: 0;
+  appearance: none;
+  background: none;
+  pointer-events: none;
+}
+
+.range__input::-webkit-slider-thumb {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--gold);
+  border-radius: 50%;
+  background: var(--bg);
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.range__input::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--gold);
+  border-radius: 50%;
+  background: var(--bg);
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.range__fields {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  margin-top: .75rem;
+  color: var(--fg-mute);
+}
+
+/* Поле — рамка-капсула с приставкой «от»/«до» и единицей: само поле
+   текстовое, чтобы показывать и принимать разряды пробелами (range.js). */
+.range__field {
+  display: flex;
+  flex: 1 1 0;
+  align-items: center;
+  gap: .3rem;
+  min-width: 0;
+  height: 34px;
+  padding: 0 .7rem;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+  font-size: .8rem;
+  transition: border-color var(--dur-line) var(--ease-out);
+}
+
+.range__field:focus-within { border-color: var(--caspian); }
+
+.range__prefix,
+.range__unit { color: var(--fg-mute); flex: none; }
+
+.range__field input {
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  font-family: var(--font-body);
+  font-size: .8rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg);
+  background: none;
+  outline: none;
+}
+
+/* Ползунка нет: в выборке меньше двух разных значений. */
+.range__hint {
+  margin: 0;
+  padding: .25rem 0 .5rem;
+  font-size: .8rem;
+  line-height: 1.5;
+  color: var(--fg-mute);
+}
+
+.range__presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .35rem;
+  margin-top: .75rem;
+}
+
+.range__presets button {
+  padding: .3rem .7rem;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill);
+  font-size: .72rem;
+  color: var(--fg);
+  transition: border-color var(--dur-line) var(--ease-out);
+}
+
+.range__presets button:hover { border-color: var(--gold); }
