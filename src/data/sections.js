@@ -1,6 +1,7 @@
 /**
- * Реестр секций главной. Один источник правды: из него собираются оболочки,
- * чередование фонов и номера в кольце прогресса.
+ * Реестр секций главной. Один источник правды: из него собираются оболочки
+ * и чередование фонов. Кольца прогресса с номерами остановок больше нет
+ * (снято 29.09.2026), поэтому нет и поля ring.
  *
  * dark  — секция тёмная (.section--dark переопределяет токены внутри себя)
  * full  — min-height 100svh. Остался ТОЛЬКО у hero: заказчик просил компактную
@@ -12,7 +13,6 @@
  *         Флаг и класс .section--tight в коде оставлены — вернуть «Сезон»
  *         значит вернуть одну строку в массив ниже и импорт season.css
  *         в src/main.js и src/bitrix/main.js
- * ring  — название остановки в кольце прогресса
  *
  * ПРО ПОРЯДОК. Порядок правился трижды, последний раз — по правке заказчика
  * «икра должна идти раньше рассказа о себе».
@@ -44,11 +44,6 @@
  * и «как купить». Светлых в хвосте снова четыре (#shop, #offline, #why,
  * #journal): пятой был #season, снятый с основной главной 16.09.2026.
  *
- * Про ring. Остановок девять, а секций десять: #trust — узкая полоса доверия
- * сразу под первым экраном, самостоятельной остановкой она не читается и
- * относится к «01 Начало». Секция без ring наследует номер и название
- * предыдущей (склейка — в js/sections/index.js).
- *
  * Тексты наполненных секций живут в своих data-файлах, а разметку собирает
  * модуль из src/js/sections/ — здесь только структурные флаги и место
  * в порядке.
@@ -65,14 +60,14 @@
  */
 
 export const sections = [
-  { id: 'hero',       dark: true,  full: true,  media: 'hero',       ring: 'Начало' },
+  { id: 'hero',       dark: true,  full: true,  media: 'hero' },
   { id: 'trust',      dark: false, full: false /* остановки нет — полоса под hero */ },
-  { id: 'types',      dark: false, full: false,                      ring: 'Виды икры' },
-  { id: 'categories', dark: false, full: false,                      ring: 'Ассортимент' },
-  { id: 'brand',      dark: false, full: false,                      ring: 'О бренде' },
-  { id: 'proof',      dark: true,  full: false,                      ring: 'Доверие' },
-  { id: 'shop',       dark: false, full: false,                      ring: 'Витрина' },
-  { id: 'offline',    dark: false, full: false,                      ring: 'Офлайн' },
-  { id: 'why',        dark: false, full: false,                      ring: 'Стандарт' },
-  { id: 'journal',    dark: false, full: false,                      ring: 'Журнал' },
+  { id: 'types',      dark: false, full: false },
+  { id: 'categories', dark: false, full: false },
+  { id: 'brand',      dark: false, full: false },
+  { id: 'proof',      dark: true,  full: false },
+  { id: 'shop',       dark: false, full: false },
+  { id: 'offline',    dark: false, full: false },
+  { id: 'why',        dark: false, full: false },
+  { id: 'journal',    dark: false, full: false },
 ]

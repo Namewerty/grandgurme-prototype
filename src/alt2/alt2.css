@@ -56,7 +56,7 @@ body.is-info #main > .section--dark > .container {
 body.is-alt2 .alt-switch {
   position: fixed;
   left: clamp(1rem, 3vw, 2.5rem);
-  bottom: calc(clamp(1rem, 3vw, 2.5rem) + var(--ring-size) + .75rem);
+  bottom: clamp(1rem, 3vw, 2.5rem);
   z-index: 72;
   display: inline-flex;
   align-items: center;
@@ -92,9 +92,8 @@ body.is-alt2 .alt-switch__link.is-current {
 /* Широкая раскладка первого экрана: в левом нижнем углу стоит список
    разделов и «Весь каталог», капсула на /alt-месте закрывала бы их.
    Здесь она стоит по центру кадра (от колонки 6 до правого края окна —
-   тот же расчёт, что у .stage__media), на той же высоте над кольцом.
-   Ниже первого экрана она не задевает ни кольцо слева, ни виджет эксперта
-   справа. */
+   тот же расчёт, что у .stage__media), на той же высоте, что и на /alt.
+   Ниже первого экрана она не задевает виджет эксперта справа. */
 @media (min-width: 1024px) and (min-height: 600px) {
   body.is-alt2 .alt-switch {
     --switch-frame-left: calc(
@@ -109,7 +108,7 @@ body.is-alt2 .alt-switch__link.is-current {
 @media (max-width: 767px) {
   body.is-alt2 .alt-switch {
     left: 1rem;
-    bottom: calc(1rem + var(--ring-size) + .6rem);
+    bottom: 1rem;
   }
 
   body.is-alt2 .alt-switch__link {

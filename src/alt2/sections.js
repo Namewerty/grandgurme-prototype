@@ -1,8 +1,7 @@
 /* ============================================================================
    Реестр и сборка секций альтернативной главной 2. ЧЕРНОВИК НА ВЫБРОС.
 
-   Копия устройства src/alt/sections.js: массив, сборщики, склейка остановок
-   кольца. Состав другой:
+   Копия устройства src/alt/sections.js: массив и сборщики. Состав другой:
 
      #hero       — «Витрина разделов» вместо ролика бренда (stage.js);
      #character  — «Характер икры» вместо #types;
@@ -18,7 +17,7 @@
    initSections СВОЙ и НЕ зовёт initSections из src/js/sections/index.js:
    тот поднимает initHero, а initHero ищет внутри #hero разметку старого
    первого экрана. Первый экран сохраняет id="hero" — по нему шапка решает,
-   когда стать плотной, а кольцо и виджет эксперта — когда появиться.
+   когда стать плотной, а виджет эксперта — когда появиться.
    ============================================================================ */
 
 import { buildTrust } from '../js/sections/trust.js'
@@ -34,20 +33,18 @@ import { buildCharacter, initCharacter } from './sections/character.js'
 import { buildOrigin, initOrigin } from './sections/origin.js'
 
 /* dark — тёмная секция (класс ставит сборщик, флаг — для чтения порядка);
-   full — у всех false: высоту первого экрана держит stage.css;
-   ring — название остановки в кольце. #trust остановки не имеет
-   и наследует «01 Начало». */
+   full — у всех false: высоту первого экрана держит stage.css. */
 export const sections = [
-  { id: 'hero',       dark: true,  full: false, ring: 'Начало' },
+  { id: 'hero',       dark: true,  full: false },
   { id: 'trust',      dark: false, full: false /* остановки нет — полоса под первым экраном */ },
-  { id: 'character',  dark: false, full: false, ring: 'Характер икры' },
-  { id: 'origin',     dark: true,  full: false, ring: 'Происхождение' },
-  { id: 'categories', dark: false, full: false, ring: 'Ассортимент' },
-  { id: 'brand',      dark: false, full: false, ring: 'О бренде' },
-  { id: 'proof',      dark: true,  full: false, ring: 'Доверие' },
-  { id: 'shop',       dark: false, full: false, ring: 'Витрина' },
-  { id: 'offline',    dark: false, full: false, ring: 'Офлайн' },
-  { id: 'journal',    dark: false, full: false, ring: 'Журнал' },
+  { id: 'character',  dark: false, full: false },
+  { id: 'origin',     dark: true,  full: false },
+  { id: 'categories', dark: false, full: false },
+  { id: 'brand',      dark: false, full: false },
+  { id: 'proof',      dark: true,  full: false },
+  { id: 'shop',       dark: false, full: false },
+  { id: 'offline',    dark: false, full: false },
+  { id: 'journal',    dark: false, full: false },
 ]
 
 const builders = {
@@ -68,10 +65,6 @@ export function renderSections(mount) {
 
   const fragment = document.createDocumentFragment()
 
-  // Остановка кольца. Секция без своего ring остаётся на предыдущей.
-  let stopNum = 0
-  let stopLabel = ''
-
   sections.forEach((item, index) => {
     const build = builders[item.id]
     if (!build) {
@@ -83,14 +76,6 @@ export function renderSections(mount) {
 
     section.classList.toggle('section--full', Boolean(item.full))
     section.classList.toggle('section--tight', Boolean(item.tight))
-
-    if (item.ring) {
-      stopNum += 1
-      stopLabel = item.ring
-    }
-
-    section.dataset.ringNum = String(stopNum).padStart(2, '0')
-    section.dataset.ringLabel = stopLabel
 
     fragment.appendChild(section)
   })

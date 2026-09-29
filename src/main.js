@@ -15,7 +15,6 @@ import './styles/components/header.css'
 import './styles/components/megamenu.css'
 import './styles/components/search.css'
 import './styles/components/media.css'
-import './styles/components/progress-ring.css'
 import './styles/components/footer.css'
 import './styles/components/buttons.css'
 import './styles/components/toast.css'
@@ -38,7 +37,6 @@ import './styles/sections/journal.css'
 import { initHeader } from './js/sections/header.js'
 import { initFooter } from './js/sections/footer.js'
 import { renderSections, initSections } from './js/sections/index.js'
-import { renderProgressRing } from './js/progress-ring.js'
 import { initScroll } from './js/scroll.js'
 import { initExpert } from './js/expert.js'
 import { hydrateMedia } from './js/media.js'
@@ -47,7 +45,6 @@ function boot() {
   renderSections(document.querySelector('#main'))
   initHeader()
   initFooter()
-  renderProgressRing(document.querySelector('#progress-ring'))
 
   hydrateMedia(document)
 

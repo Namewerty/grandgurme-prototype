@@ -31,9 +31,6 @@ gsap.registerPlugin(ScrollTrigger)
 
 const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
-/** Сколько длится подмена подписи в кольце: гаснет → меняется → проявляется. */
-const RING_FADE = 200
-
 let lenis = null
 
 export const getLenis = () => lenis
@@ -138,9 +135,10 @@ function createReveals() {
 /* --------------------------------------- видимость угловых элементов */
 
 /**
- * Показывать элемент только между hero и подвалом. Так живут кольцо прогресса
- * (левый нижний угол) и виджет эксперта (правый нижний): на первом экране они
- * лезли бы на заголовок, на контактах — на телефоны.
+ * Показывать элемент только между hero и подвалом. Так живёт виджет эксперта
+ * (правый нижний угол): на первом экране он лез бы на заголовок, на контактах —
+ * на телефоны. Кольцо прогресса в левом нижнем углу жило так же и снято
+ * 29.09.2026.
  *
  * @param {Element} el          получает класс is-visible
  * @param {(visible:boolean)=>void} [onChange]
@@ -185,98 +183,10 @@ export function watchBetweenHeroAndFooter(el, onChange) {
   }
 }
 
-/* ------------------------------------------------- кольцо прогресса */
-
-/**
- * Кольцо показывает долю прочитанного, номер текущей остановки и её название.
- *
- * Остановки — не то же самое, что секции: #trust это узкая полоса под первым
- * экраном, отдельной остановкой она не считается и относится к «01 Начало».
- * Поэтому номер и подпись каждая секция несёт на себе в data-ring-num /
- * data-ring-label (проставляются при сборке, см. js/sections/index.js), а не
- * вычисляются здесь из позиции в DOM.
- */
-function createProgressRing() {
-  const ring = document.querySelector('.progress-ring')
-  if (!ring) return
-
-  const bar = ring.querySelector('.progress-ring__bar')
-  const num = ring.querySelector('.progress-ring__num')
-  const caption = ring.querySelector('.progress-ring__label')
-  const sections = gsap.utils.toArray('#main .section')
-  if (!bar || !num || !sections.length) return
-
-  const radius = Number(bar.getAttribute('r'))
-  const circumference = 2 * Math.PI * radius
-  ring.style.setProperty('--ring-circumference', circumference.toFixed(2))
-
-  const setProgress = (value) => {
-    const clamped = Math.max(0, Math.min(1, value))
-    bar.style.strokeDashoffset = (circumference * (1 - clamped)).toFixed(2)
-  }
-
-  setProgress(0)
-
-  ScrollTrigger.create({
-    start: 0,
-    end: 'max',
-    onUpdate: (self) => setProgress(self.progress),
-  })
-
-  /* Подмена подписи: гасим, меняем текст в темноте, проявляем. Иначе на
-     границе секций видно, как одно название перебивает другое. */
-  const fade = REDUCED ? 0 : RING_FADE
-  let current = null
-  let swapTimer = null
-
-  const setStop = (stopNum, stopLabel, isDark) => {
-    ring.classList.toggle('is-over-dark', isDark)
-    if (stopNum === current) return
-    current = stopNum
-
-    clearTimeout(swapTimer)
-    ring.classList.add('is-swapping')
-
-    swapTimer = setTimeout(() => {
-      num.textContent = stopNum
-      if (caption) caption.textContent = stopLabel
-      ring.classList.remove('is-swapping')
-    }, fade)
-  }
-
-  // Первая остановка проставляется сразу: до первой прокрутки кольцо должно
-  // показывать «01 Начало», а не пустую строку.
-  const first = sections[0]
-  if (first) {
-    num.textContent = first.dataset.ringNum || '01'
-    if (caption) caption.textContent = first.dataset.ringLabel || ''
-    current = first.dataset.ringNum || '01'
-  }
-
-  sections.forEach((section) => {
-    const stopNum = section.dataset.ringNum
-    const stopLabel = section.dataset.ringLabel || ''
-    const isDark = section.classList.contains('section--dark')
-    if (!stopNum) return
-
-    const apply = () => setStop(stopNum, stopLabel, isDark)
-
-    ScrollTrigger.create({
-      trigger: section,
-      start: 'top 60%',
-      end: 'bottom 60%',
-      onEnter: apply,
-      onEnterBack: apply,
-    })
-  })
-
-  watchBetweenHeroAndFooter(ring)
-}
-
 /* ------------------------------------------------------------------ init */
 
 /**
- * Только инерция, без reveal-анимаций и кольца прогресса.
+ * Только инерция, без reveal-анимаций.
  *
  * Для внутренних страниц: ощущение прокрутки на всём сайте должно быть одно,
  * а появление секций из-под маски — приём главной. В каталоге он был бы вреден
@@ -295,7 +205,6 @@ export function initScroll() {
   if (!REDUCED) createLenis()
 
   createReveals()
-  createProgressRing()
 
   ScrollTrigger.refresh()
   window.addEventListener('load', () => ScrollTrigger.refresh())

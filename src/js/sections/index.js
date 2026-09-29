@@ -1,8 +1,7 @@
 /* ============================================================================
    Сборка секций главной.
 
-   Порядок берётся из src/data/sections.js — он же задаёт остановки в кольце
-   прогресса. Каждая секция строится своим модулем; временных оболочек больше
+   Порядок берётся из src/data/sections.js. Каждая секция строится своим модулем; временных оболочек больше
    нет, все одиннадцать наполнены.
 
    #brand, #categories и #journal обходятся без init: их вход — общий reveal
@@ -53,11 +52,6 @@ export function renderSections(mount) {
 
   const fragment = document.createDocumentFragment()
 
-  // Остановка кольца. Секция без своего ring (сейчас это #trust) остаётся на
-  // предыдущей: номер и подпись она наследует, а не сдвигает нумерацию.
-  let stopNum = 0
-  let stopLabel = ''
-
   sections.forEach((item, index) => {
     const build = builders[item.id]
     if (!build) {
@@ -71,14 +65,6 @@ export function renderSections(mount) {
     // сразу, какие секции полноэкранные и какие продолжают главу предыдущей.
     section.classList.toggle('section--full', Boolean(item.full))
     section.classList.toggle('section--tight', Boolean(item.tight))
-
-    if (item.ring) {
-      stopNum += 1
-      stopLabel = item.ring
-    }
-
-    section.dataset.ringNum = String(stopNum).padStart(2, '0')
-    section.dataset.ringLabel = stopLabel
 
     fragment.appendChild(section)
   })

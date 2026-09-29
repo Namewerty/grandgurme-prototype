@@ -414,8 +414,8 @@ export function render(ctx) {
     ? `<button type="button" class="link-btn" data-action="reset-all">${copy.filters.resetAll}</button>`
     : ''
 
-  // Индикатор — доля показанного от всего раздела. Тот же приём, что кольцо
-  // прогресса на главной: волосяная линия, по ней золотой отрезок.
+  // Индикатор — доля показанного от всего раздела: волосяная линия,
+  // по ней золотой отрезок.
   const share = ctx.products.length ? (found / ctx.products.length) * 100 : 0
   ctx.els.indicator.style.width = `${Math.max(0, Math.min(100, share))}%`
 

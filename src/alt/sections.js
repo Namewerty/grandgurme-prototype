@@ -4,21 +4,16 @@
    ЗАЧЕМ КОПИЯ, А НЕ ИМПОРТ. renderSections из src/js/sections/index.js читает
    реестр из src/data/sections.js напрямую — параметра «какой реестр брать»
    у него нет. Добавить его значило бы править основной код ради черновика,
-   поэтому массив и сборка скопированы сюда целиком: порядок, флаги и
-   нумерация остановок кольца правятся в этом файле.
+   поэтому массив и сборка скопированы сюда целиком: порядок и флаги
+   правятся в этом файле.
 
    ЧТО ИЗМЕНИЛОСЬ ПРОТИВ src/data/sections.js: добавлена #chefs сразу после
-   #proof, перед #shop. Всё остальное — порядок, флаги dark/full/tight,
-   названия остановок — как в основной версии.
+   #proof, перед #shop. Всё остальное — порядок, флаги dark/full/tight —
+   как в основной версии.
 
    #season ТЕПЕРЬ ЕСТЬ ТОЛЬКО ЗДЕСЬ. 16.09.2026 блок «Сезон и новинки» снят
    с основной главной решением Дениса; в этом массиве он остался на прежнем
    месте, после #shop, с флагом tight. Импорт season.css — в src/alt/main.js.
-
-   ⚠ НУМЕРАЦИЯ ОСТАНОВОК СДВИНУЛАСЬ. Остановок стало десять вместо девяти,
-   и всё, что идёт после #proof, получило номер на единицу больше:
-   Витрина 06→07, Офлайн 07→08, Стандарт 08→09, Журнал 09→10. Это ожидаемо
-   и правильно — кольцо считает остановки, а не помнит номера.
 
    initSections импортируется из основного модуля как есть: он терпим
    к отсутствию секций (каждый init* начинается с querySelector и молча
@@ -44,25 +39,23 @@ import { buildChefs, initChefs } from './sections/chefs.js'
 /* Флаги те же, что в src/data/sections.js:
      dark  — тёмная секция;
      full  — min-height 100svh, носитель только hero;
-     tight — продолжение главы предыдущей секции;
-     ring  — название остановки в кольце. Секция без ring наследует номер
-             и подпись предыдущей (#trust, #season). */
+     tight — продолжение главы предыдущей секции. */
 export const sections = [
-  { id: 'hero',       dark: true,  full: true,  media: 'hero',       ring: 'Начало' },
+  { id: 'hero',       dark: true,  full: true,  media: 'hero' },
   { id: 'trust',      dark: false, full: false /* остановки нет — полоса под hero */ },
-  { id: 'types',      dark: false, full: false,                      ring: 'Виды икры' },
-  { id: 'categories', dark: false, full: false,                      ring: 'Ассортимент' },
-  { id: 'brand',      dark: false, full: false,                      ring: 'О бренде' },
-  { id: 'proof',      dark: true,  full: false,                      ring: 'Доверие' },
+  { id: 'types',      dark: false, full: false },
+  { id: 'categories', dark: false, full: false },
+  { id: 'brand',      dark: false, full: false },
+  { id: 'proof',      dark: true,  full: false },
   /* Новая секция альтернативы. Светлая — тёмная сразу после тёмного #proof
      слепила бы два разворота в один. Своя остановка: блок отвечает на свой
      вопрос, а не продолжает предыдущий. */
-  { id: 'chefs',      dark: false, full: false,                      ring: 'Ресторанам' },
-  { id: 'shop',       dark: false, full: false,                      ring: 'Витрина' },
+  { id: 'chefs',      dark: false, full: false },
+  { id: 'shop',       dark: false, full: false },
   { id: 'season',     dark: false, full: false, tight: true },
-  { id: 'offline',    dark: false, full: false,                      ring: 'Офлайн' },
-  { id: 'why',        dark: false, full: false,                      ring: 'Стандарт' },
-  { id: 'journal',    dark: false, full: false,                      ring: 'Журнал' },
+  { id: 'offline',    dark: false, full: false },
+  { id: 'why',        dark: false, full: false },
+  { id: 'journal',    dark: false, full: false },
 ]
 
 const builders = {
@@ -85,11 +78,6 @@ export function renderSections(mount) {
 
   const fragment = document.createDocumentFragment()
 
-  // Остановка кольца. Секция без своего ring остаётся на предыдущей:
-  // номер и подпись она наследует, а не сдвигает нумерацию.
-  let stopNum = 0
-  let stopLabel = ''
-
   sections.forEach((item, index) => {
     const build = builders[item.id]
     if (!build) {
@@ -102,14 +90,6 @@ export function renderSections(mount) {
     // Структурные флаги ставит реестр, а не сборщик.
     section.classList.toggle('section--full', Boolean(item.full))
     section.classList.toggle('section--tight', Boolean(item.tight))
-
-    if (item.ring) {
-      stopNum += 1
-      stopLabel = item.ring
-    }
-
-    section.dataset.ringNum = String(stopNum).padStart(2, '0')
-    section.dataset.ringLabel = stopLabel
 
     fragment.appendChild(section)
   })

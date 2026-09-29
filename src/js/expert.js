@@ -284,7 +284,7 @@ export function initExpert(mount) {
     setOpen(false, { restoreFocus: false })
   })
 
-  // Появляется после hero, исчезает на подвале — как кольцо прогресса.
+  // Появляется после hero, исчезает на подвале.
   // Закрываем панель на уходе: висящая панель над невидимой кнопкой не нужна.
   watchBetweenHeroAndFooter(mount, (visible) => {
     if (!visible) setOpen(false, { restoreFocus: false })
