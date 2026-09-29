@@ -154,7 +154,7 @@ export const checkoutCopy = {
        {time} — «15:30», {day} — «четверг, 2 октября», {min} — допуск. */
     exact: {
       cap: 'К точному времени',
-      label: 'Время',
+      label: 'Точное время',
       placeholder: 'Выберите время',
       summary: 'Привезём к {time}, {day}',
       hint: 'Курьер приедет к этому времени.',

@@ -120,8 +120,8 @@ export async function zoneForAddress(address) {
 
 /* ------------------------------------------------------------------ поле */
 
-/** «Москва в пределах МКАД — 900 ₽». */
-const optionLabel = (zone) => `${zone.name} — ${formatPrice(zone.price)}`
+/** «В пределах МКАД — 900 ₽». Короткое имя: полное на 375 px обрезалось. */
+const optionLabel = (zone) => `${zone.short} — ${formatPrice(zone.price)}`
 
 /** Подпись под полем: граница зоны и порог бесплатной доставки. */
 export const zoneHint = (zone) =>

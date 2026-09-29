@@ -42,3 +42,7 @@ grandgurme-stand-*.zip
 # Патчи от агентов без доступа к GitHub (Cowork, Claude in Chrome): лежат в папке,
 # пока их не применят git am. Порядок — CLAUDE.md.
 _patches/
+
+# Локальные переменные окружения (ключ геокодера и т. п.) — образец в .env.example.
+.env.local
+.env.*.local

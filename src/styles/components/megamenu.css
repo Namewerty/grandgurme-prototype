@@ -221,14 +221,17 @@
   color: var(--fg-mute);
 }
 
-.navcard .media.is-missing {
+/* Только внутри .navcard__visual — разметки прототипа с заглушкой. Панель
+   Битрикса (include/fn.php) заглушки пока не рисует, и там кадр без файла
+   должен остаться прежней подписью с именем файла, а не пустым местом. */
+.navcard__visual .media.is-missing {
   border-color: transparent;
   background: transparent;
 }
 
-.navcard .media.is-missing .media__note { display: none; }
+.navcard__visual .media.is-missing .media__note { display: none; }
 
-.navcard:has(.media.is-missing) .navcard__name { visibility: hidden; }
+.navcard:has(.navcard__visual .media.is-missing) .navcard__name { visibility: hidden; }
 
 .navcard:hover .navcard__stub-name,
 .navcard:focus-visible .navcard__stub-name { color: var(--caspian-fg); }
