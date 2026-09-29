@@ -44,7 +44,7 @@ import { createHeartButton, favoriteFor } from '../favorites/toggle.js'
 import { stockTagHtml } from '../components/stock-tag.js'
 import { createQtyStepper } from '../components/qty-stepper.js'
 import { createImage } from '../media.js'
-import { approxLabel, escapeHtml, formatPrice, priceText } from '../catalog/model.js'
+import { approxLabel, escapeHtml, formatPrice, perKgText, priceText } from '../catalog/model.js'
 import { isBox, packsWord, pricePer100 } from '../../data/boxes.js'
 import { getFreePacks, peekFreeCount } from '../cart/boxes.js'
 import { boxPriceMarkup, createBoxPicker } from './box-picker.js'
@@ -221,6 +221,11 @@ function buyColumn(product) {
       <h1 class="pbuy__title">${escapeHtml(product.name)}</h1>
       ${line ? `<p class="pbuy__line">${escapeHtml(line)}</p>` : ''}
       <p class="pbuy__price" data-price>${priceMarkup(product)}</p>
+      ${
+        /* Цена за кг — отдельной строкой, а не внутри data-price: цену коробок
+           перерисовывает селектор веса, строка за кг от выбора не зависит. */
+        perKgText(product) ? `<p class="pbuy__per-kg">${perKgText(product)}</p>` : ''
+      }
       ${isBox(product) ? '<p class="pbuy__boxes" data-boxes-line></p>' : ''}
       <div class="pbuy__kind">
         ${stockTagHtml(kind)}
@@ -373,6 +378,7 @@ function cardFor(product, categorySlug) {
     note: product.weightLabel,
     href: ROUTES.product(product.slug),
     price: priceLabel(product),
+    perKg: perKgText(product),
     image: { src: product.photo, ratio: '1:1' },
     favorite: favoriteFor(item),
     add: {

@@ -49,7 +49,7 @@ import {
   searchUrl,
 } from '../../data/search.js'
 import { ROUTES } from '../../data/routes.js'
-import { priceText } from '../catalog/model.js'
+import { perKgText, priceText } from '../catalog/model.js'
 import { icons } from '../icons.js'
 import { hydrateMedia } from '../media.js'
 import { getLenis } from '../scroll.js'
@@ -108,7 +108,9 @@ const productRow = ({ product }, query) => `
       <span class="srow__name">${highlight(product.name, query)}</span>
       <span class="srow__note">${escape(product.weightLabel)}</span>
     </span>
-    <span class="srow__price">${price(product)}</span>
+    <span class="srow__price">${price(product)}${
+      perKgText(product) ? `<span class="srow__per-kg">${perKgText(product)}</span>` : ''
+    }</span>
   </a>
 `
 

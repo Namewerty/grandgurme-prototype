@@ -52,6 +52,7 @@ import { cartCopy } from '../../data/cart-copy.js'
 import { kindOf } from '../../data/fulfillment.js'
 import { addWithToast } from '../cart/add.js'
 import { createProductCard } from '../components/product-card.js'
+import { perKgText } from '../catalog/model.js'
 import { createArrow, createPager, initRail } from '../rail.js'
 
 gsap.registerPlugin(ScrollTrigger)
@@ -120,6 +121,9 @@ function buildCard(item, key, index) {
     note,
     href,
     price,
+    // Цена за кг — от той цены, что стоит на карточке, и веса одиночной
+    // позиции (weightG в products.js). У наборов веса нет — строки нет.
+    perKg: perKgText({ price: Number(String(price).replace(/\D/g, '')) || null, weightG: item.weightG }),
     // alt по названию товара, а не общий из реестра: кадр скрыт от
     // скринридера, но так он осмысленно попадёт в поиск по картинкам.
     image: { src: media.src, ratio: '1:1' },

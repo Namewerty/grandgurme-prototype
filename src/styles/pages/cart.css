@@ -158,7 +158,8 @@
   grid-template-areas:
     'name remove'
     'note note'
-    'qty  sum';
+    'qty  sum'
+    '.    perkg';
   align-items: center;
   column-gap: 1rem;
   min-width: 0;
@@ -220,6 +221,18 @@
   font-variant-numeric: tabular-nums;
   color: var(--fg);
 }
+
+/* Цена за кг под суммой строки — мелко и приглушённо. */
+.cart-line__per-kg {
+  grid-area: perkg;
+  justify-self: end;
+  margin: -.55rem 0 0;
+  font-size: .72rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-mute);
+}
+
+.cart-line__per-kg[hidden] { display: none; }
 
 .cart-line__sum.is-request {
   font-size: .82rem;

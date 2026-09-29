@@ -56,6 +56,7 @@ import {
   formatPrice,
   foundLabel,
   hasAnyActive,
+  perKgText,
   priceText,
   sortProducts,
   stockFirst,
@@ -300,6 +301,7 @@ function buildCard(ctx, product) {
     // У коробок — цена коробки по умолчанию, без «≈» (priceText).
     price: priceText(product) ?? copy.card.priceOnRequest,
     oldPrice: product.oldPrice ? formatPrice(product.oldPrice) : null,
+    perKg: perKgText(product),
     image: { src: product.photo, ratio: '1:1' },
     badge: badgeFor(product),
     favorite: favoriteFor(item),

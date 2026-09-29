@@ -110,6 +110,8 @@ function toLine(product, qty, packIds = []) {
     href: product.href ?? (slug ? ROUTES.product(slug) : ROUTES.catalog),
     image: product.image ?? product.photo ?? null,
     price: typeof product.price === 'number' ? product.price : null,
+    // Вес — для цены за кг в строке (perKgText); у коробок её даёт boxes.pricePerKg.
+    weightG: typeof product.weightG === 'number' ? product.weightG : null,
     qty,
     inStock: product.inStock !== false,
     categorySlug: product.categorySlug ?? null,

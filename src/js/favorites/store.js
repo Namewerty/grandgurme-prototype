@@ -45,6 +45,8 @@ function toSnapshot(product) {
     href: product.href ?? (slug ? ROUTES.product(slug) : ROUTES.catalog),
     image: product.image ?? product.photo ?? null,
     price: typeof product.price === 'number' ? product.price : null,
+    // Вес — для цены за кг рядом с ценой (perKgText).
+    weightG: typeof product.weightG === 'number' ? product.weightG : null,
     inStock: product.inStock !== false,
     categorySlug: product.categorySlug ?? null,
     fulfillment: product.fulfillment === 'preorder' ? 'preorder' : null,
@@ -70,6 +72,7 @@ function refresh(snapshot) {
   return {
     ...snapshot,
     price: typeof product.price === 'number' ? product.price : null,
+    weightG: typeof product.weightG === 'number' ? product.weightG : null,
     inStock: product.inStock !== false,
     image: product.photo ?? snapshot.image,
     categorySlug: product.categorySlug ?? snapshot.categorySlug,

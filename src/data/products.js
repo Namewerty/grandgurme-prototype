@@ -33,6 +33,9 @@
  * у наборов — состав. В карточке под неё зарезервированы две строки, поэтому
  * цены в ряду стоят на одной высоте независимо от длины подписи.
  * media — кадр из реестра src/data/media.js, чтобы пути к файлам жили в одном месте.
+ * weightG — вес одиночной позиции, тот же, что в note (29.09.2026): по нему
+ *   витрина пишет цену за кг рядом с ценой. У наборов веса нет намеренно:
+ *   их цена включает ложку и шкатулку, и цена за кг была бы неправдой.
  *
  * ПРО href. Две позиции чёрной икры ведут на СВОИ адреса: они настоящие,
  * пришли выгрузкой из 1С, и у каждой есть собственная карточка товара.
@@ -53,6 +56,7 @@ export const self = [
     name: 'Пате из лосося с цитрусом',
     note: '180 г',
     price: '1 290 ₽',
+    weightG: 180,
     href: ROUTES.product(SAMPLE.product),
     media: productShots[0],
   },
@@ -60,6 +64,7 @@ export const self = [
     name: 'Нельма холодного вяления',
     note: 'Ломтики, 150 г',
     price: '2 450 ₽',
+    weightG: 150,
     href: ROUTES.product(SAMPLE.product),
     media: productShots[1],
   },
@@ -67,6 +72,7 @@ export const self = [
     name: 'Мясо камчатского краба',
     note: 'Первая фаланга, 500 г',
     price: '6 900 ₽',
+    weightG: 500,
     href: ROUTES.product(SAMPLE.product),
     media: productShots[2],
   },
@@ -74,6 +80,7 @@ export const self = [
     name: 'Соус из краба',
     note: '250 г',
     price: '1 890 ₽',
+    weightG: 250,
     href: ROUTES.product(SAMPLE.product),
     media: productShots[3],
   },
@@ -81,6 +88,7 @@ export const self = [
     name: 'Икра лососёвая, кета',
     note: '500 г',
     price: '5 400 ₽',
+    weightG: 500,
     href: ROUTES.product(SAMPLE.product),
     media: productShots[4],
   },
@@ -88,6 +96,7 @@ export const self = [
     name: 'Филе лосося слабосолёное',
     note: 'Ручная нарезка, 200 г',
     price: '1 980 ₽',
+    weightG: 200,
     href: ROUTES.product(SAMPLE.product),
     media: productShots[5],
   },
@@ -101,6 +110,7 @@ export const self = [
   {
     name: 'Икра осетра Премиум STURGEON',
     note: 'Банка металл, 50 г',
+    weightG: 50,
     price: 'Цена по запросу',
     href: ROUTES.product('osetr-premium-sturgeon-metall-50'),
     media: caviarShots[1],
@@ -108,6 +118,7 @@ export const self = [
   {
     name: 'Икра белуги и стерляди SELECTED',
     note: 'Банка стекло, 113 г',
+    weightG: 113,
     price: 'Цена по запросу',
     href: ROUTES.product('beluga-sterlyad-selected-steklo-113'),
     media: caviarShots[3],

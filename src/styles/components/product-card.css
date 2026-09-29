@@ -216,3 +216,15 @@
   font-weight: 400;
   color: var(--fg-mute);
 }
+
+/* Цена за кг «12 900 ₽/кг» — мелко и приглушённо, в той же строке, что цена;
+   на узкой карточке переносится под неё, а не наезжает (flex-wrap). */
+.product__price { flex-wrap: wrap; row-gap: .1rem; }
+
+.product__per-kg {
+  font-size: .72rem;
+  font-weight: 400;
+  color: var(--fg-mute);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}

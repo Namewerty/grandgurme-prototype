@@ -21,7 +21,7 @@ import { KINDS } from '../../../data/fulfillment.js'
 import { ROUTES } from '../../../data/routes.js'
 import { addWithToast } from '../../cart/add.js'
 import { categoryCopy } from '../../../data/category-copy.js'
-import { bounds, escapeHtml, formatPrice, priceText } from '../../catalog/model.js'
+import { bounds, escapeHtml, formatPrice, perKgText, priceText } from '../../catalog/model.js'
 import { idlePillMarkup, rangeMarkup, rangeUsable, wireRange } from '../../catalog/range.js'
 import { icons } from '../../icons.js'
 import { createProductCard } from '../../components/product-card.js'
@@ -49,6 +49,7 @@ export function favoriteCard(item) {
     note: item.note,
     href: item.href,
     price: priceText(item) ?? cartCopy.line.priceOnRequest,
+    perKg: perKgText(item),
     image: { src: item.image || '', ratio: '1:1' },
     favorite: favoriteFor(item),
     add: { label: cartCopy.addLabel[item.kind], onAdd: () => addWithToast(item) },

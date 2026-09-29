@@ -37,7 +37,7 @@ import { cartCopy } from '../../data/cart-copy.js'
 import { DEFAULT_ZONE, findZone, toFreeDelivery } from '../../data/delivery-zones.js'
 import { KINDS } from '../../data/fulfillment.js'
 import { ROUTES } from '../../data/routes.js'
-import { escapeHtml, formatPrice } from '../catalog/model.js'
+import { escapeHtml, formatPrice, perKgText } from '../catalog/model.js'
 import { getAddresses } from '../account/api.js'
 import { currentUser, onChange as onAccountChange } from '../account/session.js'
 import { createImage } from '../media.js'
@@ -195,6 +195,7 @@ function createLine(line, { onQty, onRemove, onPick }) {
       }</p>
       <span data-line-qty></span>
       <p class="cart-line__sum" data-line-sum></p>
+      <p class="cart-line__per-kg" data-line-per-kg hidden></p>
     </div>`
 
   // Кадр позиции витрины без выгрузки может отсутствовать — тогда остаётся
@@ -226,6 +227,7 @@ function createLine(line, { onQty, onRemove, onPick }) {
   const note = node.querySelector('[data-line-note]')
   const pick = node.querySelector('[data-pick]')
   const sum = node.querySelector('[data-line-sum]')
+  const perKg = node.querySelector('[data-line-per-kg]')
 
   return {
     node,
@@ -237,6 +239,9 @@ function createLine(line, { onQty, onRemove, onPick }) {
       noteRow.hidden = !text && !pick
       if (pick) pick.textContent = next.qty === 1 ? copy.boxes.pickOne : copy.boxes.pick
       sum.textContent = lineSumLabel(next)
+      // Цена за кг — под суммой строки; у позиции без цены или веса её нет.
+      perKg.textContent = perKgText(next) || ''
+      perKg.hidden = !perKg.textContent
       sum.classList.toggle('is-request', next.price == null)
       // Сумма позиции заявки в итог не входит — пишется приглушённо.
       sum.classList.toggle('is-estimate', next.kind === 'request' && next.price != null)

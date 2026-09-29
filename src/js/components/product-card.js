@@ -32,6 +32,8 @@ import { stockTagHtml } from './stock-tag.js'
  * @param {string} data.href      адрес карточки товара
  * @param {string} data.price     готовая строка цены
  * @param {string} [data.oldPrice] старая цена, если есть скидка
+ * @param {string} [data.perKg]  цена за кг «12 900 ₽/кг» — мелко рядом с ценой
+ *                                (perKgText в src/js/catalog/model.js)
  * @param {object} data.image     { src, alt, ratio }
  * @param {object} [data.badge]   { kind: 'new'|'sale'|'discount', label }
  * @param {object} [data.favorite] { id, active, label(active, name), onToggle() } —
@@ -51,6 +53,7 @@ export function createProductCard({
   href,
   price,
   oldPrice,
+  perKg,
   image,
   badge,
   favorite,
@@ -118,7 +121,9 @@ export function createProductCard({
     <h3 class="product__name"><a href="${href}">${name}</a></h3>
     <p class="product__note">${note}</p>
     <p class="product__price">
-      ${price}${oldPrice ? `<s class="product__price-old">${oldPrice}</s>` : ''}
+      ${price}${oldPrice ? `<s class="product__price-old">${oldPrice}</s>` : ''}${
+        perKg ? `<span class="product__per-kg">${perKg}</span>` : ''
+      }
     </p>
     ${kind && kind !== 'stock' ? `<p class="product__tag">${stockTagHtml(kind)}</p>` : ''}
   `

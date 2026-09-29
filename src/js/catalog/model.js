@@ -62,6 +62,28 @@ export const approxLabel = (value) => `${categoryCopy.boxes.approx}${formatPrice
  */
 export const priceText = (item) => (item?.price == null ? null : formatPrice(item.price))
 
+/**
+ * Цена за килограмм «12 900 ₽/кг» — мелко и приглушённо рядом с ценой,
+ * везде, где показана цена товара (29.09.2026): сетка каталога, поиск,
+ * карточка товара, витрина главной, избранное, корзина.
+ *   коробки (pricePerKg у позиции или у строки корзины в boxes) — pricePerKg
+ *     как есть: он точный, приблизительна цена коробки, а не килограмма,
+ *     поэтому «≈» к этой строке не ставится;
+ *   остальное — price / weightG × 1000, до рубля.
+ * null — нет цены или веса, строки нет.
+ */
+export function perKgText(item) {
+  if (!item) return null
+  const box = item.pricePerKg ?? item.boxes?.pricePerKg
+  const perKg =
+    typeof box === 'number'
+      ? box
+      : typeof item.price === 'number' && item.weightG > 0
+        ? (item.price / item.weightG) * 1000
+        : null
+  return perKg == null ? null : `${formatPrice(Math.round(perKg))}/кг`
+}
+
 /** «товар» / «товара» / «товаров». */
 export function plural(n, one, few, many) {
   const n10 = n % 10
